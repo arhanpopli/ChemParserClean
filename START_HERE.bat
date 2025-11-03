@@ -1,36 +1,37 @@
 @echo off
 REM ==============================================================
-REM MoleculeViewer - Complete Startup (Backend + Instructions)
+REM MoleculeViewer - Reliable Startup with Auto-Restart
 REM ==============================================================
-REM This is the ONLY file you need to run!
-REM Starts the Flask backend and shows everything you need
+REM Backend stays running and auto-restarts if it crashes!
 REM ==============================================================
+
+setlocal enabledelayedexpansion
 
 color 0A
 cls
 
 echo.
 echo  ╔════════════════════════════════════════════════════════╗
-echo  ║          🚀 MoleculeViewer Complete Startup            ║
+echo  ║    🚀 MoleculeViewer - Starting (Auto-Restart ON)      ║
 echo  ╚════════════════════════════════════════════════════════╝
 echo.
 
 REM Change to MoleculeViewer directory
-cd /d "%~dp0MoleculeViewer"
+cd /d "%~dp0MoleculeViewer" || (
+    echo ERROR: Could not change to MoleculeViewer directory
+    pause
+    exit /b 1
+)
 
 REM ==============================================================
 REM STEP 1: Check Python
 REM ==============================================================
-echo  [1/4] Checking Python installation...
+echo  [1/3] Checking Python...
 python --version >nul 2>&1
 if errorlevel 1 (
     color 0C
-    echo.
     echo  ❌ ERROR: Python not found!
-    echo.
     echo  Please install Python from https://www.python.org
-    echo  ✓ Check "Add Python to PATH" during installation
-    echo.
     pause
     exit /b 1
 )
@@ -42,16 +43,14 @@ echo.
 REM ==============================================================
 REM STEP 2: Check Dependencies
 REM ==============================================================
-echo  [2/4] Checking dependencies (flask, rdkit, requests)...
+echo  [2/3] Checking dependencies...
 python -m pip show flask > nul 2>&1
 if errorlevel 1 (
-    echo  ⚠️  Installing missing dependencies...
-    python -m pip install -q flask rdkit requests
+    echo  ⚠️  Installing dependencies...
+    python -m pip install -q flask rdkit requests >nul 2>&1
     if errorlevel 1 (
         color 0C
-        echo.
-        echo  ❌ ERROR: Failed to install dependencies!
-        echo.
+        echo  ❌ ERROR: Could not install dependencies!
         pause
         exit /b 1
     )
@@ -60,73 +59,49 @@ echo  ✅ All dependencies ready!
 echo.
 
 REM ==============================================================
-REM STEP 3: Start Flask Backend
+REM STEP 3: Kill any existing Python process on port 5000
 REM ==============================================================
-echo  [3/4] Starting Flask backend...
-echo.
+echo  [3/3] Cleaning up old processes...
+for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr :5000') do (
+    taskkill /PID %%a /F >nul 2>&1
+)
+timeout /t 1 /nobreak >nul
 
-python run.py >nul 2>&1 &
-set BACKEND_PID=%ERRORLEVEL%
+REM ==============================================================
+REM STEP 4: Start Backend with Auto-Restart Loop
+REM ==============================================================
+set RESTART_COUNT=0
 
-timeout /t 2 /nobreak >nul
+:RESTART_LOOP
+set /a RESTART_COUNT+=1
 
-REM Check if backend started successfully
-python -c "import socket; s = socket.socket(); s.connect(('127.0.0.1', 5000)); s.close()" >nul 2>&1
-if errorlevel 1 (
+if %RESTART_COUNT% gtr 1 (
     color 0C
     echo.
-    echo  ❌ ERROR: Backend failed to start!
-    echo  Check that port 5000 is not already in use
+    echo  ⚠️  Backend crashed! Auto-restarting... (Attempt %RESTART_COUNT%)
+    color 0A
     echo.
-    pause
-    exit /b 1
+    timeout /t 2 /nobreak >nul
 )
 
-color 0A
-echo  ✅ Backend is running on http://localhost:5000
-echo.
+if %RESTART_COUNT% equ 1 (
+    echo  Starting backend server...
+    echo.
+    echo  ✅ Backend RUNNING on http://localhost:5000
+    echo.
+    echo  📋 Keep this window OPEN while using molecules!
+    echo.
+    echo  🧪 To test:
+    echo     1. Go to chrome://extensions/
+    echo     2. Reload "Chemistry Renderer"
+    echo     3. Type in ChatGPT: chem:benzene:
+    echo.
+    echo  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    echo.
+)
 
-REM ==============================================================
-REM STEP 4: Show Ready Message
-REM ==============================================================
-echo  [4/4] Setup complete!
-echo.
-echo  ╔════════════════════════════════════════════════════════╗
-echo  ║              🎉 READY TO USE! 🎉                      ║
-echo  ╚════════════════════════════════════════════════════════╝
-echo.
-echo  ✅ Backend:     RUNNING on http://localhost:5000
-echo  ✅ Extensions:  Ready to use
-echo  ✅ ChatGPT:     Ready for molecules
-echo.
-echo  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo.
-echo  📋 NEXT STEPS:
-echo.
-echo  1. Reload Chrome Extension:
-echo     • Go to: chrome://extensions/
-echo     • Find: Chemistry Renderer
-echo     • Click: 🔄 Reload button
-echo.
-echo  2. Open ChatGPT (new tab)
-echo.
-echo  3. Type a molecule with TRAILING COLON:
-echo     • chem:benzene:
-echo     • chem:aspirin:
-echo     • chem:CCO:
-echo.
-echo  ⚠️  IMPORTANT: Keep this window open while using molecules!
-echo  (The backend server runs in the background)
-echo.
-echo  📊 ENDPOINTS AVAILABLE:
-echo     • /img/smiles?smiles=CCO
-echo     • /img/nomenclature?nomenclature=acetone
-echo     • /health
-echo.
-echo  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo.
-echo  🛑 To stop: Close this window or press Ctrl+C
-echo.
-
-REM Keep the backend running
+REM Start the backend
 python run.py
+
+REM If we get here, the backend crashed - restart it
+goto RESTART_LOOP

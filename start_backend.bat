@@ -62,33 +62,39 @@ echo.
 echo  The server is starting. You should see output below:
 echo.
 
-python -c "
-import os
-import sys
-from app.api import app
+REM Create a temporary Python script to run the server
+setlocal enabledelayedexpansion
+set "TEMP_SCRIPT=%TEMP%\mol_start_server.py"
 
-try:
-    print(' ✅ Backend module loaded successfully')
-    print()
-    print(' 🚀 Starting Flask server...')
-    print(' 📍 Location: http://localhost:5000')
-    print()
-    print(' Available endpoints:')
-    print('   - /img/smiles?smiles=CCO')
-    print('   - /img/nomenclature?nomenclature=acetone')
-    print('   - /health')
-    print()
-    print(' NOTE: Keep this window open while using the extension!')
-    print()
-    print(' ==========================================')
-    print()
-    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
-except Exception as e:
-    print(' ❌ ERROR: Failed to start backend!')
-    print(f' Details: {str(e)}')
-    print()
-    sys.exit(1)
-"
+(
+echo import os
+echo import sys
+echo from app.api import app
+echo.
+echo try:
+echo     print(' ✅ Backend module loaded successfully'^)
+echo     print('^)
+echo     print(' 🚀 Starting Flask server...'^)
+echo     print(' 📍 Location: http://localhost:5000'^)
+echo     print('^)
+echo     print(' Available endpoints:'^)
+echo     print('   - /img/smiles?smiles=CCO'^)
+echo     print('   - /img/nomenclature?nomenclature=acetone'^)
+echo     print('   - /health'^)
+echo     print('^)
+echo     print(' NOTE: Keep this window open while using the extension!'^)
+echo     print('^)
+echo     print(' =========================================='^)
+echo     print('^)
+echo     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False^)
+echo except Exception as e:
+echo     print(' ❌ ERROR: Failed to start backend!'^)
+echo     print(f' Details: {str(e)}'^)
+echo     print('^)
+echo     sys.exit(1^)
+) > "%TEMP_SCRIPT%"
+
+python "%TEMP_SCRIPT%"
 
 if errorlevel 1 (
     echo.
@@ -96,8 +102,10 @@ if errorlevel 1 (
     echo  ERROR: Backend failed to start!
     echo  ==========================================
     echo.
+    del "%TEMP_SCRIPT%" >nul 2>&1
     pause
     exit /b 1
 )
 
+del "%TEMP_SCRIPT%" >nul 2>&1
 pause

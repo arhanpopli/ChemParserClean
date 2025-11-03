@@ -7,12 +7,11 @@
 // ============================================
 // 🌍 MOLECULEVIEWER API CONFIGURATION
 // ============================================
-// Replace YOUR-HEROKU-APP with your actual Heroku app name
-// Example: const MOLECULE_VIEWER_API = 'https://mol2chemfig-kapil.herokuapp.com';
-const MOLECULE_VIEWER_API = 'https://YOUR-HEROKU-APP.herokuapp.com';
+// LOCAL TESTING (Your IP address - this is what works right now!)
+const MOLECULE_VIEWER_API = 'http://192.168.1.4:5000';
 
-// For local testing (comment out when using Heroku):
-// const MOLECULE_VIEWER_API = 'http://192.168.1.4:5000';
+// For Heroku production (uncomment when ready to deploy):
+// const MOLECULE_VIEWER_API = 'https://YOUR-HEROKU-APP.herokuapp.com';
 // const MOLECULE_VIEWER_API = 'http://localhost:5000';
 
 // ============================================

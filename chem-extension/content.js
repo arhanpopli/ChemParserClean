@@ -767,7 +767,10 @@ function setupLazyLoading() {
           
           // Create clean SVG image (no container, no controls)
           
-          // Create clean SVG image (no container, no controls)
+          // Detect dark mode
+          const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          
+          // Create clean SVG image with dark mode support
           const svgImg = document.createElement('img');
           svgImg.src = 'data:image/svg+xml;base64,' + btoa(data.svg);
           svgImg.alt = 'molecule';
@@ -779,6 +782,7 @@ function setupLazyLoading() {
             margin: 0 12px 8px 0;
             vertical-align: middle;
             cursor: pointer;
+            ${isDarkMode ? 'filter: invert(1) hue-rotate(180deg);' : ''}
           `;
           
           // Just add the image directly to the page (no controls!)
@@ -1904,6 +1908,35 @@ function observePageChanges() {
   
   window._chemRendererObserver = observer;
   log.success('✅ Dynamic content observer initialized');
+}
+
+// ============================================
+// DARK MODE SUPPORT
+// ============================================
+// Listen for dark mode changes and update molecule images
+if (window.matchMedia) {
+  const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  
+  function updateMoleculeColors(isDark) {
+    console.log(`%c🌓 Dark mode ${isDark ? 'enabled' : 'disabled'} - updating molecule colors`, 'color: #00AAFF; font-weight: bold;');
+    
+    // Update all molecule images
+    const moleculeImages = document.querySelectorAll('img.chemfig-diagram');
+    moleculeImages.forEach(img => {
+      if (isDark) {
+        img.style.filter = 'invert(1) hue-rotate(180deg)';
+      } else {
+        img.style.filter = '';
+      }
+    });
+  }
+  
+  // Listen for theme changes
+  darkModeQuery.addEventListener('change', (e) => {
+    updateMoleculeColors(e.matches);
+  });
+  
+  log.success('✅ Dark mode listener initialized');
 }
 
 // ============================================

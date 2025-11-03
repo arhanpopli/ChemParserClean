@@ -7,12 +7,11 @@
 // ============================================
 // 🌍 MOLECULEVIEWER API CONFIGURATION
 // ============================================
-// LOCAL TESTING (Your IP address - this is what works right now!)
-const MOLECULE_VIEWER_API = 'http://192.168.1.4:5000';
+// LOCAL TESTING - Use localhost to avoid HTTPS mixed content errors
+const MOLECULE_VIEWER_API = 'http://localhost:5000';
 
 // For Heroku production (uncomment when ready to deploy):
 // const MOLECULE_VIEWER_API = 'https://YOUR-HEROKU-APP.herokuapp.com';
-// const MOLECULE_VIEWER_API = 'http://localhost:5000';
 
 // ============================================
 // LOGGING UTILITIES
@@ -727,10 +726,14 @@ function setupLazyLoading() {
   // Helper function to load MoleculeViewer rendering with caching and download link
   function loadMoleculeViewerImage(img) {
     activeLoads++;
+    console.log('%c🧪 LOADMOLECULEVIEWERIMAGE CALLED!', 'background: #222; color: #00FF00; font-size: 20px; padding: 10px;');
+    console.log('Image element:', img);
+    console.log('Dataset:', img.dataset);
     log.debug(`🧪 Loading MoleculeViewer SVG (#${activeLoads})`);
     
     try {
       const moleculeData = JSON.parse(atob(img.dataset.moleculeViewer));
+      console.log('%c📦 Decoded molecule data:', 'color: #0088FF; font-weight: bold;', moleculeData);
       
       // Determine which endpoint to use based on data type
       const isNomenclature = moleculeData.type === 'nomenclature' && moleculeData.nomenclature;
@@ -739,7 +742,9 @@ function setupLazyLoading() {
       let apiUrl;
       if (isNomenclature) {
         console.log('%c📤 Using nomenclature endpoint', 'color: #FF6B00; font-weight: bold;');
+        console.log('Nomenclature:', moleculeData.nomenclature);
         apiUrl = `${MOLECULE_VIEWER_API}/img/nomenclature?nomenclature=${encodeURIComponent(moleculeData.nomenclature)}&width=300&height=200&json=true`;
+        console.log('API URL:', apiUrl);
       } else if (isSMILES) {
         console.log('%c📤 Using SMILES endpoint', 'color: #FF6B00; font-weight: bold;');
         apiUrl = `${MOLECULE_VIEWER_API}/img/smiles?smiles=${encodeURIComponent(moleculeData.smiles)}&width=300&height=200&json=true`;
@@ -748,9 +753,14 @@ function setupLazyLoading() {
       }
       
       // Fetch JSON response with cache link
+      console.log('%c🌐 Fetching from backend...', 'color: #00AAFF; font-weight: bold;');
       fetch(apiUrl)
-        .then(response => response.json())
+        .then(response => {
+          console.log('%c✅ Got response from backend:', 'color: #00FF00; font-weight: bold;', response);
+          return response.json();
+        })
         .then(data => {
+          console.log('%c📊 Backend data:', 'color: #FFAA00; font-weight: bold;', data);
           if (!data.success) {
             throw new Error(data.error || 'Rendering failed');
           }
@@ -857,6 +867,9 @@ function setupLazyLoading() {
           container.appendChild(svgImg);
           container.appendChild(controlsDiv);
           
+          // Mark as loaded
+          img.dataset.loaded = 'true';
+          
           // Replace original img element with container
           img.parentNode.replaceChild(container, img);
           
@@ -902,11 +915,20 @@ function setupLazyLoading() {
   // Override observer callback to handle both types
   const originalObserver = observer;
   const newObserver = new IntersectionObserver((entries) => {
+    console.log('%c👁️ IntersectionObserver triggered!', 'background: #000; color: #FFFF00; font-size: 16px; padding: 5px;');
+    console.log('Number of entries:', entries.length);
     entries.forEach((entry) => {
       const img = entry.target;
-      if (entry.isIntersecting && !img.dataset.loaded) {
+      console.log('Entry:', entry);
+      console.log('Image:', img);
+      console.log('Is intersecting?', entry.isIntersecting);
+      console.log('Already loaded?', img.dataset.loaded);
+      console.log('Has molecule-viewer class?', img.classList.contains('chemfig-molecule-viewer'));
+      
+      if (entry.isIntersecting && img.dataset.loaded !== 'true') {
         // Check if this is a MoleculeViewer image
         if (img.classList.contains('chemfig-molecule-viewer')) {
+          console.log('%c🧪 Detected MoleculeViewer image!', 'background: #0088FF; color: #FFF; font-size: 14px; padding: 5px;');
           if (activeLoads < maxConcurrentLoads) {
             loadMoleculeViewerImage(img);
           } else {
@@ -1607,11 +1629,11 @@ function wrapChemicalFormulas(text) {
   // Pattern 0A: chem:SMILES (contains special characters like =, [], (), @, +)
   // Example: chem:CC(=O)C, chem:c1ccccc1, chem:C[C@H](O)C
   log.debug('🧪 Applying Pattern 0A: chem:SMILES → MoleculeViewer');
-  const smilesMatches = result.match(/chem:([A-Za-z0-9_\-()=[\]@+#\\]+)/g);
+  const smilesMatches = result.match(/\bchem:([A-Za-z0-9_\-()=[\]@+#\\]+)/g);
   if (smilesMatches) {
     log.debug(`  Found ${smilesMatches.length} chem:SMILES patterns`);
     
-    result = result.replace(/chem:([A-Za-z0-9_\-()=[\]@+#\\]+)/g, (match, smiles) => {
+    result = result.replace(/\bchem:([A-Za-z0-9_\-()=[\]@+#\\]+)/g, (match, smiles) => {
       // Only process if it looks like SMILES (has special structural characters)
       if (!/[=\[\]()@+#\\]/.test(smiles)) {
         return match; // Not SMILES, skip this match
@@ -1648,11 +1670,11 @@ function wrapChemicalFormulas(text) {
   // Pattern 0B: chem:nomenclature (plain text, no special characters)
   // Example: chem:acetone, chem:benzene, chem:aspirin
   log.debug('🧪 Applying Pattern 0B: chem:nomenclature → MoleculeViewer');
-  const nomenclatureMatches = result.match(/chem:([A-Za-z][A-Za-z0-9\-_]*)/g);
+  const nomenclatureMatches = result.match(/\bchem:([A-Za-z][A-Za-z0-9\-_]*)/g);
   if (nomenclatureMatches) {
     log.debug(`  Found ${nomenclatureMatches.length} chem:nomenclature patterns`);
     
-    result = result.replace(/chem:([A-Za-z][A-Za-z0-9\-_]*)/g, (match, nomenclature) => {
+    result = result.replace(/\bchem:([A-Za-z][A-Za-z0-9\-_]*)/g, (match, nomenclature) => {
       // Skip if it looks like SMILES
       if (/[=\[\]()@+#\\]/.test(nomenclature)) {
         return match; // Already processed as SMILES

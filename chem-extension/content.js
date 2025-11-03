@@ -5,6 +5,17 @@
  */
 
 // ============================================
+// 🌍 MOLECULEVIEWER API CONFIGURATION
+// ============================================
+// Replace YOUR-HEROKU-APP with your actual Heroku app name
+// Example: const MOLECULE_VIEWER_API = 'https://mol2chemfig-kapil.herokuapp.com';
+const MOLECULE_VIEWER_API = 'https://YOUR-HEROKU-APP.herokuapp.com';
+
+// For local testing (comment out when using Heroku):
+// const MOLECULE_VIEWER_API = 'http://192.168.1.4:5000';
+// const MOLECULE_VIEWER_API = 'http://localhost:5000';
+
+// ============================================
 // LOGGING UTILITIES
 // ============================================
 const LOG_PREFIX = '[ChemRenderer]';
@@ -729,10 +740,10 @@ function setupLazyLoading() {
       let apiUrl;
       if (isNomenclature) {
         console.log('%c📤 Using nomenclature endpoint', 'color: #FF6B00; font-weight: bold;');
-        apiUrl = `http://localhost:5000/img/nomenclature?nomenclature=${encodeURIComponent(moleculeData.nomenclature)}&width=300&height=200&json=true`;
+        apiUrl = `${MOLECULE_VIEWER_API}/img/nomenclature?nomenclature=${encodeURIComponent(moleculeData.nomenclature)}&width=300&height=200&json=true`;
       } else if (isSMILES) {
         console.log('%c📤 Using SMILES endpoint', 'color: #FF6B00; font-weight: bold;');
-        apiUrl = `http://localhost:5000/img/smiles?smiles=${encodeURIComponent(moleculeData.smiles)}&width=300&height=200&json=true`;
+        apiUrl = `${MOLECULE_VIEWER_API}/img/smiles?smiles=${encodeURIComponent(moleculeData.smiles)}&width=300&height=200&json=true`;
       } else {
         throw new Error('Invalid molecule data');
       }

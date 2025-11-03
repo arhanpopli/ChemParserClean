@@ -770,9 +770,21 @@ function setupLazyLoading() {
           // Detect dark mode
           const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
           
+          // Replace black (#000000 or #000) with white in dark mode (only black lines)
+          let svgContent = data.svg;
+          if (isDarkMode) {
+            // Replace black color references: #000000, #000, rgb(0,0,0), and stroke="black"
+            svgContent = svgContent
+              .replace(/#000000/gi, '#FFFFFF')
+              .replace(/#000\b/gi, '#FFF')
+              .replace(/rgb\(0,\s*0,\s*0\)/gi, 'rgb(255, 255, 255)')
+              .replace(/stroke="black"/gi, 'stroke="white"')
+              .replace(/fill="black"/gi, 'fill="white"');
+          }
+          
           // Create clean SVG image with dark mode support
           const svgImg = document.createElement('img');
-          svgImg.src = 'data:image/svg+xml;base64,' + btoa(data.svg);
+          svgImg.src = 'data:image/svg+xml;base64,' + btoa(svgContent);
           svgImg.alt = 'molecule';
           svgImg.className = 'chemfig-diagram';
           svgImg.style.cssText = `
@@ -782,7 +794,6 @@ function setupLazyLoading() {
             margin: 0 12px 8px 0;
             vertical-align: middle;
             cursor: pointer;
-            ${isDarkMode ? 'filter: invert(1) hue-rotate(180deg);' : ''}
           `;
           
           // Just add the image directly to the page (no controls!)
@@ -1920,13 +1931,39 @@ if (window.matchMedia) {
   function updateMoleculeColors(isDark) {
     console.log(`%c🌓 Dark mode ${isDark ? 'enabled' : 'disabled'} - updating molecule colors`, 'color: #00AAFF; font-weight: bold;');
     
-    // Update all molecule images
+    // Update all molecule images by re-rendering with color replacements
     const moleculeImages = document.querySelectorAll('img.chemfig-diagram');
     moleculeImages.forEach(img => {
-      if (isDark) {
-        img.style.filter = 'invert(1) hue-rotate(180deg)';
-      } else {
-        img.style.filter = '';
+      // Get original SVG from data URI
+      const src = img.src;
+      if (src && src.startsWith('data:image/svg+xml;base64,')) {
+        try {
+          const base64 = src.replace('data:image/svg+xml;base64,', '');
+          const svgContent = atob(base64);
+          
+          let updatedSvg = svgContent;
+          if (isDark) {
+            // Replace black with white in dark mode
+            updatedSvg = updatedSvg
+              .replace(/#000000/gi, '#FFFFFF')
+              .replace(/#000\b/gi, '#FFF')
+              .replace(/rgb\(0,\s*0,\s*0\)/gi, 'rgb(255, 255, 255)')
+              .replace(/stroke="black"/gi, 'stroke="white"')
+              .replace(/fill="black"/gi, 'fill="white"');
+          } else {
+            // In light mode, restore original (undo the replacements)
+            updatedSvg = svgContent
+              .replace(/#FFFFFF/gi, '#000000')
+              .replace(/#FFF\b/gi, '#000')
+              .replace(/rgb\(255,\s*255,\s*255\)/gi, 'rgb(0, 0, 0)')
+              .replace(/stroke="white"/gi, 'stroke="black"')
+              .replace(/fill="white"/gi, 'fill="black"');
+          }
+          
+          img.src = 'data:image/svg+xml;base64,' + btoa(updatedSvg);
+        } catch (e) {
+          console.error('Error updating molecule colors:', e);
+        }
       }
     });
   }

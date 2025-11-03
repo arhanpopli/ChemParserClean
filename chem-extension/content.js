@@ -765,115 +765,30 @@ function setupLazyLoading() {
             throw new Error(data.error || 'Rendering failed');
           }
           
-          // Create container for image + link + button
-          const container = document.createElement('div');
-          container.className = 'molecule-viewer-container';
-          container.style.cssText = `
-            display: inline-block;
-            margin: 8px 12px 8px 0;
-            vertical-align: middle;
-            padding: 8px;
-            background: #f9f9f9;
-            border-radius: 6px;
-            border: 1px solid #e0e0e0;
-          `;
+          // Create clean SVG image (no container, no controls)
           
-          // Create image element from SVG
+          // Create clean SVG image (no container, no controls)
           const svgImg = document.createElement('img');
           svgImg.src = 'data:image/svg+xml;base64,' + btoa(data.svg);
           svgImg.alt = 'molecule';
           svgImg.className = 'chemfig-diagram';
           svgImg.style.cssText = `
-            display: block;
+            display: inline-block;
             max-width: 300px;
             max-height: 200px;
-            margin-bottom: 6px;
+            margin: 0 12px 8px 0;
+            vertical-align: middle;
             cursor: pointer;
           `;
           
-          // Create link display + button container
-          const controlsDiv = document.createElement('div');
-          controlsDiv.style.cssText = `
-            font-size: 12px;
-            padding: 0 4px;
-            background: #fff;
-            border-radius: 4px;
-          `;
-          
-          // Display cache link (clickable to copy)
-          const linkElement = document.createElement('div');
-          linkElement.style.cssText = `
-            margin-bottom: 4px;
-            padding: 4px;
-            background: #f0f0f0;
-            border-radius: 3px;
-            word-break: break-all;
-            cursor: pointer;
-            transition: background 0.2s;
-          `;
-          linkElement.innerHTML = `📍 <span style="color: #0066cc; font-weight: 500;">${data.cache_url}</span>`;
-          linkElement.title = 'Click to copy link';
-          linkElement.onclick = (e) => {
-            e.preventDefault();
-            navigator.clipboard.writeText(data.cache_url);
-            linkElement.innerHTML = `✅ Copied to clipboard!`;
-            setTimeout(() => {
-              linkElement.innerHTML = `📍 <span style="color: #0066cc; font-weight: 500;">${data.cache_url}</span>`;
-            }, 2000);
-          };
-          
-          // Download button
-          const downloadBtn = document.createElement('button');
-          downloadBtn.textContent = '⬇️ Save as SVG';
-          downloadBtn.className = 'molecule-download-btn';
-          downloadBtn.style.cssText = `
-            display: block;
-            width: 100%;
-            padding: 6px 8px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-          `;
-          downloadBtn.onmouseover = () => downloadBtn.style.background = '#45a049';
-          downloadBtn.onmouseout = () => downloadBtn.style.background = '#4CAF50';
-          downloadBtn.onclick = (e) => {
-            e.preventDefault();
-            downloadSVG(data.svg, `molecule_${Date.now()}.svg`);
-          };
-          
-          // Expires info
-          const expiresDiv = document.createElement('div');
-          expiresDiv.style.cssText = `
-            margin-top: 4px;
-            padding: 3px 4px;
-            background: #fffacd;
-            border-radius: 3px;
-            color: #666;
-            font-size: 11px;
-          `;
-          expiresDiv.textContent = `⏰ Expires in ${data.expires_in_hours} hours`;
-          
-          // Assemble controls
-          controlsDiv.appendChild(linkElement);
-          controlsDiv.appendChild(downloadBtn);
-          controlsDiv.appendChild(expiresDiv);
-          
-          // Assemble container
-          container.appendChild(svgImg);
-          container.appendChild(controlsDiv);
-          
+          // Just add the image directly to the page (no controls!)
           // Mark as loaded
           img.dataset.loaded = 'true';
           
-          // Replace original img element with container
-          img.parentNode.replaceChild(container, img);
+          // Replace original img element with the SVG image
+          img.parentNode.replaceChild(svgImg, img);
           
-          console.log('%c✅ Image loaded with cache link', 'color: green; font-weight: bold;');
+          console.log('%c✅ Image loaded successfully', 'color: green; font-weight: bold;');
           console.log('%c📍 Cache URL:', 'color: #0066cc; font-weight: bold;', data.cache_url);
           
           activeLoads--;

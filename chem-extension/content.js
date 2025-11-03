@@ -1556,14 +1556,14 @@ function wrapChemicalFormulas(text) {
   let result = text;
   let patternMatches = [];
   
-  // Pattern 0A: chem:SMILES (contains special characters like =, [], (), @, +)
-  // Example: chem:CC(=O)C, chem:c1ccccc1, chem:C[C@H](O)C
-  log.debug('🧪 Applying Pattern 0A: chem:SMILES → MoleculeViewer');
-  const smilesMatches = result.match(/\bchem:([A-Za-z0-9_\-()=[\]@+#\\]+)/g);
+  // Pattern 0A: chem:SMILES: (contains special characters like =, [], (), @, +)
+  // Example: chem:CC(=O)C:, chem:c1ccccc1:, chem:C[C@H](O)C:
+  log.debug('🧪 Applying Pattern 0A: chem:SMILES: → MoleculeViewer');
+  const smilesMatches = result.match(/\bchem:([A-Za-z0-9_\-()=[\]@+#\\]+):/g);
   if (smilesMatches) {
-    log.debug(`  Found ${smilesMatches.length} chem:SMILES patterns`);
+    log.debug(`  Found ${smilesMatches.length} chem:SMILES: patterns`);
     
-    result = result.replace(/\bchem:([A-Za-z0-9_\-()=[\]@+#\\]+)/g, (match, smiles) => {
+    result = result.replace(/\bchem:([A-Za-z0-9_\-()=[\]@+#\\]+):/g, (match, smiles) => {
       // Only process if it looks like SMILES (has special structural characters)
       if (!/[=\[\]()@+#\\]/.test(smiles)) {
         return match; // Not SMILES, skip this match
@@ -1597,14 +1597,14 @@ function wrapChemicalFormulas(text) {
     });
   }
   
-  // Pattern 0B: chem:nomenclature (plain text, no special characters)
-  // Example: chem:acetone, chem:benzene, chem:aspirin
-  log.debug('🧪 Applying Pattern 0B: chem:nomenclature → MoleculeViewer');
-  const nomenclatureMatches = result.match(/\bchem:([A-Za-z][A-Za-z0-9\-_]*)/g);
+  // Pattern 0B: chem:nomenclature: (plain text, no special characters)
+  // Example: chem:acetone:, chem:benzene:, chem:aspirin:
+  log.debug('🧪 Applying Pattern 0B: chem:nomenclature: → MoleculeViewer');
+  const nomenclatureMatches = result.match(/\bchem:([A-Za-z][A-Za-z0-9\-_]*):/g);
   if (nomenclatureMatches) {
-    log.debug(`  Found ${nomenclatureMatches.length} chem:nomenclature patterns`);
+    log.debug(`  Found ${nomenclatureMatches.length} chem:nomenclature: patterns`);
     
-    result = result.replace(/\bchem:([A-Za-z][A-Za-z0-9\-_]*)/g, (match, nomenclature) => {
+    result = result.replace(/\bchem:([A-Za-z][A-Za-z0-9\-_]*):/g, (match, nomenclature) => {
       // Skip if it looks like SMILES
       if (/[=\[\]()@+#\\]/.test(nomenclature)) {
         return match; // Already processed as SMILES

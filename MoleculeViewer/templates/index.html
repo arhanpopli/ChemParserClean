@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoleculeViewer - SMILES to SVG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #999;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            margin: 0;
+            border-radius: 0;
+            transition: all 0.3s;
+        }
+        
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: none;
+            box-shadow: none;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .visualization {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .svg-container {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            border: 2px dashed #ddd;
+        }
+        
+        .svg-container svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        .info-section {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .info-section h3 {
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .info-item {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-label {
+            font-size: 0.85em;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            font-size: 1.1em;
+            color: #333;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .error {
+            background: #fee;
+            border: 2px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .success {
+            background: #efe;
+            border: 2px solid #cfc;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .button-group button {
+            flex: 1;
+        }
+        
+        .button-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .button-secondary:hover {
+            background: #e0e0e0;
+            box-shadow: none;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            header h1 {
+                font-size: 1.8em;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧪 MoleculeViewer</h1>
+            <p>SMILES to SVG Converter with Nomenclature Lookup</p>
+        </header>
+        
+        <div class="main-content">
+            <!-- Input Panel -->
+            <div class="card">
+                <h2>Input</h2>
+                
+                <div class="tabs">
+                    <button class="tab-button active" onclick="switchTab('smiles-tab')">SMILES</button>
+                    <button class="tab-button" onclick="switchTab('nomenclature-tab')">Name</button>
+                </div>
+                
+                <!-- SMILES Tab -->
+                <div id="smiles-tab" class="tab-content active">
+                    <div class="form-group">
+                        <label for="smiles-input">Enter SMILES String:</label>
+                        <textarea id="smiles-input" placeholder="e.g., C1=CC=CC=C1 (benzene)&#10;e.g., CC(=O)O (acetic acid)&#10;e.g., CC(C)Cc1ccc(cc1)C(C)C(=O)O (ibuprofen)"></textarea>
+                    </div>
+                    <button onclick="convertSMILES()">Convert to SVG</button>
+                </div>
+                
+                <!-- Nomenclature Tab -->
+                <div id="nomenclature-tab" class="tab-content">
+                    <div class="form-group">
+                        <label for="nomenclature-input">Enter Chemical Name:</label>
+                        <input type="text" id="nomenclature-input" placeholder="e.g., benzene, aspirin, caffeine">
+                    </div>
+                    <button onclick="convertNomenclature()">Lookup & Convert</button>
+                </div>
+                
+                <div class="form-group" style="margin-top: 20px;">
+                    <label for="width-input">Width (px):</label>
+                    <input type="number" id="width-input" value="600" min="300" max="1200">
+                </div>
+                
+                <div class="form-group">
+                    <label for="height-input">Height (px):</label>
+                    <input type="number" id="height-input" value="500" min="300" max="1000">
+                </div>
+                
+                <!-- Visualization Options Section -->
+                <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #007bff;">
+                    <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 1.15em; color: #2c3e50; display: flex; align-items: center; gap: 8px;">
+                        <span>🎨</span> Visualization Options
+                    </h3>
+                    
+                    <!-- Display Options - Checkboxes in 2 columns -->
+                    <fieldset style="border: none; padding: 0; margin: 0;">
+                        <legend style="font-size: 0.9em; font-weight: 600; color: #555; margin-bottom: 12px; display: block;">Display Settings</legend>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                            <label style="display: flex; align-items: center; cursor: pointer; gap: 10px; padding: 8px; border-radius: 4px;">
+                                <input type="checkbox" id="fancy-bonds" checked style="cursor: pointer; width: 18px; height: 18px;">
+                                <span style="font-size: 0.95em; color: #333;">Fancy Bonds</span>
+                            </label>
+                            
+                            <label style="display: flex; align-items: center; cursor: pointer; gap: 10px; padding: 8px; border-radius: 4px;">
+                                <input type="checkbox" id="aromatic-circles" checked style="cursor: pointer; width: 18px; height: 18px;">
+                                <span style="font-size: 0.95em; color: #333;">Aromatic Circles</span>
+                            </label>
+                            
+                            <label style="display: flex; align-items: center; cursor: pointer; gap: 10px; padding: 8px; border-radius: 4px;">
+                                <input type="checkbox" id="show-carbons" style="cursor: pointer; width: 18px; height: 18px;">
+                                <span style="font-size: 0.95em; color: #333;">Show Carbons</span>
+                            </label>
+                            
+                            <label style="display: flex; align-items: center; cursor: pointer; gap: 10px; padding: 8px; border-radius: 4px;">
+                                <input type="checkbox" id="show-methyls" style="cursor: pointer; width: 18px; height: 18px;">
+                                <span style="font-size: 0.95em; color: #333;">Show Methyls</span>
+                            </label>
+                            
+                            <label style="display: flex; align-items: center; cursor: pointer; gap: 10px; padding: 8px; border-radius: 4px;">
+                                <input type="checkbox" id="recalculate-coordinates" style="cursor: pointer; width: 18px; height: 18px;">
+                                <span style="font-size: 0.95em; color: #333;">Recalculate Coordinates</span>
+                            </label>
+                            
+                            <label style="display: flex; align-items: center; cursor: pointer; gap: 10px; padding: 8px; border-radius: 4px;">
+                                <input type="checkbox" id="atom-numbers" style="cursor: pointer; width: 18px; height: 18px;">
+                                <span style="font-size: 0.95em; color: #333;">Atom Numbers</span>
+                            </label>
+                        </div>
+                    </fieldset>
+                    
+                    <!-- Hydrogens Mode -->
+                    <fieldset style="border: none; padding: 0; margin: 0;">
+                        <legend style="font-size: 0.9em; font-weight: 600; color: #555; margin-bottom: 12px; display: block;">Hydrogen Mode</legend>
+                        <div style="margin-bottom: 25px;">
+                            <select id="hydrogens" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.95em; background-color: white; cursor: pointer;">
+                                <option value="keep">Keep (default)</option>
+                                <option value="add">Add Explicit Hydrogens</option>
+                                <option value="delete">Remove Hydrogens</option>
+                            </select>
+                        </div>
+                    </fieldset>
+                    
+                    <!-- Transform Options - Dropdowns in 2x2 grid -->
+                    <fieldset style="border: none; padding: 0; margin: 0;">
+                        <legend style="font-size: 0.9em; font-weight: 600; color: #555; margin-bottom: 12px; display: block;">Transformations</legend>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                            <div>
+                                <label for="flip" style="font-size: 0.9em; font-weight: 500; display: block; margin-bottom: 8px; color: #555;">Flip</label>
+                                <select id="flip" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.95em; background-color: white; cursor: pointer;">
+                                    <option value="0">No Flip</option>
+                                    <option value="1">Flip X</option>
+                                    <option value="2">Flip Y</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="rotate" style="font-size: 0.9em; font-weight: 500; display: block; margin-bottom: 8px; color: #555;">Rotate</label>
+                                <select id="rotate" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.95em; background-color: white; cursor: pointer;">
+                                    <option value="0">0°</option>
+                                    <option value="90">90°</option>
+                                    <option value="180">180°</option>
+                                    <option value="270">270°</option>
+                                </select>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+            
+            <!-- Examples Panel -->
+            <div class="card">
+                <h2>Examples</h2>
+                <p style="color: #666; margin-bottom: 15px;">Quick examples to try:</p>
+                
+                <div style="display: grid; gap: 10px;">
+                    <button class="button-secondary" onclick="loadExample('C1=CC=CC=C1', 'smiles')">
+                        Benzene (C6H6)
+                    </button>
+                    <button class="button-secondary" onclick="loadExample('CC(=O)O', 'smiles')">
+                        Acetic Acid
+                    </button>
+                    <button class="button-secondary" onclick="loadExample('CC(C)Cc1ccc(cc1)C(C)C(=O)O', 'smiles')">
+                        Ibuprofen
+                    </button>
+                    <button class="button-secondary" onclick="loadExample('benzene', 'nomenclature')">
+                        Search: Benzene
+                    </button>
+                    <button class="button-secondary" onclick="loadExample('aspirin', 'nomenclature')">
+                        Search: Aspirin
+                    </button>
+                    <button class="button-secondary" onclick="loadExample('caffeine', 'nomenclature')">
+                        Search: Caffeine
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Output Panel -->
+        <div class="visualization">
+            <h2>Molecule Visualization</h2>
+            <div id="message-container"></div>
+            <div id="svg-container" class="svg-container">
+                <p style="color: #ccc; text-align: center;">Enter a SMILES or chemical name and click Convert</p>
+            </div>
+            
+            <div id="info-container"></div>
+        </div>
+    </div>
+    
+    <script>
+        // API configuration - Using MoleculeViewer backend
+        const API_BASE = 'http://192.168.1.4:5000/api';
+        
+        function switchTab(tabId) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        function showMessage(text, type = 'info') {
+            const container = document.getElementById('message-container');
+            container.innerHTML = `<div class="${type}">${text}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+        
+        function showLoading(show = true) {
+            if (show) {
+                document.getElementById('svg-container').innerHTML = '<div class="loading"></div><span>Processing...</span>';
+            }
+        }
+        
+        function loadExample(value, type) {
+            if (type === 'smiles') {
+                document.getElementById('smiles-input').value = value;
+                switchTab('smiles-tab');
+                convertSMILES();
+            } else if (type === 'nomenclature') {
+                document.getElementById('nomenclature-input').value = value;
+                switchTab('nomenclature-tab');
+                convertNomenclature();
+            }
+        }
+        
+        function collectVisualizationOptions() {
+            return {
+                fancy_bonds: document.getElementById('fancy-bonds').checked,
+                aromatic_circles: document.getElementById('aromatic-circles').checked,
+                show_carbons: document.getElementById('show-carbons').checked,
+                show_methyls: document.getElementById('show-methyls').checked,
+                hydrogens: document.getElementById('hydrogens').value,
+                atom_numbers: document.getElementById('atom-numbers').checked,
+                flip_horizontal: document.getElementById('flip').value === '1',
+                flip_vertical: document.getElementById('flip').value === '2',
+                rotate: parseInt(document.getElementById('rotate').value),
+                recalculate_coordinates: document.getElementById('recalculate-coordinates').checked
+            };
+        }
+        
+        async function convertSMILES() {
+            const smiles = document.getElementById('smiles-input').value.trim();
+            const width = parseInt(document.getElementById('width-input').value);
+            const height = parseInt(document.getElementById('height-input').value);
+            const options = collectVisualizationOptions();
+            
+            if (!smiles) {
+                showMessage('Please enter a SMILES string', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                // Use MoleculeViewer backend format
+                const response = await fetch(`${API_BASE}/smiles-to-svg`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({smiles, width, height, options})
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showMessage(`Error: ${data.error}`, 'error');
+                    document.getElementById('svg-container').innerHTML = '';
+                    document.getElementById('info-container').innerHTML = '';
+                    return;
+                }
+                
+                // Try to fetch cache URL from new endpoint
+                let cacheUrl = '';
+                try {
+                    const cacheResponse = await fetch(`http://192.168.1.4:5000/img/smiles?smiles=${encodeURIComponent(smiles)}&width=${width}&height=${height}`);
+                    if (cacheResponse.ok) {
+                        const cacheData = await cacheResponse.json();
+                        cacheUrl = cacheData.cache_url || '';
+                    }
+                } catch (e) {
+                    console.log('Cache URL fetch failed:', e);
+                }
+                
+                // Create unique ID for this SVG
+                const svgId = 'svg-' + Date.now();
+                
+                // Create container with SVG, link, and download button
+                let containerHTML = `<div class="svg-result">` + data.svg + `<div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border: 2px solid #667eea; border-radius: 8px; text-align: center;">`;
+                
+                if (cacheUrl) {
+                    containerHTML += `
+                        <div style="margin-bottom: 12px; padding: 10px; background: white; border-radius: 6px; word-break: break-all;">
+                            <small style="color: #666; display: block; margin-bottom: 6px;">📍 Cache Link (24-hour URL):</small>
+                            <a href="#" onclick="copyToClipboard('${cacheUrl}', this); return false;" style="color: #0066cc; text-decoration: none; font-weight: 600; cursor: pointer; display: block; word-break: break-all; font-size: 0.9em;">${cacheUrl}</a>
+                            <small style="color: #999; display: block; margin-top: 4px;">(Click to copy)</small>
+                        </div>`;
+                }
+                
+                // Always add download button - use data attribute to store SVG
+                containerHTML += `
+                        <button class="download-btn" data-svg="${btoa(data.svg)}" onclick="downloadSVGButton(this, 'molecule_smiles_${Date.now()}.svg')" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 12px 30px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 1.05em; width: 100%; transition: all 0.3s;">
+                            ⬇️ SAVE AS SVG
+                        </button>
+                        <small style="display: block; margin-top: 10px; color: #666;">💾 Downloads as .svg file (not HTML)</small>
+                        ${cacheUrl ? '<small style="display: block; color: #999;">⏰ Link expires in 24 hours</small>' : ''}
+                    </div></div>`;
+                
+                // Display SVG with link and button
+                document.getElementById('svg-container').innerHTML = containerHTML;
+                
+                // Display info
+                if (data.info) {
+                    displayInfo(data.info, data.smiles, data.source);
+                }
+                
+                const sourceMsg = data.source ? ` (Source: ${data.source})` : '';
+                showMessage(`✅ Conversion successful!${sourceMsg}`, 'success');
+                
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+                document.getElementById('svg-container').innerHTML = '';
+            }
+        }
+        
+        async function convertNomenclature() {
+            const nomenclature = document.getElementById('nomenclature-input').value.trim();
+            const width = parseInt(document.getElementById('width-input').value);
+            const height = parseInt(document.getElementById('height-input').value);
+            const options = collectVisualizationOptions();
+            
+            if (!nomenclature) {
+                showMessage('Please enter a chemical name', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/nomenclature-to-svg`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({nomenclature, width, height, options})
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showMessage(`Error: ${data.error}`, 'error');
+                    document.getElementById('svg-container').innerHTML = '';
+                    document.getElementById('info-container').innerHTML = '';
+                    return;
+                }
+                
+                // Update input with found SMILES
+                document.getElementById('smiles-input').value = data.smiles;
+                
+                // Try to fetch cache URL from new endpoint
+                let cacheUrl = '';
+                try {
+                    const cacheResponse = await fetch(`http://192.168.1.4:5000/img/nomenclature?nomenclature=${encodeURIComponent(nomenclature)}&width=${width}&height=${height}`);
+                    if (cacheResponse.ok) {
+                        const cacheData = await cacheResponse.json();
+                        cacheUrl = cacheData.cache_url || '';
+                    }
+                } catch (e) {
+                    console.log('Cache URL fetch failed:', e);
+                }
+                
+                // Create unique ID for this SVG
+                const svgId = 'svg-' + Date.now();
+                
+                // Create container with SVG, link, and download button
+                let containerHTML = `<div class="svg-result">` + data.svg + `<div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border: 2px solid #667eea; border-radius: 8px; text-align: center;">`;
+                
+                if (cacheUrl) {
+                    containerHTML += `
+                        <div style="margin-bottom: 12px; padding: 10px; background: white; border-radius: 6px; word-break: break-all;">
+                            <small style="color: #666; display: block; margin-bottom: 6px;">📍 Cache Link (24-hour URL):</small>
+                            <a href="#" onclick="copyToClipboard('${cacheUrl}', this); return false;" style="color: #0066cc; text-decoration: none; font-weight: 600; cursor: pointer; display: block; word-break: break-all; font-size: 0.9em;">${cacheUrl}</a>
+                            <small style="color: #999; display: block; margin-top: 4px;">(Click to copy)</small>
+                        </div>`;
+                }
+                
+                // Always add download button - use data attribute to store SVG
+                containerHTML += `
+                        <button class="download-btn" data-svg="${btoa(data.svg)}" onclick="downloadSVGButton(this, 'molecule_nomenclature_${Date.now()}.svg')" style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; padding: 12px 30px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 1.05em; width: 100%; transition: all 0.3s;">
+                            ⬇️ SAVE AS SVG
+                        </button>
+                        <small style="display: block; margin-top: 10px; color: #666;">💾 Downloads as .svg file (not HTML)</small>
+                        ${cacheUrl ? '<small style="display: block; color: #999;">⏰ Link expires in 24 hours</small>' : ''}
+                    </div></div>`;
+                
+                // Display SVG with link and button
+                document.getElementById('svg-container').innerHTML = containerHTML;
+                
+                // Display info
+                if (data.info) {
+                    displayInfo(data.info, data.smiles, data.source);
+                }
+                
+                const sourceMsg = data.source ? ` (Source: ${data.source})` : '';
+                showMessage(`✅ Found: ${data.nomenclature}${sourceMsg}`, 'success');
+                
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+                document.getElementById('svg-container').innerHTML = '';
+            }
+        }
+        
+        function displayInfo(info, smiles, source) {
+            const container = document.getElementById('info-container');
+            
+            const formatValue = (val) => {
+                if (typeof val === 'number') {
+                    return val.toFixed(2);
+                }
+                return val;
+            };
+            
+            let sourceHtml = '';
+            if (source) {
+                sourceHtml = `
+                    <div class="info-item" style="background-color: #e8f4f8; border-left: 4px solid #0099cc;">
+                        <div class="info-label" style="color: #0099cc; font-weight: 600;">Source</div>
+                        <div class="info-value" style="color: #005580;">${source}</div>
+                    </div>
+                `;
+            }
+            
+            let html = `
+                ${sourceHtml}
+                <div class="info-section">
+                    <h3>Molecular Information</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Molecular Weight</div>
+                            <div class="info-value">${formatValue(info.molecular_weight)} g/mol</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Molecular Formula</div>
+                            <div class="info-value">${info.formula}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Number of Atoms</div>
+                            <div class="info-value">${info.num_atoms}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Number of Bonds</div>
+                            <div class="info-value">${info.num_bonds}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">H-Bond Donors</div>
+                            <div class="info-value">${info.hbd}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">H-Bond Acceptors</div>
+                            <div class="info-value">${info.hba}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #667eea;">
+                        <div class="info-label">SMILES</div>
+                        <div class="info-value" style="font-size: 0.9em; word-break: break-all;">${smiles}</div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // Download SVG file
+        function downloadSVGFromElement(svgContent, filename) {
+            try {
+                const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.click();
+                URL.revokeObjectURL(link.href);
+                console.log('✅ Downloaded:', filename);
+            } catch (e) {
+                console.error('Download failed:', e);
+                alert('Failed to download SVG');
+            }
+        }
+        
+        // Download SVG file (legacy name for compatibility)
+        function downloadSVG(svgContent, filename) {
+            downloadSVGFromElement(svgContent, filename);
+        }
+        
+        // Download SVG from button with base64-encoded data attribute
+        function downloadSVGButton(element, filename) {
+            try {
+                const base64SVG = element.getAttribute('data-svg');
+                if (!base64SVG) {
+                    alert('SVG data not found');
+                    return;
+                }
+                const svgContent = atob(base64SVG);
+                downloadSVGFromElement(svgContent, filename);
+            } catch (e) {
+                console.error('Failed to decode and download SVG:', e);
+                alert('Failed to download SVG: ' + e.message);
+            }
+        }
+        
+        // Copy link to clipboard
+        function copyToClipboard(text, element) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = element.textContent;
+                element.textContent = '✅ Copied to clipboard!';
+                element.style.color = '#4CAF50';
+                setTimeout(() => {
+                    element.textContent = originalText;
+                    element.style.color = '#0066cc';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy link');
+            });
+        }
+    </script>
+</body>
+</html>

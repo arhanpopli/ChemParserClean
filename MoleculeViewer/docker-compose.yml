@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  moleculeviewer:
+    build: .
+    container_name: moleculeviewer
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      - FLASK_APP=run.py
+      - FLASK_ENV=development
+    volumes:
+      - .:/app
+    command: python run.py

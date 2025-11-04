@@ -51,9 +51,9 @@ def cleanup_old_cache():
                 age_hours = (now - os.path.getmtime(filepath)) / 3600
                 if age_hours > CACHE_EXPIRY_HOURS:
                     os.remove(filepath)
-                    print(f"🗑️  Cleaned old cache: {filename}")
+                    print(f"Cleaned old cache: {filename}")
     except Exception as e:
-        print(f"⚠️  Cache cleanup error: {e}")
+        print(f"Cache cleanup error: {e}")
 
 def save_to_cache(svg_content, identifier):
     """Save SVG to cache and return URL and local path"""
@@ -125,9 +125,9 @@ def smiles_to_svg_endpoint():
         height = data.get('height', 500)
         options = data.get('options', {})
         
-        # 🎯 LOG INCOMING REQUEST
+        # LOG INCOMING REQUEST
         print(f"\n{'='*70}")
-        print(f"📥 [MoleculeViewer API] Receiving chem: request")
+        print(f"[MoleculeViewer API] Receiving SMILES request")
         print(f"{'='*70}")
         print(f"  SMILES: {smiles}")
         print(f"  Size: {width}x{height}px")
@@ -143,7 +143,7 @@ def smiles_to_svg_endpoint():
         error, svg = smiles_to_svg(smiles, width, height, options)
         
         if error:
-            print(f"❌ [MoleculeViewer] Error converting SMILES: {error}\n")
+            print(f"[MoleculeViewer] Error converting SMILES: {error}\n")
             return jsonify({
                 'error': error,
                 'svg': None
@@ -152,7 +152,7 @@ def smiles_to_svg_endpoint():
         # Get molecule info
         error_info, info = get_molecule_info(smiles)
         
-        print(f"✅ [MoleculeViewer] Successfully rendered: {smiles}")
+        print(f"[MoleculeViewer] Successfully rendered: {smiles}")
         print(f"   Formula: {info.get('formula', 'N/A')}")
         print(f"   Molecular Weight: {info.get('molecular_weight', 'N/A')}\n")
         
@@ -164,7 +164,7 @@ def smiles_to_svg_endpoint():
         }), 200
         
     except Exception as e:
-        print(f"\n❌ [MoleculeViewer] SERVER ERROR: {str(e)}\n")
+        print(f"\n[MoleculeViewer] SERVER ERROR: {str(e)}\n")
         return jsonify({
             'error': 'Server error: {}'.format(str(e)),
             'svg': None
@@ -265,9 +265,9 @@ def nomenclature_to_svg_endpoint():
         height = data.get('height', 500)
         options = data.get('options', {})
         
-        # 🎯 LOG INCOMING NOMENCLATURE REQUEST
+        # LOG INCOMING NOMENCLATURE REQUEST
         print(f"\n{'='*70}")
-        print(f"📥 [MoleculeViewer API] Receiving chem:nomenclature request")
+        print(f"[MoleculeViewer API] Receiving nomenclature request")
         print(f"{'='*70}")
         print(f"  Nomenclature: {nomenclature}")
         print(f"  Size: {width}x{height}px")
@@ -284,7 +284,7 @@ def nomenclature_to_svg_endpoint():
         error, smiles, source = nomenclature_to_smiles(nomenclature)
         
         if smiles is None:
-            print(f"❌ [MoleculeViewer] Nomenclature lookup failed: {error}\n")
+            print(f"[MoleculeViewer] Nomenclature lookup failed: {error}\n")
             return jsonify({
                 'error': error,
                 'svg': None,
@@ -293,14 +293,14 @@ def nomenclature_to_svg_endpoint():
                 'source': None
             }), 404
         
-        print(f"✓ Nomenclature → SMILES: {nomenclature} → {smiles}")
+        print(f"Nomenclature -> SMILES: {nomenclature} -> {smiles}")
         print(f"  Source: {source}\n")
         
         # Step 2: Convert SMILES to SVG
         error, svg = smiles_to_svg(smiles, width, height, options)
         
         if error:
-            print(f"❌ [MoleculeViewer] Error converting SMILES: {error}\n")
+            print(f"[MoleculeViewer] Error converting SMILES: {error}\n")
             return jsonify({
                 'error': error,
                 'svg': None,
@@ -312,7 +312,7 @@ def nomenclature_to_svg_endpoint():
         # Get molecule info
         error_info, info = get_molecule_info(smiles)
         
-        print(f"✅ [MoleculeViewer] Successfully rendered: {nomenclature}")
+        print(f"[MoleculeViewer] Successfully rendered: {nomenclature}")
         print(f"   SMILES: {smiles}")
         print(f"   Formula: {info.get('formula', 'N/A')}")
         print(f"   Molecular Weight: {info.get('molecular_weight', 'N/A')}\n")
@@ -327,7 +327,7 @@ def nomenclature_to_svg_endpoint():
         }), 200
         
     except Exception as e:
-        print(f"\n❌ [MoleculeViewer] SERVER ERROR: {str(e)}\n")
+        print(f"\n[MoleculeViewer] SERVER ERROR: {str(e)}\n")
         return jsonify({
             'error': 'Server error: {}'.format(str(e)),
             'svg': None

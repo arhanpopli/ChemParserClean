@@ -66,13 +66,13 @@ def save_to_cache(svg_content, identifier):
         if not os.path.exists(filepath):
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(svg_content)
-            print(f"💾 Cached SVG: {filename}")
+            print(f"Cached SVG: {filename}")
         
         # Return cache URL using public base URL (worldwide accessible)
         cache_url = f"{PUBLIC_BASE_URL}/cache/{filename}"
         return cache_url, filepath
     except Exception as e:
-        print(f"❌ Cache save error: {e}")
+        print(f"Cache save error: {e}")
         return None, None
 
 
@@ -554,8 +554,8 @@ def img_smiles():
         # Cache the SVG
         cache_url, filepath = save_to_cache(svg, f"smiles_{smiles[:10]}")
         
-        print(f"📤 SMILES endpoint: {smiles}")
-        print(f"📍 Cache URL: {cache_url}")
+        print(f"SMILES endpoint: {smiles}")
+        print(f"Cache URL: {cache_url}")
         
         # Always return JSON with cache link and SVG
         return jsonify({
@@ -611,8 +611,8 @@ def img_nomenclature():
         # Cache the SVG
         cache_url, filepath = save_to_cache(svg, f"nomenclature_{nomenclature[:10]}")
         
-        print(f"📤 Nomenclature endpoint: {nomenclature} → {smiles}")
-        print(f"📍 Cache URL: {cache_url}")
+        print(f"Nomenclature endpoint: {nomenclature} -> {smiles}")
+        print(f"Cache URL: {cache_url}")
         
         # Always return JSON with cache link and SVG
         return jsonify({
@@ -625,7 +625,7 @@ def img_nomenclature():
             'svg': svg  # Also include SVG for direct display
         }), 200
     except Exception as e:
-        print(f"❌ Error in /img/nomenclature: {str(e)}")
+        print(f"Error in /img/nomenclature: {str(e)}")
         return jsonify({'error': str(e), 'success': False})
 
 

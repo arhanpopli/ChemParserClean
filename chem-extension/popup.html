@@ -235,8 +235,32 @@
       <!-- Renderer Selection -->
       <div class="section">
         <div class="section-title">🧪 Rendering Engine</div>
-        <div class="info-box">
-          <strong>Engine:</strong> <span id="engineInfo">🧪 MoleculeViewer Server (localhost:5000)</span>
+        
+        <div class="option">
+          <label>
+            <strong>Select Rendering Engine</strong>
+            <small>Choose how to render molecular structures</small>
+          </label>
+        </div>
+        
+        <div class="option option-border">
+          <label>
+            <input type="radio" name="renderingEngine" value="moleculeviewer" checked>
+            <strong style="margin-left: 8px;">🧪 MoleculeViewer</strong>
+            <small style="margin-left: 28px;">SMILES & nomenclature rendering on port 5000</small>
+          </label>
+        </div>
+
+        <div class="option option-border">
+          <label>
+            <input type="radio" name="renderingEngine" value="mol2chemfig" style="margin-right: 0;">
+            <strong style="margin-left: 8px;">📐 mol2chemfig</strong>
+            <small style="margin-left: 28px;">Chemfig & SMILES → LaTeX rendering on port 8000</small>
+          </label>
+        </div>
+
+        <div class="info-box" id="engineInfo" style="margin-top: 12px;">
+          <strong>Current:</strong> 🧪 MoleculeViewer Server (localhost:5000)
         </div>
         <div class="info-box" style="background: #d4edda; border-left-color: #28a745; color: #155724;">
           <strong>✅ Using Local Rendering</strong> - All chemistry structures render locally without external API dependencies.
@@ -323,6 +347,95 @@
         </div>
       </div>
 
+      <!-- mol2chemfig Options (hidden by default) -->
+      <div id="mol2chemfigOptions" class="section" style="display: none;">
+        <div class="section-title">📐 mol2chemfig Options</div>
+        
+        <div class="option">
+          <label for="m2cfShowCarbonsToggle">
+            <strong>Show Carbon Atoms</strong>
+            <small>Display C labels in structure (-c flag)</small>
+          </label>
+          <input type="checkbox" id="m2cfShowCarbonsToggle">
+          <label class="toggle" for="m2cfShowCarbonsToggle"></label>
+        </div>
+
+        <div class="option option-border">
+          <label for="m2cfAromaticCirclesToggle">
+            <strong>Aromatic Circles</strong>
+            <small>Draw circles in aromatic rings (-o flag)</small>
+          </label>
+          <input type="checkbox" id="m2cfAromaticCirclesToggle">
+          <label class="toggle" for="m2cfAromaticCirclesToggle"></label>
+        </div>
+
+        <div class="option option-border">
+          <label for="m2cfShowMethylsToggle">
+            <strong>Show Methyl Groups</strong>
+            <small>Display CH3 labels (-m flag)</small>
+          </label>
+          <input type="checkbox" id="m2cfShowMethylsToggle">
+          <label class="toggle" for="m2cfShowMethylsToggle"></label>
+        </div>
+
+        <div class="option option-border">
+          <label for="m2cfFancyBondsToggle">
+            <strong>Fancy Bonds</strong>
+            <small>Enhanced bond visualization (-f flag)</small>
+          </label>
+          <input type="checkbox" id="m2cfFancyBondsToggle">
+          <label class="toggle" for="m2cfFancyBondsToggle"></label>
+        </div>
+
+        <div class="option option-border">
+          <label for="m2cfAtomNumbersToggle">
+            <strong>Atom Numbers</strong>
+            <small>Show atom index numbers (-n flag)</small>
+          </label>
+          <input type="checkbox" id="m2cfAtomNumbersToggle">
+          <label class="toggle" for="m2cfAtomNumbersToggle"></label>
+        </div>
+
+        <div class="option option-border">
+          <label for="m2cfCompactToggle">
+            <strong>Compact Mode</strong>
+            <small>More compact structure (-z flag)</small>
+          </label>
+          <input type="checkbox" id="m2cfCompactToggle">
+          <label class="toggle" for="m2cfCompactToggle"></label>
+        </div>
+
+        <div class="option option-border">
+          <label for="m2cfFlipHorizontalToggle">
+            <strong>Flip Horizontal</strong>
+            <small>Flip structure left-right (client-side)</small>
+          </label>
+          <input type="checkbox" id="m2cfFlipHorizontalToggle">
+          <label class="toggle" for="m2cfFlipHorizontalToggle"></label>
+        </div>
+
+        <div class="option option-border">
+          <label for="m2cfFlipVerticalToggle">
+            <strong>Flip Vertical</strong>
+            <small>Flip structure up-down (client-side)</small>
+          </label>
+          <input type="checkbox" id="m2cfFlipVerticalToggle">
+          <label class="toggle" for="m2cfFlipVerticalToggle"></label>
+        </div>
+
+        <div class="option option-border">
+          <label for="m2cfHydrogensSelect">
+            <strong>Hydrogen Treatment</strong>
+            <small>How to handle H atoms in ChemFig</small>
+          </label>
+          <select id="m2cfHydrogensSelect">
+            <option value="keep">Keep as drawn</option>
+            <option value="add">Add all hydrogens</option>
+            <option value="delete">Remove all hydrogens</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Performance -->
       <div class="section">
         <div class="section-title">⚡ Performance</div>
@@ -349,6 +462,29 @@
         </div>
         <div class="info-box">
           <strong>Dev Mode:</strong> When enabled, chemfig formulas show as text (not rendered). Great for testing!
+        </div>
+      </div>
+
+      <!-- Code Editor -->
+      <div class="section">
+        <div class="section-title">📝 Live Code Editor</div>
+        <div style="margin-bottom: 10px;">
+          <label>
+            <strong>Edit Formula / Structure</strong>
+            <small>Type or paste chemistry code (SMILES, nomenclature, chemfig)</small>
+          </label>
+        </div>
+        <textarea id="codeEditor" rows="5" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; resize: vertical; background: #fafafa;" placeholder="Examples:
+chem:CCO:
+chem:benzene:
+chem:\chemfig{C-C-O}:"></textarea>
+        <button id="renderCodeBtn" style="width: 100%; margin-top: 10px; padding: 10px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px;">▶️ Render Preview</button>
+        <div id="codePreview" style="margin-top: 12px; padding: 12px; background: white; border: 1px solid #ddd; border-radius: 6px; min-height: 60px; display: none;">
+          <strong style="font-size: 12px; color: #666;">Preview:</strong>
+          <div id="codePreviewContent" style="margin-top: 8px;"></div>
+        </div>
+        <div class="info-box" style="margin-top: 10px;">
+          <strong>Tip:</strong> Changes will be applied when you click "Render Preview" or reload the page.
         </div>
       </div>
 

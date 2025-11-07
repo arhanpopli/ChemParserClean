@@ -104,6 +104,50 @@ span[data-chem-processed="true"] {
   min-width: 200px;
 }
 
+/* Popup Styles - Radio Button Styling */
+.option {
+  padding: 8px 0;
+  margin-bottom: 4px;
+}
+
+.option label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.option small {
+  display: block;
+  font-size: 0.85em;
+  color: #666;
+  margin-top: 2px;
+}
+
+.option-border {
+  border: 1px solid #e0e0e0;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  transition: all 0.2s ease;
+}
+
+.option-border:hover {
+  background-color: #f0f7ff;
+  border-color: #4a90e2;
+}
+
+.option-border input[type="radio"] {
+  margin-right: 8px;
+  cursor: pointer;
+  accent-color: #4a90e2;
+}
+
+.option-border input[type="radio"]:checked + strong {
+  color: #4a90e2;
+  font-weight: bold;
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
   .chemfig-diagram {
@@ -125,3 +169,4 @@ span[data-chem-processed="true"] {
     width: 100%;
   }
 }
+

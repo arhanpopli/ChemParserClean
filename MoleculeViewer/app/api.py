@@ -12,6 +12,7 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from app.chemistry import smiles_to_svg, nomenclature_to_smiles, get_molecule_info
+from app.cache_manager import save_svg_to_cache, create_cache_key
 
 # Load environment variables
 try:
@@ -24,6 +25,21 @@ except:
 template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'templates'))
 app = Flask(__name__, template_folder=template_dir)
 CORS(app)
+
+# Enable socket reuse for TIME_WAIT handling
+def create_server():
+    """Configure server socket to reuse address"""
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if hasattr(socket, 'SO_REUSEPORT'):
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    return sock
+
+try:
+    app.config['SERVER_NAME'] = None  # Allow bind to work properly
+except:
+    pass
 
 # ============================================
 # IMAGE CACHE SYSTEM (24-hour expiration)
@@ -55,7 +71,7 @@ def cleanup_old_cache():
     except Exception as e:
         print(f"Cache cleanup error: {e}")
 
-def save_to_cache(svg_content, identifier):
+def save_to_cache(svg_content, identifier, base_url=None):
     """Save SVG to cache and return URL and local path"""
     try:
         cache_hash = get_cache_hash(svg_content)
@@ -69,7 +85,8 @@ def save_to_cache(svg_content, identifier):
             print(f"Cached SVG: {filename}")
         
         # Return cache URL using public base URL (worldwide accessible)
-        cache_url = f"{PUBLIC_BASE_URL}/cache/{filename}"
+        base = (base_url or PUBLIC_BASE_URL).rstrip('/')
+        cache_url = f"{base}/cache/{filename}"
         return cache_url, filepath
     except Exception as e:
         print(f"Cache save error: {e}")
@@ -80,6 +97,18 @@ def save_to_cache(svg_content, identifier):
 def home():
     """Serve the main HTML interface."""
     return render_template('index.html')
+
+
+@app.route('/m2cf', methods=['GET'])
+def m2cf_page():
+    """Serve the mol2chemfig tab content as standalone page."""
+    return render_template('m2cf.html')
+
+
+@app.route('/test_frontend.html', methods=['GET'])
+def test_frontend():
+    """Serve the debug test page."""
+    return send_file(os.path.join(os.path.dirname(__file__), '..', 'test_frontend.html'))
 
 
 @app.route('/api/smiles-to-svg', methods=['POST'])
@@ -152,13 +181,24 @@ def smiles_to_svg_endpoint():
         # Get molecule info
         error_info, info = get_molecule_info(smiles)
         
+        # Cache the SVG with meaningful filename
+        cache_url, cache_path = save_svg_to_cache(
+            svg,
+            smiles,
+            options,
+            source="moleculeviewer",
+            base_url=request.host_url.rstrip('/')
+        )
+        
         print(f"[MoleculeViewer] Successfully rendered: {smiles}")
         print(f"   Formula: {info.get('formula', 'N/A')}")
-        print(f"   Molecular Weight: {info.get('molecular_weight', 'N/A')}\n")
+        print(f"   Molecular Weight: {info.get('molecular_weight', 'N/A')}")
+        print(f"   Cache URL: {cache_url}\n")
         
         return jsonify({
             'error': None,
             'svg': svg,
+            'cache_url': cache_url,
             'smiles': smiles,
             'info': info
         }), 200
@@ -385,6 +425,73 @@ def molecule_info_endpoint():
         }), 500
 
 
+@app.route('/api/cache-svg', methods=['POST'])
+def cache_svg_endpoint():
+    """
+    Cache an SVG with intelligent naming based on molecule and options
+    
+    Request:
+        {
+            "svg_content": "<svg>...</svg>",
+            "smiles_or_name": "benzene" or "C1=CC=CC=C1",
+            "options": {"aromatic_circles": true, ...},
+            "source": "mol2chemfig" or "moleculeviewer"
+        }
+    
+    Response:
+        {
+            "success": true,
+            "cache_url": "/cache/benzene_aromatic_m2cf_a1b2c3d4.svg",
+            "filename": "benzene_aromatic_m2cf_a1b2c3d4.svg"
+        }
+    """
+    try:
+        data = request.get_json()
+        svg_content = data.get('svg_content', '').strip()
+        smiles_or_name = data.get('smiles_or_name', '').strip()
+        options = data.get('options', {})
+        source = data.get('source', 'moleculeviewer')
+        
+        if not svg_content or not smiles_or_name:
+            return jsonify({
+                'success': False,
+                'error': 'SVG content and molecule identifier required'
+            }), 400
+        
+        # Use cache manager to save SVG
+        cache_url, cache_path = save_svg_to_cache(
+            svg_content,
+            smiles_or_name,
+            options,
+            source,
+            base_url=request.host_url.rstrip('/')
+        )
+        
+        if not cache_url:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to cache SVG'
+            }), 500
+        
+        # Extract filename from path
+        filename = os.path.basename(cache_path)
+        
+        print(f"✅ SVG cached: {filename}")
+        
+        return jsonify({
+            'success': True,
+            'cache_url': cache_url,
+            'filename': filename
+        }), 200
+        
+    except Exception as e:
+        print(f"Cache error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Server error: {}'.format(str(e))
+        }), 500
+
+
 @app.route('/api/render-smiles', methods=['GET'])
 def render_smiles_image():
     """
@@ -547,12 +654,35 @@ def img_smiles():
         except:
             width, height = 300, 200
         
-        error, svg = smiles_to_svg(smiles, width, height, {})
+        # Parse rendering options from query parameters
+        options = {
+            'show_carbons': request.args.get('show_carbons', 'false').lower() == 'true',
+            'show_methyls': request.args.get('show_methyls', 'false').lower() == 'true',
+            'aromatic_circles': request.args.get('aromatic_circles', 'false').lower() == 'true',
+            'fancy_bonds': request.args.get('fancy_bonds', 'false').lower() == 'true',
+            'atom_numbers': request.args.get('atom_numbers', 'false').lower() == 'true',
+            'flip_horizontal': request.args.get('flip_horizontal', 'false').lower() == 'true',
+            'flip_vertical': request.args.get('flip_vertical', 'false').lower() == 'true',
+            'hydrogens_mode': request.args.get('hydrogens_mode', 'keep')  # keep, add, delete
+        }
+        
+        error, svg = smiles_to_svg(smiles, width, height, options)
         if error:
             return jsonify({'error': error})
         
+        # Create cache key with options encoded in filename
+        options_str = '_'.join([
+            k for k, v in options.items() 
+            if v is True or (k == 'hydrogens_mode' and v != 'keep')
+        ])
+        cache_identifier = f"smiles_{smiles[:10]}_{options_str}" if options_str else f"smiles_{smiles[:10]}"
+        
         # Cache the SVG
-        cache_url, filepath = save_to_cache(svg, f"smiles_{smiles[:10]}")
+        cache_url, filepath = save_to_cache(
+            svg,
+            cache_identifier,
+            base_url=request.host_url.rstrip('/')
+        )
         
         print(f"SMILES endpoint: {smiles}")
         print(f"Cache URL: {cache_url}")
@@ -589,6 +719,18 @@ def img_nomenclature():
         except:
             width, height = 300, 200
         
+        # Parse rendering options from query parameters
+        options = {
+            'show_carbons': request.args.get('show_carbons', 'false').lower() == 'true',
+            'show_methyls': request.args.get('show_methyls', 'false').lower() == 'true',
+            'aromatic_circles': request.args.get('aromatic_circles', 'false').lower() == 'true',
+            'fancy_bonds': request.args.get('fancy_bonds', 'false').lower() == 'true',
+            'atom_numbers': request.args.get('atom_numbers', 'false').lower() == 'true',
+            'flip_horizontal': request.args.get('flip_horizontal', 'false').lower() == 'true',
+            'flip_vertical': request.args.get('flip_vertical', 'false').lower() == 'true',
+            'hydrogens_mode': request.args.get('hydrogens_mode', 'keep')  # keep, add, delete
+        }
+        
         # Convert name to SMILES
         result = nomenclature_to_smiles(nomenclature)
         if isinstance(result, tuple):
@@ -603,13 +745,24 @@ def img_nomenclature():
             error_msg = f"Cannot convert '{nomenclature}' to SMILES"
             return jsonify({'error': error_msg, 'success': False})
         
-        # Render to SVG
-        error, svg = smiles_to_svg(smiles, width, height, {})
+        # Render to SVG with options
+        error, svg = smiles_to_svg(smiles, width, height, options)
         if error:
             return jsonify({'error': error, 'success': False})
         
+        # Create cache key with options encoded in filename
+        options_str = '_'.join([
+            k for k, v in options.items() 
+            if v is True or (k == 'hydrogens_mode' and v != 'keep')
+        ])
+        cache_identifier = f"nomenclature_{nomenclature[:10]}_{options_str}" if options_str else f"nomenclature_{nomenclature[:10]}"
+        
         # Cache the SVG
-        cache_url, filepath = save_to_cache(svg, f"nomenclature_{nomenclature[:10]}")
+        cache_url, filepath = save_to_cache(
+            svg,
+            cache_identifier,
+            base_url=request.host_url.rstrip('/')
+        )
         
         print(f"Nomenclature endpoint: {nomenclature} -> {smiles}")
         print(f"Cache URL: {cache_url}")
@@ -633,6 +786,20 @@ def img_nomenclature():
 def health():
     """Health check endpoint."""
     return jsonify({'status': 'ok'}), 200
+
+
+@app.route('/cache/info', methods=['GET'])
+def cache_info():
+    """Get cache statistics"""
+    try:
+        from app.cache_manager import get_cache_stats, CACHE_DIR
+        stats = get_cache_stats()
+        return jsonify({
+            'success': True,
+            'cache_info': stats
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 
 @app.route('/cache/<filename>', methods=['GET'])

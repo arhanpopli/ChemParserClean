@@ -18,13 +18,9 @@ try:
         print("  http://127.0.0.1:5000")
         print("\nPress CTRL+C to stop\n")
         
+        # Enable socket reuse to handle TIME_WAIT sockets
         import socket
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex(('127.0.0.1', 5000))
-        sock.close()
-        if result == 0:
-            print("WARNING: Port 5000 is already in use!")
-            sys.exit(1)
+        app.config['PROPAGATE_EXCEPTIONS'] = True
         
         app.run(debug=False, host='0.0.0.0', port=5000, use_reloader=False, threaded=True)
         

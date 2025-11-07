@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mol2chemfig - Complete Interface</title>
+    
+    <!-- Kekule.js for chemical drawing -->
+    <link rel="stylesheet" type="text/css" href="https://partridgejiang.github.io/Kekule.js/dist/themes/default/kekule.css" />
+    <script src="https://partridgejiang.github.io/Kekule.js/dist/kekule.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1f6feb 0%, #0d419d 100%);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            color: white;
+            margin: 0;
+            font-size: 2.2em;
+        }
+
+        .status-bar {
+            background: #161b22;
+            padding: 12px 20px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .status.online {
+            background: #238636;
+            color: #fff;
+        }
+
+        .status.offline {
+            background: #da3633;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #21262d;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .tab:hover {
+            background: #21262d;
+        }
+
+        .tab.active {
+            background: #1f6feb;
+            color: white;
+            border-color: #1f6feb;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1.3em;
+            color: #58a6ff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #21262d;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #8b949e;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #1f6feb;
+            box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.1);
+        }
+
+        textarea {
+            min-height: 150px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            background: #2ea043;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: #21262d;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .btn-primary {
+            background: #1f6feb;
+        }
+
+        .btn-primary:hover {
+            background: #388bfd;
+        }
+
+        .btn-secondary {
+            background: #21262d;
+        }
+
+        .btn-secondary:hover {
+            background: #30363d;
+        }
+
+        .btn-danger {
+            background: #da3633;
+        }
+
+        .btn-danger:hover {
+            background: #e5534b;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: #161b22;
+            border-color: #1f6feb;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 4px;
+            color: #8b949e;
+            cursor: help;
+        }
+
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 12px;
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            white-space: nowrap;
+            z-index: 1000;
+            font-size: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .output-area {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 15px;
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        .error-banner {
+            background: #da3633;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .success-banner {
+            background: #238636;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .pdf-viewer {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            background: white;
+        }
+
+        .svg-viewer {
+            width: 100%;
+            min-height: 400px;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            background: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+        }
+
+        .svg-viewer svg {
+            max-width: 100%;
+            height: auto;
+            /* Ensure crisp rendering */
+            shape-rendering: geometricPrecision;
+            text-rendering: geometricPrecision;
+        }
+
+        /* Ensure embedded fonts render correctly */
+        @font-face {
+            font-family: 'Computer Modern';
+            font-display: swap;
+        }
+
+        .composer-container {
+            bit for 2order: 1px solid #30363d;
+            border-radius: 6px;
+            overflow: hidden;
+            background: white;
+            min-height: 400px;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .example-btn {
+            padding: 6px 12px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #58a6ff;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .example-btn:hover {
+            background: #30363d;
+            border-color: #58a6ff;
+        }
+
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .split-view {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #1f6feb;
+            color: white;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧪 Mol2chemfig - Complete Interface</h1>
+    </div>
+
+    <div class="status-bar">
+        <div id="statusIndicator" class="status">Checking backend...</div>
+        <div style="color: #8b949e; font-size: 14px;">
+            Backend: <code>http://localhost:8000</code>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('molecule')">
+                💊 Molecule
+            </div>
+            <div class="tab" onclick="switchTab('reaction')">
+                ⚗️ Reaction
+            </div>
+            <div class="tab" onclick="switchTab('settings')">
+                ⚙️ Settings
+            </div>
+        </div>
+
+        <!-- Molecule Tab -->
+        <div id="moleculeTab" class="tab-content active">
+            <div class="split-view">
+                <div>
+                    <!-- Chemical Search -->
+                    <div class="section">
+                        <div class="section-title">🔍 Chemical Search</div>
+                        <div class="input-group">
+                            <label>Search by name (PubChem + Common Names)</label>
+                            <input type="text" id="searchTerm" placeholder="aspirin, benzene, caffeine...">
+                        </div>
+                        <button class="btn btn-primary" onclick="searchChemical()" id="searchBtn">
+                            Search & Convert
+                        </button>
+                        <div class="examples">
+                            <span style="color: #8b949e; font-size: 12px;">Quick:</span>
+                            <div class="example-btn" onclick="quickSearch('aspirin')">Aspirin</div>
+                            <div class="example-btn" onclick="quickSearch('caffeine')">Caffeine</div>
+                            <div class="example-btn" onclick="quickSearch('glucose')">Glucose</div>
+                            <div class="example-btn" onclick="quickSearch('ethanol')">Ethanol</div>
+                        </div>
+                    </div>
+
+                    <!-- SMILES/MOL Input -->
+                    <div class="section">
+                        <div class="section-title">📝 Direct Input</div>
+                        <div class="input-group">
+                            <label>SMILES, MOL format, or chemfig code</label>
+                            <textarea id="moleculeTextarea" placeholder="Examples:
+CCO (ethanol)
+c1ccccc1 (benzene)
+CC(=O)Oc1ccccc1C(=O)O (aspirin)
+
+Or paste MOL format with ...END
+Or paste existing chemfig code"></textarea>
+                        </div>
+                        <div class="button-group">
+                            <button class="btn btn-primary" onclick="submitMolecule()" id="submitBtn">
+                                Generate Chemfig
+                            </button>
+                            <button class="btn btn-secondary" onclick="copyToClipboard('moleculeTextarea')">
+                                📋 Copy
+                            </button>
+                            <button class="btn btn-danger" onclick="clearMolecule()">
+                                🗑️ Clear
+                            </button>
+                        </div>
+                        <div class="examples">
+                            <div class="example-btn" onclick="loadExample('CCO')">Ethanol</div>
+                            <div class="example-btn" onclick="loadExample('c1ccccc1')">Benzene</div>
+                            <div class="example-btn" onclick="loadExample('CC(C)C')">Isobutane</div>
+                            <div class="example-btn" onclick="loadExample('C1CCCCC1')">Cyclohexane</div>
+                        </div>
+                    </div>
+
+                    <!-- Drawing Board -->
+                    <div class="section">
+                        <div class="section-title">✏️ Draw Structure (Kekule.js)</div>
+                        <div class="composer-container">
+                            <div id="moleculeComposer" style="width:100%;height:400px;"></div>
+                        </div>
+                        <div class="button-group" style="margin-top: 10px;">
+                            <button class="btn btn-primary" onclick="convertFromDrawing()">
+                                Convert Drawing to Chemfig
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearDrawing()">
+                                Clear Drawing
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Options -->
+                    <div class="section">
+                        <div class="section-title">⚙️ Chemfig Options <span class="badge" id="activeOptionsBadge" style="display:none;">0 active</span></div>
+                        <div style="background: #0d1117; border-left: 3px solid #58a6ff; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
+                            <strong style="color: #58a6ff;">💡 How to use:</strong>
+                            <ol style="margin: 8px 0 0 20px; color: #8b949e; font-size: 13px;">
+                                <li>Generate a chemfig (Search or paste SMILES)</li>
+                                <li>Check the options you want below</li>
+                                <li>Click <strong>"Apply Options"</strong> to see changes in PDF</li>
+                                <li>Adjust angle, indentation, H₂ as needed</li>
+                            </ol>
+                        </div>
+                        <div class="checkbox-group" id="moleculeOptions">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+
+                        <div class="controls-grid">
+                            <div class="input-group">
+                                <label>Rotation Angle (°)</label>
+                                <input type="number" id="moleculeAngle" value="0" min="-360" max="360" onchange="updateActiveOptions()">
+                            </div>
+                            <div class="input-group">
+                                <label>Indentation</label>
+                                <input type="number" id="moleculeIndent" value="4" min="0" max="20" onchange="updateActiveOptions()">
+                            </div>
+                            <div class="input-group">
+                                <label>H₂ Treatment</label>
+                                <select id="moleculeH2" onchange="updateActiveOptions()">
+                                    <option value="keep">Keep H₂</option>
+                                    <option value="add">Add H₂</option>
+                                    <option value="delete">Delete H₂</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn btn-primary" onclick="applyMoleculeOptions()" id="applyBtn">
+                                ✅ Apply Options to Current Molecule
+                            </button>
+                            <button class="btn btn-secondary" onclick="resetMoleculeOptions()">
+                                🔄 Reset to Default (no options)
+                            </button>
+                        </div>
+                        
+                        <div id="optionsPreview" style="display:none; margin-top: 15px; padding: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px;">
+                            <strong style="color: #58a6ff;">Current Options to Apply:</strong>
+                            <div id="optionsPreviewText" style="margin-top: 5px; font-family: monospace; font-size: 12px; color: #8b949e;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <!-- Output -->
+                    <div class="section">
+                        <div class="section-title">📤 Chemfig Output</div>
+                        <div id="moleculeError" style="display:none;"></div>
+                        <div class="output-area" id="moleculeOutput">
+                            <em style="color: #8b949e;">Output will appear here...</em>
+                        </div>
+                    </div>
+
+                    <!-- SVG/PDF Preview -->
+                    <div class="section">
+                        <div class="section-title">
+                            📄 Structure Preview
+                            <select id="viewerType" onchange="switchViewer()" style="float:right; padding:4px 8px; background:#0d1117; border:1px solid #30363d; color:#c9d1d9; border-radius:4px;">
+                                <option value="svg">SVG (Vector)</option>
+                                <option value="layered">SVG (Layered) ⚡</option>
+                                <option value="pdf">PDF (Embed)</option>
+                            </select>
+                        </div>
+                        <div id="moleculeSVG" class="svg-viewer">
+                            <em style="color: #8b949e;">SVG preview will appear here...</em>
+                        </div>
+                        <div id="moleculeLayered" class="svg-viewer" style="display:none; position:relative;">
+                            <em style="color: #8b949e;">Layered SVG preview will appear here...</em>
+                        </div>
+                        <embed id="moleculePDF" class="pdf-viewer" type="application/pdf" style="display:none;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reaction Tab -->
+        <div id="reactionTab" class="tab-content">
+            <div class="split-view">
+                <div>
+                    <!-- Reaction Drawing Board -->
+                    <div class="section">
+                        <div class="section-title">⚗️ Draw Reaction Scheme</div>
+                        <div class="composer-container">
+                            <div id="reactionComposer" style="width:100%;height:450px;"></div>
+                        </div>
+                        <div class="button-group" style="margin-top: 10px;">
+                            <button class="btn btn-primary" onclick="convertReaction()">
+                                Convert Reaction to Chemfig
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearReactionDrawing()">
+                                Clear Drawing
+                            </button>
+                        </div>
+                        <p style="color: #8b949e; font-size: 13px; margin-top: 10px;">
+                            💡 Draw complete reaction schemes with reactants, products, and arrows
+                        </p>
+                    </div>
+
+                    <!-- Reaction Options -->
+                    <div class="section">
+                        <div class="section-title">⚙️ Reaction Options</div>
+                        <div class="checkbox-group" id="reactionOptions">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+
+                        <div class="controls-grid">
+                            <div class="input-group">
+                                <label>Rotation Angle (°)</label>
+                                <input type="number" id="reactionAngle" value="0" min="-360" max="360">
+                            </div>
+                            <div class="input-group">
+                                <label>Indentation</label>
+                                <input type="number" id="reactionIndent" value="4" min="0" max="20">
+                            </div>
+                            <div class="input-group">
+                                <label>H₂ Treatment</label>
+                                <select id="reactionH2">
+                                    <option value="keep">Keep H₂</option>
+                                    <option value="add">Add H₂</option>
+                                    <option value="delete">Delete H₂</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn" onclick="applyReactionOptions()">
+                                ✅ Apply Options
+                            </button>
+                            <button class="btn btn-secondary" onclick="resetReactionOptions()">
+                                🔄 Reset to Default
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Reaction Text Area -->
+                    <div class="section">
+                        <div class="section-title">📝 Manual Chemfig Edit</div>
+                        <textarea id="reactionTextarea" placeholder="Edit chemfig code directly or paste existing reaction chemfig"></textarea>
+                        <div class="button-group" style="margin-top: 10px;">
+                            <button class="btn btn-primary" onclick="updateReactionChemfig()">
+                                Update PDF
+                            </button>
+                            <button class="btn btn-secondary" onclick="copyToClipboard('reactionTextarea')">
+                                📋 Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <!-- Reaction Output -->
+                    <div class="section">
+                        <div class="section-title">📤 Chemfig Output</div>
+                        <div id="reactionError" style="display:none;"></div>
+                        <div class="output-area" id="reactionOutput">
+                            <em style="color: #8b949e;">Draw a reaction and click convert...</em>
+                        </div>
+                    </div>
+
+                    <!-- Reaction PDF Preview -->
+                    <div class="section">
+                        <div class="section-title">📄 PDF Preview</div>
+                        <embed id="reactionPDF" class="pdf-viewer" type="application/pdf">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settingsTab" class="tab-content">
+            <div class="section">
+                <div class="section-title">⚙️ Application Settings</div>
+                
+                <h3 style="color: #58a6ff; margin: 20px 0 10px;">Molecule Settings</h3>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="setting_intoComposer">
+                    <label for="setting_intoComposer">
+                        Insert searched chemical structure into drawing board
+                        <span class="tooltip" data-tooltip="When you search for a chemical, automatically load it into the Kekule drawing board">ℹ️</span>
+                    </label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="setting_mol_keepOnLeave">
+                    <label for="setting_mol_keepOnLeave">
+                        Preserve drawn structures when leaving page
+                        <span class="tooltip" data-tooltip="Your drawings will be saved in browser and restored when you come back">ℹ️</span>
+                    </label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="setting_mol_hideTooltips">
+                    <label for="setting_mol_hideTooltips">
+                        Hide tooltips for checkbox options
+                    </label>
+                </div>
+
+                <h3 style="color: #58a6ff; margin: 20px 0 10px;">Reaction Settings</h3>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="setting_rxn_keepOnLeave">
+                    <label for="setting_rxn_keepOnLeave">
+                        Preserve drawn reactions when leaving page
+                        <span class="tooltip" data-tooltip="Your reaction schemes will be saved and restored">ℹ️</span>
+                    </label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="setting_rxn_hideTooltips">
+                    <label for="setting_rxn_hideTooltips">
+                        Hide tooltips for checkbox options
+                    </label>
+                </div>
+
+                <div class="button-group" style="margin-top: 20px;">
+                    <button class="btn" onclick="saveSettings()">
+                        💾 Save Settings
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadSettings()">
+                        🔄 Reload Settings
+                    </button>
+                    <button class="btn btn-danger" onclick="clearSettings()">
+                        🗑️ Clear All Settings
+                    </button>
+                </div>
+
+                <div class="success-banner" id="settingsSaved" style="display:none; margin-top: 15px;">
+                    ✅ Settings saved successfully!
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">ℹ️ About</div>
+                <p style="line-height: 1.6; color: #8b949e;">
+                    <strong style="color: #c9d1d9;">Mol2chemfig</strong> - Complete chemical structure to LaTeX chemfig converter<br><br>
+                    <strong>Features:</strong><br>
+                    • SMILES and MOL format support<br>
+                    • Chemical name search (PubChem + common names)<br>
+                    • Interactive drawing board with Kekule.js<br>
+                    • Reaction scheme conversion<br>
+                    • 8 chemfig formatting options<br>
+                    • Real-time PDF preview<br>
+                    • Angle rotation and indentation control<br><br>
+                    <strong>Backend:</strong> http://localhost:8000<br>
+                    <strong>Version:</strong> 2.0 (Full UI)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/m2cf';
+        
+        // Chemfig options (same for molecule and reaction)
+        const OPTIONS = [
+            { label: 'compact view', value: '-z', tooltip: 'A more compact chemfig format' },
+            { label: 'fancy bonds', value: '-f', tooltip: 'Show nicer double and triple bonds' },
+            { label: 'aromatic', value: '-o', tooltip: 'Show circle in aromatic compounds instead of double bonds' },
+            { label: 'show carbon', value: '-c', tooltip: 'Show carbon atoms as elements' },
+            { label: 'show methyl', value: '-m', tooltip: 'Show methyl group as elements' },
+            { label: 'flip', value: '-p', tooltip: 'Flip the structure horizontally' },
+            { label: 'flop', value: '-q', tooltip: 'Flip the structure vertically' },
+            { label: 'atom-numbers', value: '-n', tooltip: 'Assign number to atoms except hydrogens' }
+        ];
+
+        // State
+        let moleculeComposer, reactionComposer;
+        let lastMoleculeData = null;
+        let lastMoleculeFormat = null;
+        let lastReactionData = null;
+        let hideTooltips = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkBackendStatus();
+            initializeComposers();
+            populateOptions();
+            hookOptionCheckboxes();
+            loadSettings();
+        });
+
+        // Switch between SVG and PDF viewer
+        function switchViewer() {
+            const viewerType = document.getElementById('viewerType').value;
+            const svgDiv = document.getElementById('moleculeSVG');
+            const layeredDiv = document.getElementById('moleculeLayered');
+            const pdfEmbed = document.getElementById('moleculePDF');
+            
+            // Hide all viewers first
+            svgDiv.style.display = 'none';
+            layeredDiv.style.display = 'none';
+            pdfEmbed.style.display = 'none';
+            
+            // Show selected viewer
+            if (viewerType === 'svg') {
+                svgDiv.style.display = 'flex';
+            } else if (viewerType === 'layered') {
+                layeredDiv.style.display = 'flex';
+            } else {
+                pdfEmbed.style.display = 'block';
+            }
+        }
+
+        // Generate SVG from SMILES or MOL data
+        async function generateSVG(data, format) {
+            // SVG is now generated automatically by backend in submit/apply endpoints
+            // This function is deprecated but kept for compatibility
+            console.log('SVG generation handled by backend automatically');
+        }
+
+        // Display SVG from backend response
+        function displaySVG(svgContent) {
+            const svgDiv = document.getElementById('moleculeSVG');
+            if (svgContent) {
+                svgDiv.innerHTML = svgContent;
+                console.log('✅ SVG rendered from chemfig LaTeX');
+            } else {
+                svgDiv.innerHTML = `
+                    <div style="text-align:center; padding:40px; color:#8b949e;">
+                        <p style="font-size:16px; margin-bottom:15px;">📄 SVG not available</p>
+                        <p style="font-size:14px;">Switch to PDF viewer</p>
+                        <button class="btn btn-primary" onclick="document.getElementById('viewerType').value='pdf'; switchViewer();" style="margin-top:15px;">
+                            View as PDF
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Display layered SVG with individual option layers
+        let currentLayers = null; // Store layers globally for instant toggling
+        
+        function displayLayeredSVG(layers) {
+            const layeredDiv = document.getElementById('moleculeLayered');
+            currentLayers = layers; // Store for instant option toggling
+            
+            if (!layers || !layers.base) {
+                layeredDiv.innerHTML = `
+                    <div style="text-align:center; padding:40px; color:#8b949e;">
+                        <p style="font-size:16px; margin-bottom:15px;">⚠️ Layered SVG not available</p>
+                        <p style="font-size:14px;">Switch to normal SVG or PDF viewer</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Create container for stacked layers
+            // STRATEGY: Each layer is a FULL molecule rendering
+            // We show ONLY ONE layer at a time (the one matching current options)
+            layeredDiv.innerHTML = `
+                <div style="text-align:center; margin-bottom:10px;">
+                    <span id="layerStatus" style="display:inline-block; padding:4px 12px; background:#1f6feb; color:#fff; border-radius:12px; font-size:12px; font-weight:500;">
+                        Base Layer
+                    </span>
+                </div>
+                <div id="svgLayerStack" style="position:relative; display:inline-block; margin:auto; min-width:200px; min-height:100px;">
+                    <!-- Layers will be added here -->
+                </div>
+            `;
+            
+            const stackDiv = document.getElementById('svgLayerStack');
+            
+            // Helper to create layer wrapper
+            // ALL layers (including base) are positioned absolutely within the container
+            const createLayer = (svgContent, layerId) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'svg-layer';
+                wrapper.id = `layer-${layerId}`;
+                wrapper.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    display: none;
+                `;
+                wrapper.innerHTML = svgContent;
+                return wrapper;
+            };
+            
+            // Add BASE layer (shown when NO options selected)
+            const baseLayer = createLayer(layers.base, 'base');
+            baseLayer.style.display = 'block'; // Show base by default
+            stackDiv.appendChild(baseLayer);
+            
+            // Add single option layers (each is FULL molecule with that option)
+            const optionLayers = [
+                { key: 'aromatic', flag: '-o' },
+                { key: 'carbon', flag: '-c' },
+                { key: 'methyl', flag: '-m' },
+                { key: 'numbers', flag: '-n' },
+                { key: 'fancy', flag: '-f' },
+                { key: 'compact', flag: '-z' }
+            ];
+            
+            optionLayers.forEach((opt) => {
+                if (layers[opt.key]) {
+                    const layer = createLayer(layers[opt.key], opt.key);
+                    layer.setAttribute('data-option-flag', opt.flag);
+                    stackDiv.appendChild(layer);
+                    console.log(`  ✅ Added full layer: ${opt.key} (${opt.flag})`);
+                }
+            });
+            
+            console.log('✅ Layered SVG ready - showing base (no options)');
+            
+            // Update visibility based on currently checked options
+            updateLayerVisibility();
+        }
+        
+        // Toggle layer visibility based on active options (instant, no backend call!)
+        // STRATEGY: Show ONLY the layer matching the active option(s)
+        // For single option: show that option's layer
+        // For multiple options: call backend to generate combined view
+        function updateLayerVisibility() {
+            if (!currentLayers) {
+                console.log('⚠️ No layers loaded yet');
+                return;
+            }
+            
+            const activeOptions = getSelectedOptions('mol'); // Get checked options from molecule tab
+            console.log('🎨 Updating layer visibility, active:', activeOptions);
+            
+            // Map option flags to layer IDs and display names
+            const flagToLayer = {
+                '-o': 'aromatic',
+                '-c': 'carbon',
+                '-m': 'methyl',
+                '-n': 'numbers',
+                '-f': 'fancy',
+                '-z': 'compact'
+            };
+            
+            const layerDisplayNames = {
+                'aromatic': 'Aromatic Circles',
+                'carbon': 'Show Carbon',
+                'methyl': 'Show Methyl',
+                'numbers': 'Atom Numbers',
+                'fancy': 'Fancy Bonds',
+                'compact': 'Compact View'
+            };
+            
+            const baseLayer = document.getElementById('layer-base');
+            const statusBadge = document.getElementById('layerStatus');
+            
+            if (activeOptions.length === 0) {
+                // NO options selected: Show ONLY base
+                if (baseLayer) baseLayer.style.display = 'block';
+                Object.values(flagToLayer).forEach(layerId => {
+                    const layer = document.getElementById(`layer-${layerId}`);
+                    if (layer) layer.style.display = 'none';
+                });
+                if (statusBadge) {
+                    statusBadge.textContent = 'Base Layer';
+                    statusBadge.style.background = '#1f6feb';
+                }
+                console.log('  → Showing base (no options)');
+            } else if (activeOptions.length === 1) {
+                // SINGLE option: Hide base, show that option's full layer
+                if (baseLayer) baseLayer.style.display = 'none';
+                
+                const activeFlag = activeOptions[0];
+                const activeLayerId = flagToLayer[activeFlag];
+                
+                Object.entries(flagToLayer).forEach(([flag, layerId]) => {
+                    const layer = document.getElementById(`layer-${layerId}`);
+                    if (layer) {
+                        layer.style.display = (layerId === activeLayerId) ? 'block' : 'none';
+                    }
+                });
+                if (statusBadge) {
+                    statusBadge.textContent = `${layerDisplayNames[activeLayerId]} Layer`;
+                    statusBadge.style.background = '#238636';
+                }
+                console.log(`  → Showing ${activeLayerId} layer (full molecule with ${activeFlag})`);
+            } else {
+                // MULTIPLE options: Need to call backend for combined view
+                // For now, show base and note that user needs to click "Apply Options"
+                if (baseLayer) baseLayer.style.display = 'block';
+                Object.values(flagToLayer).forEach(layerId => {
+                    const layer = document.getElementById(`layer-${layerId}`);
+                    if (layer) layer.style.display = 'none';
+                });
+                if (statusBadge) {
+                    statusBadge.textContent = 'Multiple Options - Click "Apply Options"';
+                    statusBadge.style.background = '#f78166';
+                }
+                console.log('  ⚠️ Multiple options selected - click "Apply Options" for combined view');
+                
+                // Show info message
+                showMessage('Multiple options selected. Click "Apply Options" to generate combined view.', 'info');
+            }
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Check backend status
+        async function checkBackendStatus() {
+            const statusDiv = document.getElementById('statusIndicator');
+            try {
+                const response = await fetch(`${API_BASE}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ textAreaData: 'C' })
+                });
+                
+                if (response.ok) {
+                    statusDiv.className = 'status online';
+                    statusDiv.textContent = '✅ Backend Online';
+                } else {
+                    statusDiv.className = 'status offline';
+                    statusDiv.textContent = '❌ Backend Error: ' + response.status;
+                }
+            } catch (error) {
+                statusDiv.className = 'status offline';
+                statusDiv.textContent = '❌ Backend Offline';
+            }
+        }
+
+        // Initialize Kekule composers
+        function initializeComposers() {
+            try {
+                moleculeComposer = new Kekule.Editor.Composer(document.getElementById('moleculeComposer'));
+                moleculeComposer.setCommonToolButtons(['loadData', 'saveData', 'undo', 'redo', 'copy', 'cut', 'paste']);
+                moleculeComposer.setChemToolButtons(['manipulate', 'erase', 'bond', 'atom', 'ring', 'charge']);
+
+                reactionComposer = new Kekule.Editor.Composer(document.getElementById('reactionComposer'));
+                reactionComposer.setCommonToolButtons(['loadData', 'saveData', 'undo', 'redo', 'copy', 'cut', 'paste']);
+                reactionComposer.setChemToolButtons(['manipulate', 'erase', 'bond', 'atom', 'ring', 'charge']);
+                reactionComposer.setEnableOperContext(true);
+            } catch (error) {
+                console.error('Kekule initialization error:', error);
+                showError('moleculeError', 'Failed to initialize drawing board. Kekule.js may not be loaded.');
+            }
+        }
+
+        // Populate options checkboxes
+        function populateOptions() {
+            const molOptions = document.getElementById('moleculeOptions');
+            const rxnOptions = document.getElementById('reactionOptions');
+
+            OPTIONS.forEach((opt, idx) => {
+                const molHtml = `
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="mol_opt_${idx}" value="${opt.value}">
+                        <label for="mol_opt_${idx}">${opt.label}</label>
+                        <span class="tooltip" data-tooltip="${opt.tooltip}">ℹ️</span>
+                    </div>
+                `;
+                const rxnHtml = `
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="rxn_opt_${idx}" value="${opt.value}">
+                        <label for="rxn_opt_${idx}">${opt.label}</label>
+                        <span class="tooltip" data-tooltip="${opt.tooltip}">ℹ️</span>
+                    </div>
+                `;
+                molOptions.innerHTML += molHtml;
+                rxnOptions.innerHTML += rxnHtml;
+            });
+        }
+
+        // Get selected options
+        function getSelectedOptions(prefix) {
+            const selected = [];
+            OPTIONS.forEach((opt, idx) => {
+                const checkbox = document.getElementById(`${prefix}_opt_${idx}`);
+                if (checkbox && checkbox.checked) {
+                    selected.push(opt.value);
+                }
+            });
+            return selected;
+        }
+
+        // Update active options preview
+        function updateActiveOptions() {
+            const selections = getSelectedOptions('mol');
+            const angle = document.getElementById('moleculeAngle').value;
+            const indent = document.getElementById('moleculeIndent').value;
+            const h2 = document.getElementById('moleculeH2').value;
+            
+            const badge = document.getElementById('activeOptionsBadge');
+            if (selections.length > 0) {
+                badge.style.display = 'inline-block';
+                badge.textContent = selections.length + ' active';
+            } else {
+                badge.style.display = 'none';
+            }
+            
+            const preview = document.getElementById('optionsPreview');
+            const previewText = document.getElementById('optionsPreviewText');
+            if (selections.length > 0 || angle != 0 || indent != 4 || h2 != 'keep') {
+                preview.style.display = 'block';
+                let text = 'Options: ' + (selections.length > 0 ? selections.join(' ') : 'none') + 
+                           ', Angle: ' + angle + '°, Indent: ' + indent + ', H₂: ' + h2;
+                previewText.textContent = text;
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+
+        // Hook all checkboxes to update preview
+        function hookOptionCheckboxes() {
+            OPTIONS.forEach((opt, idx) => {
+                const molCheckbox = document.getElementById(`mol_opt_${idx}`);
+                const rxnCheckbox = document.getElementById(`rxn_opt_${idx}`);
+                if (molCheckbox) {
+                    molCheckbox.addEventListener('change', () => {
+                        updateActiveOptions();
+                        updateLayerVisibility(); // Instant layer toggle!
+                    });
+                }
+                if (rxnCheckbox) {
+                    rxnCheckbox.addEventListener('change', () => {
+                        updateActiveOptions();
+                        updateLayerVisibility(); // Instant layer toggle!
+                    });
+                }
+            });
+        }
+
+        // Show error
+        function showError(elementId, message) {
+            const errorDiv = document.getElementById(elementId);
+            errorDiv.innerHTML = `
+                <div class="error-banner">
+                    <span>❌ ${message}</span>
+                    <button onclick="document.getElementById('${elementId}').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:20px;">×</button>
+                </div>
+            `;
+            errorDiv.style.display = 'block';
+        }
+
+        // Clear error
+        function clearError(elementId) {
+            const errorDiv = document.getElementById(elementId);
+            errorDiv.style.display = 'none';
+        }
+
+        // Chemical search
+        async function searchChemical() {
+            const searchTerm = document.getElementById('searchTerm').value.trim();
+            const btn = document.getElementById('searchBtn');
+            
+            if (!searchTerm) {
+                showError('moleculeError', 'Please enter a chemical name!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading">⏳</span> Searching...';
+            clearError('moleculeError');
+
+            try {
+                const response = await fetch(`${API_BASE}/search?searchTerm=${encodeURIComponent(searchTerm)}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError('moleculeError', data.error);
+                } else if (data.smiles) {
+                    document.getElementById('moleculeTextarea').value = data.smiles;
+                    // Auto-submit
+                    await submitMolecule();
+                    
+                    // Load into composer if setting enabled
+                    if (document.getElementById('setting_intoComposer').checked && data.molblock) {
+                        try {
+                            const mol = Kekule.IO.loadFormatData(data.molblock, 'mol');
+                            moleculeComposer.setChemObj(mol);
+                        } catch (e) {
+                            console.error('Failed to load into composer:', e);
+                        }
+                    }
+                }
+            } catch (error) {
+                showError('moleculeError', 'Network error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Search & Convert';
+            }
+        }
+
+        function quickSearch(name) {
+            document.getElementById('searchTerm').value = name;
+            searchChemical();
+        }
+
+        // Fetch molecule layers for layered viewing mode
+        async function fetchMoleculeLayers(chem_data, chem_format) {
+            try {
+                const response = await fetch(`${API_BASE}/layers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        chem_data: chem_data,
+                        chem_format: chem_format
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.error) {
+                    console.error('Layer generation error:', result.error);
+                } else if (result.layers) {
+                    displayLayeredSVG(result.layers);
+                    console.log('✅ Fetched', Object.keys(result.layers).length, 'SVG layers');
+                }
+            } catch (error) {
+                console.error('Failed to fetch layers:', error);
+            }
+        }
+
+        // Submit molecule
+        async function submitMolecule() {
+            const textarea = document.getElementById('moleculeTextarea');
+            const data = textarea.value.trim();
+            const btn = document.getElementById('submitBtn');
+            
+            if (!data) {
+                showError('moleculeError', 'Please enter SMILES, MOL, or chemfig data!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading">⏳</span> Generating...';
+            clearError('moleculeError');
+
+            try {
+                const response = await fetch(`${API_BASE}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ textAreaData: data })
+                });
+
+                const result = await response.json();
+                
+                if (result.error) {
+                    showError('moleculeError', result.error);
+                } else {
+                    document.getElementById('moleculeOutput').textContent = result.chemfig || 'No output';
+                    if (result.pdflink) {
+                        document.getElementById('moleculePDF').src = result.pdflink;
+                    }
+                    if (result.svglink) {
+                        displaySVG(result.svglink);
+                    }
+                    lastMoleculeData = result.chem_data;
+                    lastMoleculeFormat = result.chem_format;
+                    
+                    // Fetch layers for layered mode
+                    await fetchMoleculeLayers(result.chem_data, result.chem_format);
+                }
+            } catch (error) {
+                showError('moleculeError', 'Network error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate Chemfig';
+            }
+        }
+
+        // Convert from drawing
+        async function convertFromDrawing() {
+            if (!moleculeComposer) {
+                showError('moleculeError', 'Drawing board not initialized!');
+                return;
+            }
+
+            try {
+                const mol = moleculeComposer.getChemObj();
+                if (!mol) {
+                    showError('moleculeError', 'Please draw a structure first!');
+                    return;
+                }
+
+                const molBlock = Kekule.IO.saveFormatData(mol, 'mol');
+                document.getElementById('moleculeTextarea').value = molBlock;
+                await submitMolecule();
+            } catch (error) {
+                showError('moleculeError', 'Failed to convert drawing: ' + error.message);
+            }
+        }
+
+        // Apply molecule options
+        async function applyMoleculeOptions() {
+            if (!lastMoleculeData) {
+                showError('moleculeError', 'No molecule data to apply options to! Generate a chemfig first.');
+                return;
+            }
+
+            const selected = getSelectedOptions('mol');
+            const viewerType = document.getElementById('viewerType').value;
+            
+            // Special handling for layered mode
+            if (viewerType === 'layered') {
+                if (selected.length === 0 || selected.length === 1) {
+                    // Single or no options: just toggle layers instantly
+                    updateLayerVisibility();
+                    console.log('✅ Layered mode: Updated layer visibility (no backend call)');
+                    return;
+                }
+                // Multiple options: Fall through to call backend and switch to normal SVG view
+                console.log('⚠️ Multiple options in layered mode - generating combined view via backend');
+            }
+
+            const payload = {
+                chem_data: lastMoleculeData,
+                chem_format: lastMoleculeFormat,
+                selections: selected,
+                angle: parseInt(document.getElementById('moleculeAngle').value) || 0,
+                indentation: parseInt(document.getElementById('moleculeIndent').value) || 4,
+                h2: document.getElementById('moleculeH2').value
+            };
+
+            console.log('🔧 Applying molecule options:', payload);
+            console.log('Selected options:', selected);
+
+            try {
+                const response = await fetch(`${API_BASE}/apply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                console.log('📊 Apply response:', result);
+                
+                if (result.error) {
+                    showError('moleculeError', result.error);
+                } else {
+                    document.getElementById('moleculeOutput').textContent = result.chemfig;
+                    
+                    // For multiple options in layered mode, switch to normal SVG viewer
+                    if (viewerType === 'layered' && selected.length > 1) {
+                        document.getElementById('viewerType').value = 'svg';
+                        switchViewer();
+                        console.log('✅ Switched to normal SVG viewer for combined view');
+                    }
+                    
+                    if (result.pdflink) {
+                        // Force PDF refresh by resetting src first
+                        const pdfElement = document.getElementById('moleculePDF');
+                        pdfElement.src = '';
+                        setTimeout(() => {
+                            pdfElement.src = result.pdflink;
+                        }, 100);
+                    }
+                    
+                    // Display SVG if available
+                    if (result.svglink) {
+                        displaySVG(result.svglink);
+                    }
+                    
+                    // Check if aromatic circle code is present
+                    if (result.chemfig.includes('mcfcringle')) {
+                        console.log('✅ AROMATIC CIRCLE DETECTED in chemfig!');
+                    }
+                }
+            } catch (error) {
+                showError('moleculeError', 'Failed to apply options: ' + error.message);
+                console.error('Error applying options:', error);
+            }
+        }
+
+        // Reset molecule options
+        async function resetMoleculeOptions() {
+            if (!lastMoleculeData) {
+                showError('moleculeError', 'No molecule data to reset!');
+                return;
+            }
+
+            // Clear checkboxes
+            OPTIONS.forEach((opt, idx) => {
+                const checkbox = document.getElementById(`mol_opt_${idx}`);
+                if (checkbox) checkbox.checked = false;
+            });
+
+            // Reset controls
+            document.getElementById('moleculeAngle').value = 0;
+            document.getElementById('moleculeIndent').value = 4;
+            document.getElementById('moleculeH2').value = 'keep';
+
+            // Call reset endpoint
+            const payload = {
+                chem_data: lastMoleculeData,
+                chem_format: lastMoleculeFormat
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/reset`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                
+                if (result.error) {
+                    showError('moleculeError', result.error);
+                } else {
+                    document.getElementById('moleculeOutput').textContent = result.chemfig;
+                    if (result.pdflink) {
+                        document.getElementById('moleculePDF').src = result.pdflink;
+                    }
+                }
+            } catch (error) {
+                showError('moleculeError', 'Failed to reset: ' + error.message);
+            }
+        }
+
+        // Reaction functions
+        async function convertReaction() {
+            if (!reactionComposer) {
+                showError('reactionError', 'Reaction board not initialized!');
+                return;
+            }
+
+            try {
+                // Get reaction JSON
+                const docJSON = reactionComposer.exportObjs(Kekule.Molecule);
+                // For now, show placeholder
+                showError('reactionError', 'Reaction conversion requires full backend integration. Draw your reaction and the backend will process it.');
+            } catch (error) {
+                showError('reactionError', 'Failed to convert reaction: ' + error.message);
+            }
+        }
+
+        function clearReactionDrawing() {
+            if (reactionComposer) {
+                reactionComposer.setChemObj(null);
+            }
+        }
+
+        async function updateReactionChemfig() {
+            const data = document.getElementById('reactionTextarea').value.trim();
+            if (!data) {
+                showError('reactionError', 'No chemfig code to update!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/reaction/update_chemfig`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ textAreaData: data })
+                });
+
+                const result = await response.json();
+                
+                if (result.pdflink) {
+                    document.getElementById('reactionPDF').src = result.pdflink;
+                }
+                if (result.error) {
+                    showError('reactionError', result.error);
+                }
+            } catch (error) {
+                showError('reactionError', 'Failed to update: ' + error.message);
+            }
+        }
+
+        function applyReactionOptions() {
+            showError('reactionError', 'Reaction options require drawing board integration.');
+        }
+
+        function resetReactionOptions() {
+            OPTIONS.forEach((opt, idx) => {
+                const checkbox = document.getElementById(`rxn_opt_${idx}`);
+                if (checkbox) checkbox.checked = false;
+            });
+            document.getElementById('reactionAngle').value = 0;
+            document.getElementById('reactionIndent').value = 4;
+            document.getElementById('reactionH2').value = 'keep';
+        }
+
+        // Utility functions
+        function loadExample(smiles) {
+            document.getElementById('moleculeTextarea').value = smiles;
+        }
+
+        function clearMolecule() {
+            document.getElementById('moleculeTextarea').value = '';
+            document.getElementById('moleculeOutput').innerHTML = '<em style="color: #8b949e;">Output will appear here...</em>';
+        }
+
+        function clearDrawing() {
+            if (moleculeComposer) {
+                moleculeComposer.setChemObj(null);
+            }
+        }
+
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            document.execCommand('copy');
+            
+            // Show temporary success message
+            const parent = element.parentElement;
+            const successMsg = document.createElement('div');
+            successMsg.className = 'success-banner';
+            successMsg.textContent = '✅ Copied to clipboard!';
+            successMsg.style.marginTop = '10px';
+            parent.appendChild(successMsg);
+            
+            setTimeout(() => {
+                successMsg.remove();
+            }, 2000);
+        }
+
+        // Settings functions
+        function saveSettings() {
+            localStorage.setItem('setting_intoComposer', document.getElementById('setting_intoComposer').checked);
+            localStorage.setItem('setting_mol_keepOnLeave', document.getElementById('setting_mol_keepOnLeave').checked);
+            localStorage.setItem('setting_mol_hideTooltips', document.getElementById('setting_mol_hideTooltips').checked);
+            localStorage.setItem('setting_rxn_keepOnLeave', document.getElementById('setting_rxn_keepOnLeave').checked);
+            localStorage.setItem('setting_rxn_hideTooltips', document.getElementById('setting_rxn_hideTooltips').checked);
+            
+            const banner = document.getElementById('settingsSaved');
+            banner.style.display = 'block';
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 3000);
+        }
+
+        function loadSettings() {
+            document.getElementById('setting_intoComposer').checked = localStorage.getItem('setting_intoComposer') === 'true';
+            document.getElementById('setting_mol_keepOnLeave').checked = localStorage.getItem('setting_mol_keepOnLeave') === 'true';
+            document.getElementById('setting_mol_hideTooltips').checked = localStorage.getItem('setting_mol_hideTooltips') === 'true';
+            document.getElementById('setting_rxn_keepOnLeave').checked = localStorage.getItem('setting_rxn_keepOnLeave') === 'true';
+            document.getElementById('setting_rxn_hideTooltips').checked = localStorage.getItem('setting_rxn_hideTooltips') === 'true';
+        }
+
+        function clearSettings() {
+            if (confirm('Are you sure you want to clear all settings?')) {
+                localStorage.clear();
+                loadSettings();
+                alert('Settings cleared!');
+            }
+        }
+
+        // Auto-save on page unload
+        window.addEventListener('beforeunload', () => {
+            if (document.getElementById('setting_mol_keepOnLeave').checked && moleculeComposer) {
+                try {
+                    const mol = moleculeComposer.getChemObj();
+                    if (mol) {
+                        localStorage.setItem('saved_molecule', Kekule.IO.saveFormatData(mol, 'mol'));
+                    }
+                } catch (e) {}
+            }
+            if (document.getElementById('setting_rxn_keepOnLeave').checked && reactionComposer) {
+                try {
+                    const rxn = reactionComposer.getChemObj();
+                    if (rxn) {
+                        localStorage.setItem('saved_reaction', Kekule.IO.saveFormatData(rxn, 'kekule-json'));
+                    }
+                } catch (e) {}
+            }
+        });
+
+        // Restore saved structures
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (document.getElementById('setting_mol_keepOnLeave').checked) {
+                    const saved = localStorage.getItem('saved_molecule');
+                    if (saved && moleculeComposer) {
+                        try {
+                            const mol = Kekule.IO.loadFormatData(saved, 'mol');
+                            moleculeComposer.setChemObj(mol);
+                        } catch (e) {}
+                    }
+                }
+                if (document.getElementById('setting_rxn_keepOnLeave').checked) {
+                    const saved = localStorage.getItem('saved_reaction');
+                    if (saved && reactionComposer) {
+                        try {
+                            const rxn = Kekule.IO.loadFormatData(saved, 'kekule-json');
+                            reactionComposer.setChemObj(rxn);
+                        } catch (e) {}
+                    }
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

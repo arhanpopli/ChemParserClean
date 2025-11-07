@@ -1,0 +1,39 @@
+{
+  "name": "Chemistry Formula Renderer MCP",
+  "version": "1.0.0",
+  "description": "MCP server for autonomous development of Chemistry Formula Renderer",
+  "type": "module",
+  "tools": {
+    "run_tests": {
+      "description": "Run the automated test suite (13 tests)",
+      "command": "python mcp_server.py run_tests"
+    },
+    "start_flask": {
+      "description": "Start the Flask server on port 5000",
+      "command": "python mcp_server.py start_flask"
+    },
+    "stop_flask": {
+      "description": "Stop the Flask server",
+      "command": "python mcp_server.py stop_flask"
+    },
+    "check_status": {
+      "description": "Check system status (Flask running, tests available, etc)",
+      "command": "python mcp_server.py check_status"
+    },
+    "get_task": {
+      "description": "Get next task from Todolist.md",
+      "command": "python mcp_server.py get_task"
+    }
+  },
+  "paths": {
+    "project_root": "C:\\Users\\Kapil\\Personal\\PROJECTS\\Mol2chemfig",
+    "flask_path": "C:\\Users\\Kapil\\Personal\\PROJECTS\\Mol2chemfig\\MoleculeViewer",
+    "tests_path": "C:\\Users\\Kapil\\Personal\\PROJECTS\\Mol2chemfig\\tests",
+    "test_script": "C:\\Users\\Kapil\\Personal\\PROJECTS\\Mol2chemfig\\tests\\test_api.py"
+  },
+  "environment": {
+    "FLASK_APP": "app.api",
+    "FLASK_ENV": "development",
+    "PYTHONPATH": "C:\\Users\\Kapil\\Personal\\PROJECTS\\Mol2chemfig"
+  }
+}

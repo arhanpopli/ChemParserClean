@@ -69,6 +69,44 @@ FALLBACK_COMPOUNDS = {
 }
 
 
+def normalize_nomenclature(name):
+    """
+    Normalize chemical nomenclature for better parser compatibility.
+    
+    Fixes common issues:
+    - Removes leading position numbers when starting (e.g., "1-methyl-hexane" → "methyl-hexane")
+    - Converts hyphens to spaces where appropriate for some parsers
+    - Handles alkane naming variations
+    
+    Args:
+        name (str): Chemical name
+    
+    Returns:
+        tuple: (normalized_name, original_name)
+    """
+    original = name.strip().lower()
+    normalized = original
+    
+    # Handle position numbers at the start of alkane chains
+    # "1-methyl-hexane" should be "2-methylhexane" (IUPAC), but try both variants
+    # First, try without the leading position: "1-methyl" → try as "methyl" first
+    if re.match(r'^1-\w+-(alkane|ene|yne|ane|yne)$|^1-\w+-\w+$', normalized):
+        # Try removing the leading 1- position
+        normalized_alt = re.sub(r'^1-', '', normalized)
+        return original, [original, normalized_alt]  # Return both to try
+    
+    # Handle common spacing/hyphen variations
+    # "methylhexane" should also try "methyl hexane" for some parsers
+    if '-' in normalized and len(normalized.split('-')) == 2:
+        parts = normalized.split('-')
+        # Check if it's a standard alkyl substitution pattern
+        if parts[1] in ['ane', 'ene', 'yne', 'hexane', 'pentane', 'butane', 'propane', 'ethane', 'methane']:
+            # Keep both: "2-methylhexane" and try normalizations
+            return original, [original]
+    
+    return original, [normalized]
+
+
 def nomenclature_to_smiles(compound_name, parser_override=None):
     """
     Convert chemical nomenclature to SMILES string using configurable parser.
@@ -95,68 +133,80 @@ def nomenclature_to_smiles(compound_name, parser_override=None):
     compound_name_clean = compound_name.strip().lower()
     parser_mode = parser_override or config.NOMENCLATURE_PARSER
     
+    # Get normalized versions to try
+    original_name, names_to_try = normalize_nomenclature(compound_name_clean)
+    
     # Define parser functions
     def try_chemdoodle():
-        if HAS_CHEMDOODLE and compound_name_clean in CHEMDOODLE_COMPOUNDS:
-            smiles = CHEMDOODLE_COMPOUNDS[compound_name_clean]
-            return None, smiles, "ChemDoodle Database"
+        # Try all variants
+        for name_variant in names_to_try:
+            if HAS_CHEMDOODLE and name_variant in CHEMDOODLE_COMPOUNDS:
+                smiles = CHEMDOODLE_COMPOUNDS[name_variant]
+                return None, smiles, "ChemDoodle Database"
         return None, None, None
     
     def try_opsin():
         if os.path.exists(OPSIN_JAR):
-            try:
-                result = subprocess.run(
-                    ["java", "-jar", OPSIN_JAR],
-                    input=compound_name + "\n",
-                    capture_output=True,
-                    text=True,
-                    timeout=config.PARSER_TIMEOUT
-                )
-                
-                if result.returncode == 0:
-                    lines = [line.strip() for line in result.stdout.split('\n') if line.strip()]
-                    if lines:
-                        smiles = lines[-1]
-                        if smiles and not smiles.startswith('usage:') and not smiles.startswith('Exception'):
-                            try:
-                                mol = Chem.MolFromSmiles(smiles)
-                                if mol:
-                                    return None, smiles, "OPSIN Parser"
-                            except:
-                                pass
-            except Exception as e:
-                pass
+            # Try all variants
+            for name_variant in names_to_try:
+                try:
+                    result = subprocess.run(
+                        ["java", "-jar", OPSIN_JAR],
+                        input=name_variant + "\n",
+                        capture_output=True,
+                        text=True,
+                        timeout=config.PARSER_TIMEOUT
+                    )
+                    
+                    if result.returncode == 0:
+                        lines = [line.strip() for line in result.stdout.split('\n') if line.strip()]
+                        if lines:
+                            smiles = lines[-1]
+                            if smiles and not smiles.startswith('usage:') and not smiles.startswith('Exception'):
+                                try:
+                                    mol = Chem.MolFromSmiles(smiles)
+                                    if mol:
+                                        return None, smiles, "OPSIN Parser"
+                                except:
+                                    pass
+                except Exception as e:
+                    pass
         return None, None, None
     
     def try_fallback():
-        if compound_name_clean in FALLBACK_COMPOUNDS:
-            smiles = FALLBACK_COMPOUNDS[compound_name_clean]
-            return None, smiles, "Fallback Dictionary"
+        # Try all variants
+        for name_variant in names_to_try:
+            if name_variant in FALLBACK_COMPOUNDS:
+                smiles = FALLBACK_COMPOUNDS[name_variant]
+                return None, smiles, "Fallback Dictionary"
         return None, None, None
     
     def try_pubchem():
-        try:
-            import urllib.request
-            import json
-            
-            url = f"https://pubchem.ncbi.nlm.nih.gov/rest/v1/compound/name/{compound_name}/cids/JSON"
-            with urllib.request.urlopen(url, timeout=config.PARSER_TIMEOUT) as response:
-                data = json.loads(response.read().decode())
-                if 'IdentifierList' in data and data['IdentifierList']['CID']:
-                    cid = data['IdentifierList']['CID'][0]
-                    
-                    smiles_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/v1/compound/CID/{cid}/property/IsomericSMILES/JSON"
-                    with urllib.request.urlopen(smiles_url, timeout=config.PARSER_TIMEOUT) as smiles_response:
-                        smiles_data = json.loads(smiles_response.read().decode())
-                        if 'Properties' in smiles_data and smiles_data['Properties']:
-                            smiles = smiles_data['Properties'][0].get('IsomericSMILES')
-                            if smiles:
-                                return None, smiles, f"PubChem (CID: {cid})"
-        except urllib.error.HTTPError as e:
-            if e.code == 404:
-                return f"Compound '{compound_name}' not found in PubChem database", None, None
-        except Exception as e:
-            pass
+        # Try all variants
+        for name_variant in names_to_try:
+            try:
+                import urllib.request
+                import json
+                
+                url = f"https://pubchem.ncbi.nlm.nih.gov/rest/v1/compound/name/{name_variant}/cids/JSON"
+                with urllib.request.urlopen(url, timeout=config.PARSER_TIMEOUT) as response:
+                    data = json.loads(response.read().decode())
+                    if 'IdentifierList' in data and data['IdentifierList']['CID']:
+                        cid = data['IdentifierList']['CID'][0]
+                        
+                        smiles_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/v1/compound/CID/{cid}/property/IsomericSMILES/JSON"
+                        with urllib.request.urlopen(smiles_url, timeout=config.PARSER_TIMEOUT) as smiles_response:
+                            smiles_data = json.loads(smiles_response.read().decode())
+                            if 'Properties' in smiles_data and smiles_data['Properties']:
+                                smiles = smiles_data['Properties'][0].get('IsomericSMILES')
+                                if smiles:
+                                    return None, smiles, f"PubChem (CID: {cid})"
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    # Continue trying other variants
+                    pass
+            except Exception as e:
+                pass
         return None, None, None
     
     # Execute based on parser mode

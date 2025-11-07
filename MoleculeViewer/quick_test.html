@@ -1,0 +1,36 @@
+<!-- Quick Manual Test for Options -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Options Test</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        .result { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        img { max-width: 400px; border: 2px solid #ddd; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Quick Test: Benzene with Options</h1>
+    
+    <h2>Test 1: Default (no options)</h2>
+    <img id="img1" src="http://localhost:5000/img/smiles?smiles=c1ccccc1" alt="Benzene default">
+    <p id="url1"></p>
+    
+    <h2>Test 2: Aromatic Circles</h2>
+    <img id="img2" src="http://localhost:5000/img/smiles?smiles=c1ccccc1&aromatic_circles=true" alt="Benzene aromatic">
+    <p id="url2"></p>
+    
+    <h2>Test 3: Show Carbons</h2>
+    <img id="img3" src="http://localhost:5000/img/smiles?smiles=c1ccccc1&show_carbons=true" alt="Benzene carbons">
+    <p id="url3"></p>
+    
+    <script>
+        // Log the URLs being loaded
+        setTimeout(() => {
+            document.getElementById('url1').textContent = 'Image src: ' + document.getElementById('img1').src;
+            document.getElementById('url2').textContent = 'Image src: ' + document.getElementById('img2').src;
+            document.getElementById('url3').textContent = 'Image src: ' + document.getElementById('img3').src;
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -5,13 +5,16 @@
  */
 
 // ============================================
-// 🌍 MOLECULEVIEWER API CONFIGURATION
+// 🌍 RENDERING ENGINE API CONFIGURATION
 // ============================================
 // LOCAL TESTING - Use localhost to avoid HTTPS mixed content errors
 const MOLECULE_VIEWER_API = 'http://localhost:5000';
+const MOL2CHEMFIG_API = 'http://localhost:8000';
 
 // For Heroku production (uncomment when ready to deploy):
 // const MOLECULE_VIEWER_API = 'https://YOUR-HEROKU-APP.herokuapp.com';
+// const MOL2CHEMFIG_API = 'https://YOUR-MOL2CHEMFIG-APP.herokuapp.com';
+// const 
 
 // ============================================
 // LOGGING UTILITIES
@@ -415,7 +418,7 @@ let settings = {
   layoutMode: 'horizontal',
   renderCarbonsAsSticks: false,
   sizePreset: 'auto',
-  rendererEngine: 'molecule-viewer',  // ✅ FORCED - ONLY MoleculeViewer
+  rendererEngine: 'moleculeviewer',  // Default to MoleculeViewer (can be overridden by user)
   devMode: false,
   // MoleculeViewer rendering options
   flipHorizontal: false,
@@ -425,7 +428,17 @@ let settings = {
   aromaticCircles: true,
   fancyBonds: true,
   atomNumbers: false,
-  hydrogensMode: 'keep'
+  hydrogensMode: 'keep',
+  // mol2chemfig rendering options
+  m2cfShowCarbons: false,
+  m2cfAromaticCircles: false,
+  m2cfShowMethyls: false,
+  m2cfFancyBonds: false,
+  m2cfAtomNumbers: false,
+  m2cfCompact: false,
+  m2cfFlipHorizontal: false,
+  m2cfFlipVertical: false,
+  m2cfHydrogensMode: 'keep'
 };
 
 log.info('📦 Loading settings from storage...');
@@ -435,11 +448,12 @@ chrome.storage.sync.get(null, (result) => {
   // Merge stored settings with defaults
   settings = { ...settings, ...result };
   
-  // ✅ FORCE MoleculeViewer - IGNORE any stored renderer choice
-  settings.rendererEngine = 'molecule-viewer';
+  // ✅ DO NOT FORCE - Respect user's renderer choice
+  const engineName = settings.rendererEngine === 'mol2chemfig' ? '📐 mol2chemfig' : '🧪 MoleculeViewer';
+  const enginePort = settings.rendererEngine === 'mol2chemfig' ? '8000' : '5000';
   
   log.success('✅ Settings loaded', settings);
-  log.info(`Renderer Engine: 🧪 MoleculeViewer (forced)`);
+  log.info(`Renderer Engine: ${engineName} (localhost:${enginePort})`);
   log.info(`Performance mode: ${settings.performanceMode ? 'ON ⚡' : 'OFF'}`);
   if (settings.enabled) {
     log.info('🚀 Extension enabled, initializing renderer...');
@@ -456,6 +470,43 @@ chrome.storage.onChanged.addListener((changes) => {
     if (changes.enabled.newValue) {
       location.reload();
     }
+  }
+  
+  // Listen for renderer engine changes
+  if (changes.rendererEngine) {
+    log.info('🔄 Renderer engine changed, updating...', changes.rendererEngine);
+    settings.rendererEngine = changes.rendererEngine.newValue;
+    const engineName = settings.rendererEngine === 'mol2chemfig' ? '📐 mol2chemfig' : '🧪 MoleculeViewer';
+    log.success(`✅ Switched to ${engineName} renderer`);
+    
+    // Reload page to apply new renderer to all content
+    setTimeout(() => {
+      location.reload();
+    }, 500);
+  }
+  
+  // Listen for rendering option changes (aromatic circles, etc.) and reload to apply
+  if (changes.aromaticCircles || changes.showCarbons || changes.showMethyls || 
+      changes.fancyBonds || changes.atomNumbers || changes.flipHorizontal || changes.flipVertical) {
+    log.info('⚙️  Rendering options changed, reloading...', changes);
+    setTimeout(() => {
+      location.reload();
+    }, 500);
+  }
+});
+
+// Listen for messages from popup (live preview)
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'renderPreview') {
+    try {
+      // Process the code using wrapChemicalFormulas
+      const wrappedHtml = wrapChemicalFormulas(request.code);
+      sendResponse({ html: wrappedHtml });
+    } catch (error) {
+      console.error('Error rendering preview:', error);
+      sendResponse({ html: `<span style="color: red;">Error: ${error.message}</span>` });
+    }
+    return true; // Keep channel open for async response
   }
 });
 
@@ -737,20 +788,74 @@ function setupLazyLoading() {
       
       // Determine which endpoint to use based on data type
       const isNomenclature = moleculeData.type === 'nomenclature' && moleculeData.nomenclature;
-      const isSMILES = moleculeData.type === 'smiles' && moleculeData.smiles;
+      let isSMILES = moleculeData.type === 'smiles' && moleculeData.smiles;
+
+      // If chemfig payload was stored, use fallback.smiles for MoleculeViewer
+      if (!isSMILES && moleculeData.type === 'chemfig' && moleculeData.fallback && moleculeData.fallback.smiles) {
+        isSMILES = moleculeData.fallback.smiles;
+        // Inject the smiles into moleculeData.smiles so downstream code can use it
+        moleculeData.smiles = moleculeData.fallback.smiles;
+      }
       
       let apiUrl;
       if (isNomenclature) {
         console.log('%c📤 Using nomenclature endpoint', 'color: #FF6B00; font-weight: bold;');
         console.log('Nomenclature:', moleculeData.nomenclature);
-        apiUrl = `${MOLECULE_VIEWER_API}/img/nomenclature?nomenclature=${encodeURIComponent(moleculeData.nomenclature)}&width=300&height=200&json=true`;
+        
+        // Build options query string for MoleculeViewer
+        const optionsParams = new URLSearchParams({
+          nomenclature: moleculeData.nomenclature,
+          width: '300',
+          height: '200',
+          json: 'true',
+          show_carbons: settings.showCarbons.toString(),
+          show_methyls: settings.showMethyls.toString(),
+          aromatic_circles: settings.aromaticCircles.toString(),
+          fancy_bonds: settings.fancyBonds.toString(),
+          atom_numbers: settings.atomNumbers.toString(),
+          flip_horizontal: settings.flipHorizontal.toString(),
+          flip_vertical: settings.flipVertical.toString(),
+          hydrogens_mode: settings.hydrogensMode
+        });
+        
+        apiUrl = `${MOLECULE_VIEWER_API}/img/nomenclature?${optionsParams.toString()}`;
         console.log('API URL:', apiUrl);
       } else if (isSMILES) {
         console.log('%c📤 Using SMILES endpoint', 'color: #FF6B00; font-weight: bold;');
-        apiUrl = `${MOLECULE_VIEWER_API}/img/smiles?smiles=${encodeURIComponent(moleculeData.smiles)}&width=300&height=200&json=true`;
+        
+        // Build options query string for MoleculeViewer
+        const optionsParams = new URLSearchParams({
+          smiles: moleculeData.smiles,
+          width: '300',
+          height: '200',
+          json: 'true',
+          show_carbons: settings.showCarbons.toString(),
+          show_methyls: settings.showMethyls.toString(),
+          aromatic_circles: settings.aromaticCircles.toString(),
+          fancy_bonds: settings.fancyBonds.toString(),
+          atom_numbers: settings.atomNumbers.toString(),
+          flip_horizontal: settings.flipHorizontal.toString(),
+          flip_vertical: settings.flipVertical.toString(),
+          hydrogens_mode: settings.hydrogensMode
+        });
+        
+        apiUrl = `${MOLECULE_VIEWER_API}/img/smiles?${optionsParams.toString()}`;
+        console.log('API URL:', apiUrl);
       } else {
         throw new Error('Invalid molecule data');
       }
+      
+      // Log settings being used
+      console.log('%c⚙️ Rendering Options:', 'color: #FF6B00; font-weight: bold;', {
+        showCarbons: settings.showCarbons,
+        showMethyls: settings.showMethyls,
+        aromaticCircles: settings.aromaticCircles,
+        fancyBonds: settings.fancyBonds,
+        atomNumbers: settings.atomNumbers,
+        flipHorizontal: settings.flipHorizontal,
+        flipVertical: settings.flipVertical,
+        hydrogensMode: settings.hydrogensMode
+      });
       
       // Fetch JSON response with cache link
       console.log('%c🌐 Fetching from backend...', 'color: #00AAFF; font-weight: bold;');
@@ -826,6 +931,456 @@ function setupLazyLoading() {
       activeLoads--;
     }
   }
+
+  // Helper function to load mol2chemfig rendering with caching
+  async function loadMol2chemfigImage(img) {
+    activeLoads++;
+    console.log('%c📐 LOADMOL2CHEMFIGIMAGE CALLED!', 'background: #222; color: #00FF00; font-size: 20px; padding: 10px;');
+    console.log('Image element:', img);
+    console.log('Dataset:', img.dataset);
+    log.debug(`📐 Loading mol2chemfig LaTeX SVG (#${activeLoads})`);
+    
+    try {
+      const moleculeData = JSON.parse(atob(img.dataset.moleculeViewer));
+      console.log('%c📦 Decoded molecule data:', 'color: #0088FF; font-weight: bold;', moleculeData);
+      
+      // Determine input data based on type
+      const isSMILES = moleculeData.type === 'smiles' && moleculeData.smiles;
+      const isNomenclature = moleculeData.type === 'nomenclature' && moleculeData.nomenclature;
+      const isChemfig = moleculeData.type === 'chemfig' && moleculeData.chemfig;
+      
+      let inputData;
+      if (isChemfig) {
+        console.log('%c📤 Using CHEMFIG input (raw chemfig)', 'color: #FF6B00; font-weight: bold;');
+        // Prefer sending a LaTeX-wrapped chemfig block if available
+        inputData = moleculeData.latex || ('$\\chemfig{' + moleculeData.chemfig + '}$');
+      } else if (isSMILES) {
+        console.log('%c📤 Using SMILES input', 'color: #FF6B00; font-weight: bold;');
+        console.log('SMILES:', moleculeData.smiles);
+        inputData = moleculeData.smiles;
+      } else if (isNomenclature) {
+        console.log('%c📤 Using nomenclature input', 'color: #FF6B00; font-weight: bold;');
+        console.log('Nomenclature:', moleculeData.nomenclature);
+        inputData = moleculeData.nomenclature;
+      } else {
+        throw new Error('Invalid molecule data for mol2chemfig');
+      }
+
+      // If this is a nomenclature name, try converting it to SMILES with fallback priority:
+      // 1. OPSIN (https://opsin.ch.cam.ac.uk/opsin/)
+      // 2. PubChem (via MoleculeViewer local API)
+      // 3. If all fail, throw error (do NOT auto-switch to MoleculeViewer)
+      async function convertNameToSmilesWithFallbacks(name) {
+        // Priority 1: OPSIN direct API
+        console.log('%c🔬 Trying OPSIN for name→SMILES conversion...', 'color: #0088FF; font-weight: bold;');
+        try {
+          const opsinResp = await fetch(`https://opsin.ch.cam.ac.uk/opsin/${encodeURIComponent(name)}.smi`, {
+            method: 'GET',
+            headers: { 'Accept': 'text/plain' }
+          });
+          if (opsinResp.ok) {
+            const smilesText = await opsinResp.text();
+            const smiles = smilesText.trim();
+            if (smiles && smiles.length > 0 && !smiles.toLowerCase().includes('error')) {
+              console.log('%c✅ OPSIN conversion SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
+              return { smiles, source: 'OPSIN' };
+            }
+          }
+          console.warn('⚠️ OPSIN conversion failed or returned empty/error');
+        } catch (eOpsin) {
+          console.warn('⚠️ OPSIN API request failed:', eOpsin.message);
+        }
+
+        // Priority 2: PubChem via local MoleculeViewer API
+        console.log('%c🔬 Trying PubChem (via MoleculeViewer) for name→SMILES conversion...', 'color: #0088FF; font-weight: bold;');
+        try {
+          const mvResp = await fetch(`${MOLECULE_VIEWER_API}/api/nomenclature-to-smiles`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nomenclature: name })
+          });
+          if (mvResp.ok) {
+            const jd = await mvResp.json();
+            if (jd && jd.smiles) {
+              console.log('%c✅ PubChem/MoleculeViewer conversion SUCCESS:', 'color: #00FF00; font-weight: bold;', jd.smiles, jd.source || '');
+              return { smiles: jd.smiles, source: jd.source || 'PubChem/MoleculeViewer' };
+            }
+          }
+          console.warn('⚠️ PubChem/MoleculeViewer conversion failed or returned no SMILES');
+        } catch (eMV) {
+          console.warn('⚠️ MoleculeViewer API request failed:', eMV.message);
+        }
+
+        // All conversion attempts failed
+        console.error('❌ All name→SMILES conversion attempts failed (OPSIN, PubChem)');
+        return null;
+      }
+
+      if (isNomenclature) {
+        // Try conversion with OPSIN → PubChem fallback chain
+        const conv = await convertNameToSmilesWithFallbacks(inputData);
+        if (conv && conv.smiles) {
+          console.log('%c🔁 Converted name→SMILES:', 'color: #00AAFF; font-weight: bold;', conv.smiles, '(Source:', conv.source + ')');
+          inputData = conv.smiles;
+        } else {
+          // All conversion methods failed — throw error and show fallback image
+          console.error('❌ Could not convert nomenclature to SMILES:', inputData);
+          throw new Error(`Failed to convert nomenclature "${inputData}" to SMILES (tried OPSIN, PubChem)`);
+        }
+      }
+
+      // Heuristic: sanitize common human-readable fragments like CH_3-CH_2-OH -> CCO
+      // Many sources produce CH_3 style strings which are not valid SMILES; try a simple transform
+      try {
+        if (typeof inputData === 'string' && /CH[_\d]|CH\d|OH|\-/.test(inputData)) {
+          let sanitized = String(inputData);
+          sanitized = sanitized.replace(/_/g, ''); // remove underscores
+          sanitized = sanitized.replace(/\-/g, ''); // remove hyphens
+          sanitized = sanitized.replace(/CH3/gi, 'C');
+          sanitized = sanitized.replace(/CH2/gi, 'C');
+          sanitized = sanitized.replace(/CH1/gi, 'C');
+          sanitized = sanitized.replace(/CH/gi, 'C');
+          sanitized = sanitized.replace(/OH/gi, 'O');
+          sanitized = sanitized.replace(/\s+/g, '');
+          if (sanitized && sanitized !== inputData) {
+            console.warn('⚠️ Sanitized human-readable formula to SMILES-like string:', inputData, '->', sanitized);
+            inputData = sanitized;
+          }
+        }
+      } catch (eSan) {
+        console.warn('Sanitizer failed, proceeding with original inputData', eSan);
+      }
+      
+      // POST to mol2chemfig API with rendering options
+      console.log('%c🌐 Fetching from mol2chemfig backend...', 'color: #00AAFF; font-weight: bold;');
+      
+      // Build selections array for mol2chemfig API
+      // mol2chemfig uses command-line style flags: -o, -c, -m, -f, -n, -z
+      const selections = [];
+      if (settings.m2cfAromaticCircles) selections.push('-o');  // Aromatic circles
+      if (settings.m2cfShowCarbons) selections.push('-c');       // Show carbon labels
+      if (settings.m2cfShowMethyls) selections.push('-m');       // Show methyl labels
+      if (settings.m2cfFancyBonds) selections.push('-f');        // Fancy bonds
+      if (settings.m2cfAtomNumbers) selections.push('-n');       // Atom numbers
+      if (settings.m2cfCompact) selections.push('-z');           // Compact structure
+      
+      // Log mol2chemfig options being used
+      console.log('%c⚙️ mol2chemfig Rendering Options:', 'color: #FF6B00; font-weight: bold;', {
+        aromaticCircles: settings.m2cfAromaticCircles,
+        showCarbons: settings.m2cfShowCarbons,
+        showMethyls: settings.m2cfShowMethyls,
+        fancyBonds: settings.m2cfFancyBonds,
+        atomNumbers: settings.m2cfAtomNumbers,
+        compact: settings.m2cfCompact,
+        hydrogensMode: settings.m2cfHydrogensMode,
+        selectionsArray: selections
+      });
+      
+      const requestBody = { 
+        textAreaData: inputData,
+        selections: selections,
+        h2: settings.m2cfHydrogensMode || 'keep'
+      };
+      console.log('%c📤 POST Body:', 'color: #9B59B6; font-weight: bold;', requestBody);
+      
+      fetch(`${MOL2CHEMFIG_API}/m2cf/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      })
+        .then(response => {
+          console.log('%c✅ Got response from mol2chemfig backend:', 'color: #00FF00; font-weight: bold;', response);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          console.log('%c📊 Response data:', 'color: #FFAA00; font-weight: bold;', data);
+          
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          // If the server returned a direct svglink use it. If not, fall back to other fields.
+          if (!data.svglink) {
+            // If the server returned chemfig (TeX) code, render a readable fallback SVG showing the chemfig code
+            if (data.chemfig) {
+              try {
+                const chemText = String(data.chemfig).trim();
+                const safeText = chemText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const fallbackSvg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="300" height="160">\n  <rect width="100%" height="100%" fill="#ffffff"/>\n  <text x="10" y="20" font-family="monospace" font-size="12" fill="#333">chemfig fallback:</text>\n  <foreignObject x="10" y="28" width="280" height="120">\n    <pre xmlns="http://www.w3.org/1999/xhtml" style="font-family:monospace; font-size:12px; color:#111; white-space:pre-wrap;">${safeText}</pre>\n  </foreignObject>\n</svg>`;
+                const blob = new Blob([fallbackSvg], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const svgImg = document.createElement('img');
+                svgImg.src = url;
+                svgImg.alt = 'chemfig (fallback)';
+                svgImg.className = 'chemfig-diagram';
+                svgImg.style.cssText = `display: inline-block; max-width: 300px; max-height: 160px; margin: 0 12px 8px 0; vertical-align: middle; cursor: pointer;`;
+                img.parentNode.replaceChild(svgImg, img);
+                svgImg.onload = () => { URL.revokeObjectURL(url); };
+                log.warn('⚠️ mol2chemfig response had no svglink — showing chemfig fallback');
+                activeLoads--;
+                return;
+              } catch (eFallback) {
+                console.warn('⚠️ Failed to render chemfig fallback', eFallback);
+              }
+            }
+
+            // If a PDF link was returned, create a small clickable PDF placeholder
+            if (data.pdflink) {
+              try {
+                const pdfUrl = data.pdflink;
+                const placeholderSvg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="300" height="120">\n  <rect width="100%" height="100%" fill="#f7f7f7" stroke="#ddd"/>\n  <text x="16" y="36" font-family="sans-serif" font-size="16" fill="#333">PDF result available</text>\n  <text x="16" y="64" font-family="sans-serif" font-size="12" fill="#666">Click to open the PDF</text>\n</svg>`;
+                const blob = new Blob([placeholderSvg], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = pdfUrl;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                const svgImg = document.createElement('img');
+                svgImg.src = url;
+                svgImg.alt = 'mol2chemfig PDF result';
+                svgImg.className = 'chemfig-diagram';
+                svgImg.style.cssText = `display: inline-block; max-width: 300px; max-height: 120px; margin: 0 12px 8px 0; vertical-align: middle; cursor: pointer;`;
+                link.appendChild(svgImg);
+                img.parentNode.replaceChild(link, img);
+                svgImg.onload = () => { URL.revokeObjectURL(url); };
+                log.warn('⚠️ mol2chemfig response had no svglink but included a PDF — added link placeholder');
+                activeLoads--;
+                return;
+              } catch (ePdf) {
+                console.warn('⚠️ Failed to render PDF placeholder', ePdf);
+              }
+            }
+
+            // No svglink, no chemfig, no pdflink — throw to be handled by catch below
+            throw new Error('No svglink, chemfig, or pdflink returned by mol2chemfig');
+          }
+
+          // Extract SVG content from response and handle multiple formats:
+          // - data:image/svg+xml;base64,....
+          // - data:image/svg+xml;utf8,<svg...>
+          // - raw SVG text starting with <?xml or <svg
+          let svgContent = data.svglink;
+
+          // If the server returned a data URI, decode it, apply dark mode, then use it
+          if (typeof svgContent === 'string' && svgContent.startsWith('data:image/svg+xml')) {
+            try {
+              // Decode the data URI to get actual SVG content
+              let decodedSvg = svgContent;
+              if (svgContent.includes('base64,')) {
+                const base64Part = svgContent.split('base64,')[1];
+                decodedSvg = atob(base64Part);
+              } else if (svgContent.includes('utf8,')) {
+                const utf8Part = svgContent.split('utf8,')[1];
+                decodedSvg = decodeURIComponent(utf8Part);
+              } else if (svgContent.includes(',')) {
+                const dataPart = svgContent.split(',')[1];
+                decodedSvg = decodeURIComponent(dataPart);
+              }
+              
+              // Detect dark mode and apply color replacements
+              const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+              if (isDarkMode) {
+                decodedSvg = decodedSvg
+                  .replace(/#000000/gi, '#FFFFFF')
+                  .replace(/#000\b/gi, '#FFF')
+                  .replace(/rgb\(0,\s*0,\s*0\)/gi, 'rgb(255, 255, 255)')
+                  .replace(/stroke="black"/gi, 'stroke="white"')
+                  .replace(/fill="black"/gi, 'fill="white"');
+              }
+              
+              // Create Blob URL from modified SVG
+              const blob = new Blob([decodedSvg], { type: 'image/svg+xml;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const svgImg = document.createElement('img');
+              svgImg.src = url;
+              svgImg.alt = 'molecule';
+              svgImg.className = 'chemfig-diagram';
+              
+              // Apply client-side flip transforms for mol2chemfig
+              let transform = '';
+              if (settings.m2cfFlipHorizontal) transform += 'scaleX(-1) ';
+              if (settings.m2cfFlipVertical) transform += 'scaleY(-1) ';
+              
+              svgImg.style.cssText = `
+            display: inline-block;
+            max-width: 350px;
+            max-height: 300px;
+            margin: 0 12px 8px 0;
+            vertical-align: middle;
+            cursor: pointer;
+            ${transform ? `transform: ${transform.trim()};` : ''}
+          `;
+              img.dataset.loaded = 'true';
+              img.parentNode.replaceChild(svgImg, img);
+              svgImg.onload = () => { URL.revokeObjectURL(url); };
+              log.debug(`✅ Used data URI with dark mode applied (${activeLoads} active loads remaining)`);
+              activeLoads--;
+              return;
+            } catch (eDataURI) {
+              console.warn('⚠️ Failed to decode/process data URI, falling through to regular processing', eDataURI);
+              // Fall through to regular processing below
+            }
+          }
+
+          // If the server returned raw SVG text (starts with < or <?xml), apply dark mode then create Blob URL
+          if (typeof svgContent === 'string' && (/^\s*<\?xml|^\s*<svg/i).test(svgContent)) {
+            try {
+              // Detect dark mode and apply color replacements
+              const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+              if (isDarkMode) {
+                svgContent = svgContent
+                  .replace(/#000000/gi, '#FFFFFF')
+                  .replace(/#000\b/gi, '#FFF')
+                  .replace(/rgb\(0,\s*0,\s*0\)/gi, 'rgb(255, 255, 255)')
+                  .replace(/stroke="black"/gi, 'stroke="white"')
+                  .replace(/fill="black"/gi, 'fill="white"');
+              }
+              
+              const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const svgImg = document.createElement('img');
+              svgImg.src = url;
+              svgImg.alt = 'molecule';
+              svgImg.className = 'chemfig-diagram';
+              
+              // Apply client-side flip transforms for mol2chemfig
+              let transform = '';
+              if (settings.m2cfFlipHorizontal) transform += 'scaleX(-1) ';
+              if (settings.m2cfFlipVertical) transform += 'scaleY(-1) ';
+              
+              svgImg.style.cssText = `
+            display: inline-block;
+            max-width: 350px;
+            max-height: 300px;
+            margin: 0 12px 8px 0;
+            vertical-align: middle;
+            cursor: pointer;
+            ${transform ? `transform: ${transform.trim()};` : ''}
+          `;
+              img.dataset.loaded = 'true';
+              img.parentNode.replaceChild(svgImg, img);
+              // Revoke URL after image loads to free memory
+              svgImg.onload = () => { URL.revokeObjectURL(url); };
+              log.debug(`✅ Used Blob URL for raw SVG with dark mode applied (${activeLoads} active loads remaining)`);
+              activeLoads--;
+              return;
+            } catch (errBlob) {
+              console.warn('⚠️ Failed to create Blob for raw SVG, falling back to data URI creation', errBlob);
+            }
+          }
+
+          // If the svglink contains a base64 payload somewhere, attempt to extract and decode it
+          if (typeof svgContent === 'string' && svgContent.includes('base64,')) {
+            let base64Part = svgContent.split('base64,')[1] || '';
+            base64Part = base64Part.replace(/\s+/g, '');
+            try {
+              const decoded = atob(base64Part);
+              svgContent = decoded;
+            } catch (err) {
+              try {
+                const decodedURIComponent = decodeURIComponent(base64Part);
+                svgContent = atob(decodedURIComponent);
+              } catch (err2) {
+                console.warn('⚠️ Failed to decode base64 svglink, will try to use original svglink as src', err2);
+                // fall through — try using original svglink below
+              }
+            }
+          }
+
+          console.log('%c📊 SVG Content (first 100 chars):', 'color: #FFAA00; font-weight: bold;', (typeof svgContent === 'string' ? svgContent.substring(0, 100) : String(svgContent)) + '...');
+          
+          // Detect dark mode
+          const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          
+          // Replace black color references in dark mode
+          if (isDarkMode) {
+            svgContent = svgContent
+              .replace(/#000000/gi, '#FFFFFF')
+              .replace(/#000\b/gi, '#FFF')
+              .replace(/rgb\(0,\s*0,\s*0\)/gi, 'rgb(255, 255, 255)')
+              .replace(/stroke="black"/gi, 'stroke="white"')
+              .replace(/fill="black"/gi, 'fill="white"');
+          }
+          
+          // Create clean SVG image with dark mode support
+          const svgImg = document.createElement('img');
+          svgImg.alt = 'molecule';
+          svgImg.className = 'chemfig-diagram';
+          
+          // Apply client-side flip transforms for mol2chemfig
+          let transform = '';
+          if (settings.m2cfFlipHorizontal) transform += 'scaleX(-1) ';
+          if (settings.m2cfFlipVertical) transform += 'scaleY(-1) ';
+          
+          svgImg.style.cssText = `
+            display: inline-block;
+            max-width: 350px;
+            max-height: 300px;
+            margin: 0 12px 8px 0;
+            vertical-align: middle;
+            cursor: pointer;
+            ${transform ? `transform: ${transform.trim()};` : ''}
+          `;
+
+          // Prefer creating a Blob URL to avoid btoa() Unicode issues
+          try {
+            const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            svgImg.src = url;
+            // Replace original img element with the SVG image
+            img.parentNode.replaceChild(svgImg, img);
+            // Revoke object URL after image loads
+            svgImg.onload = () => { URL.revokeObjectURL(url); };
+          } catch (eBlob) {
+            // Fallback: UTF-8 safe base64 encoding then data URI
+            try {
+              const utf8Base64 = btoa(unescape(encodeURIComponent(svgContent)));
+              svgImg.src = 'data:image/svg+xml;base64,' + utf8Base64;
+              img.parentNode.replaceChild(svgImg, img);
+            } catch (eBtoa) {
+              // Last resort: put raw SVG into data URI (may break in some browsers)
+              svgImg.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svgContent);
+              img.parentNode.replaceChild(svgImg, img);
+            }
+          }
+
+          // Mark as loaded
+          img.dataset.loaded = 'true';
+          
+          console.log('%c✅ mol2chemfig image loaded successfully', 'color: green; font-weight: bold;');
+          
+          activeLoads--;
+        })
+        .catch(error => {
+          console.error('%c❌ Error fetching from mol2chemfig:', 'color: red; font-weight: bold;', error.message);
+          
+          // Fallback: show error message
+          img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2ZmZiIvPjx0ZXh0IHg9IjEwIiB5PSIzMCIgZmlsbD0iI2YwMCIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSIgZm9udC1zaXplPSIxNCI+RXJyb3I6IE1vbDJDaGVtZmlnIExvYWQgRmFpbGVkPC90ZXh0Pjwvc3ZnPg==';
+          img.classList.add('chemfig-fadein');
+          img.classList.remove('chemfig-loading', 'chemfig-molecule-viewer');
+          img.dataset.loaded = 'true';
+          
+          activeLoads--;
+        });
+      
+      log.debug(`✅ Fetching molecule data from mol2chemfig (${activeLoads} active loads remaining)`);
+    } catch (error) {
+      console.error(`%c❌ Error: ${error.message}`, 'color: red; font-weight: bold;');
+      activeLoads--;
+    }
+  }
+  
+  // Helper function to load molecule image based on configured renderer engine
+  function loadMoleculeImage(img) {
+    if (settings.rendererEngine === 'mol2chemfig') {
+      console.log('%c📐 Using MOL2CHEMFIG renderer engine', 'background: #FF6B00; color: #FFF; font-size: 14px; padding: 5px;');
+      loadMol2chemfigImage(img);
+    } else {
+      console.log('%c🧪 Using MOLECULEVIEWER renderer engine', 'background: #0088FF; color: #FFF; font-size: 14px; padding: 5px;');
+      loadMoleculeViewerImage(img);
+    }
+  }
   
   // Helper function to download SVG file
   function downloadSVG(svgContent, filename) {
@@ -858,20 +1413,20 @@ function setupLazyLoading() {
       if (entry.isIntersecting && img.dataset.loaded !== 'true') {
         // Check if this is a MoleculeViewer image
         if (img.classList.contains('chemfig-molecule-viewer')) {
-          console.log('%c🧪 Detected MoleculeViewer image!', 'background: #0088FF; color: #FFF; font-size: 14px; padding: 5px;');
+          console.log('%c🧪 Detected molecule image!', 'background: #0088FF; color: #FFF; font-size: 14px; padding: 5px;');
           if (activeLoads < maxConcurrentLoads) {
-            loadMoleculeViewerImage(img);
+            loadMoleculeImage(img);  // Use renderer-agnostic function
           } else {
             if (typeof requestIdleCallback !== 'undefined') {
               requestIdleCallback(() => {
                 if (activeLoads < maxConcurrentLoads) {
-                  loadMoleculeViewerImage(img);
+                  loadMoleculeImage(img);
                 }
               });
             } else {
               setTimeout(() => {
                 if (activeLoads < maxConcurrentLoads) {
-                  loadMoleculeViewerImage(img);
+                  loadMoleculeImage(img);
                 }
               }, 50);
             }
@@ -1556,67 +2111,72 @@ function wrapChemicalFormulas(text) {
   let result = text;
   let patternMatches = [];
   
-  // Pattern 0A: chem:SMILES: (contains special characters like =, [], (), @, +)
-  // Example: chem:CC(=O)C:, chem:c1ccccc1:, chem:C[C@H](O)C:
-  log.debug('🧪 Applying Pattern 0A: chem:SMILES: → MoleculeViewer');
-  const smilesMatches = result.match(/\bchem:([A-Za-z0-9_\-()=[\]@+#\\]+):/g);
-  if (smilesMatches) {
-    log.debug(`  Found ${smilesMatches.length} chem:SMILES: patterns`);
+  // Pattern 0a: chem:\chemfig{...} (chemfig with chem: prefix)
+  // Example: chem:\chemfig{CH_3-CH_2-OH}, chem:\chemfig{C-C-C}
+  log.debug('🧪 Applying Pattern 0a: chem:\\chemfig{...} → mol2chemfig conversion');
+  const chemChemfigMatches = result.match(/\bchem:\\chemfig\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}(?::(\d+))?/g);
+  if (chemChemfigMatches) {
+    log.debug(`  Found ${chemChemfigMatches.length} chem:\\chemfig{} patterns`);
     
-    result = result.replace(/\bchem:([A-Za-z0-9_\-()=[\]@+#\\]+):/g, (match, smiles) => {
-      // Only process if it looks like SMILES (has special structural characters)
-      if (!/[=\[\]()@+#\\]/.test(smiles)) {
-        return match; // Not SMILES, skip this match
-      }
-      
-      log.debug(`  Converting SMILES: ${smiles}`);
+    result = result.replace(/\bchem:\\chemfig\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}(?::(\d+))?/g, (match, content, rotationAngle) => {
+      log.debug(`  Converting chemfig: ${match}`);
       window.chemRendererPerformance.recordStructure();
       
-      // Send SMILES to MoleculeViewer
-      const moleculeViewerData = {
-        smiles: smiles,
-        type: 'smiles',  // SMILES format
-        options: {
-          width: 300,
-          height: 200,
-          aromaticCircles: settings.aromaticCircles,
-          fancyBonds: settings.fancyBonds,
-          showCarbons: settings.showCarbons,
-          showMethyls: settings.showMethyls,
-          atomNumbers: settings.atomNumbers,
-          hydrogensMode: settings.hydrogensMode
-        },
-        isMoleculeViewer: true
-      };
+      const rotation = rotationAngle ? parseInt(rotationAngle) : 0;
+      const isDarkMode = detectDarkMode();
       
-      const encoded = btoa(JSON.stringify(moleculeViewerData));
-      const converted = `<img src="" alt="chem" class="chemfig-diagram chemfig-molecule-viewer" data-molecule-viewer="${encoded}" data-loaded="false" data-rotation="0" style="display: inline-block; max-width: 300px; max-height: 200px; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: rgba(255, 255, 255, 0.05);">`;
+      // Use mol2chemfig conversion via buildChemfigImageUrl
+      const latex = '$\\chemfig{' + content + '}$';
+      const imageUrl = buildChemfigImageUrl(latex, isDarkMode, content);
       
-      log.debug(`  📤 Sending SMILES to MoleculeViewer: ${smiles}`);
+      const styleAttr = `style="transform: rotate(${rotation}deg); margin: 0 12px 8px 0; vertical-align: middle; width: 350px; height: 300px; object-fit: contain;"`;
+      
+      let converted;
+      if (settings.devMode) {
+        const devStyle = `style="background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; padding: 8px 12px; font-family: monospace; font-size: 12px; color: #333; margin: 0 12px 8px 0; display: inline-block; white-space: pre-wrap; word-break: break-all; max-width: 500px;"`;
+        converted = `<span class="chemfig-dev-mode" ${devStyle}>chem:\\chemfig{${content}}</span>`;
+      } else {
+        // Store both the raw chemfig and a MoleculeViewer fallback in the dataset.
+        // This allows mol2chemfig to receive the original chemfig text while
+        // MoleculeViewer can use the SMILES fallback when needed.
+        const moleculeViewerPayload = {
+          type: 'chemfig',
+          chemfig: content,
+          latex: latex,
+          fallback: imageUrl // may contain converted SMILES or an error
+        };
+        const moleculeViewerData = btoa(JSON.stringify(moleculeViewerPayload));
+        converted = `<img src="" alt="chemfig" class="chemfig-diagram chemfig-molecule-viewer" data-molecule-viewer="${moleculeViewerData}" data-loaded="false" data-rotation="${rotation}" ${styleAttr}>`;
+      }
+      
+      log.debug(`  📤 Sending chemfig to mol2chemfig: ${content.substring(0, 50)}...`);
       return converted;
     });
   }
   
-  // Pattern 0B: chem:nomenclature: (plain text, no special characters)
-  // Example: chem:acetone:, chem:benzene:, chem:aspirin:
-  log.debug('🧪 Applying Pattern 0B: chem:nomenclature: → MoleculeViewer');
-  const nomenclatureMatches = result.match(/\bchem:([A-Za-z][A-Za-z0-9\-_]*):/g);
-  if (nomenclatureMatches) {
-    log.debug(`  Found ${nomenclatureMatches.length} chem:nomenclature: patterns`);
+  // Pattern 0b: chem:text: (double colon format - captures everything in between)
+  // Example: chem:CCO:, chem:benzene:, chem:1-chloro-benzene:, chem:CC(=O)C:
+  log.debug('🧪 Applying Pattern 0b: chem:text: → MoleculeViewer');
+  const chemMatches = result.match(/\bchem:([^:]+):/g);
+  if (chemMatches) {
+    log.debug(`  Found ${chemMatches.length} chem:text: patterns`);
     
-    result = result.replace(/\bchem:([A-Za-z][A-Za-z0-9\-_]*):/g, (match, nomenclature) => {
-      // Skip if it looks like SMILES
-      if (/[=\[\]()@+#\\]/.test(nomenclature)) {
-        return match; // Already processed as SMILES
+    result = result.replace(/\bchem:([^:]+):/g, (match, content) => {
+      const content_trimmed = content.trim();
+      if (!content_trimmed) {
+        return match; // Empty content, skip
       }
       
-      log.debug(`  Converting nomenclature: ${nomenclature}`);
+      log.debug(`  Converting molecule: ${content_trimmed}`);
       window.chemRendererPerformance.recordStructure();
       
-      // Send nomenclature to MoleculeViewer for name→SMILES conversion
+      // Determine if it's SMILES or nomenclature by checking for SMILES-specific characters
+      const isSMILES = /[=\[\]()@+#\\]/.test(content_trimmed);
+      
+      // Send to MoleculeViewer
       const moleculeViewerData = {
-        nomenclature: nomenclature,
-        type: 'nomenclature',  // Nomenclature/name format
+        ...(isSMILES ? { smiles: content_trimmed } : { nomenclature: content_trimmed }),
+        type: isSMILES ? 'smiles' : 'nomenclature',
         options: {
           width: 300,
           height: 200,
@@ -1633,7 +2193,7 @@ function wrapChemicalFormulas(text) {
       const encoded = btoa(JSON.stringify(moleculeViewerData));
       const converted = `<img src="" alt="chem" class="chemfig-diagram chemfig-molecule-viewer" data-molecule-viewer="${encoded}" data-loaded="false" data-rotation="0" style="display: inline-block; max-width: 300px; max-height: 200px; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: rgba(255, 255, 255, 0.05);">`;
       
-      log.debug(`  📤 Sending nomenclature to MoleculeViewer: ${nomenclature}`);
+      log.debug(`  📤 Sending ${isSMILES ? 'SMILES' : 'nomenclature'} to MoleculeViewer: ${content_trimmed}`);
       return converted;
     });
   }
@@ -1672,11 +2232,10 @@ function wrapChemicalFormulas(text) {
     }
   }
   
-  // Pattern 3: \chemfig{C=C}:30 → DISABLED (use chem: notation instead)
-  // Chemfig is a LaTeX drawing language, not suitable for direct chemical structure rendering
-  // Use chem:SMILES or chem:nomenclature instead (like CodeCogs)
-  if (false && settings.renderChemfig) {  // ❌ DISABLED - use chem: notation instead
-    log.debug('🧪 Pattern 3 DISABLED - use chem: notation instead');
+  // Pattern 3: \chemfig{C=C}:30 → Enable mol2chemfig rendering
+  // Chemfig is a LaTeX drawing language that can be converted via mol2chemfig
+  if (settings.renderChemfig) {
+    log.debug('🧪 Applying Pattern 3: \\chemfig{...} → mol2chemfig conversion');
     // Updated regex - more robust for nested structures like CH(NH2)
     // Uses balanced brace matching
     const matches3 = [];
@@ -1687,7 +2246,7 @@ function wrapChemicalFormulas(text) {
     }
     
     if (matches3.length > 0) {
-      log.debug(`  Found ${matches3.length} \\chemfig{} patterns (IGNORED)`);
+      log.debug(`  Found ${matches3.length} \\chemfig{} patterns`);
       patternMatches.push(...matches3);
       
       result = result.replace(/\\chemfig\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}(?::(\d+))?/g, (match, content, rotationAngle) => {
@@ -1729,7 +2288,7 @@ function wrapChemicalFormulas(text) {
         
         // Build style attribute with rotation and consistent margins
         // Add width/height to prevent layout shift
-        const styleAttr = `style="transform: rotate(${rotation}deg); margin: 0 12px 8px 0; vertical-align: middle; width: 300px; height: 200px; object-fit: contain;"`;
+        const styleAttr = `style="transform: rotate(${rotation}deg); margin: 0 12px 8px 0; vertical-align: middle; width: 350px; height: 300px; object-fit: contain;"`;
         
         // Check if dev mode is enabled
         let converted;
@@ -1755,77 +2314,25 @@ function wrapChemicalFormulas(text) {
         return converted;
       });
     }
-    
-    // Pattern 4: chemfig{C=C}:30 (without backslash) - DISABLED (use chem: notation instead)
-    log.debug('🧪 Pattern 4 DISABLED - use chem: notation instead');
-    const matches4 = [];
-    const regex4 = /\bchemfig\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}(?::(\d+))?/g;
-    let match4;
-    while ((match4 = regex4.exec(text)) !== null) {
-      matches4.push(match4[0]);
-    }
-    
-    if (matches4.length > 0) {
-      log.debug(`  Found ${matches4.length} chemfig{} patterns (IGNORED)`);
-      patternMatches.push(...matches4);
-      
-      result = result.replace(/\bchemfig\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}(?::(\d+))?/g, (match, content, rotationAngle) => {
-        log.debug(`  Converting chemfig: ${match}`);
-        window.chemRendererPerformance.recordStructure();
-        
-        // Parse rotation angle (default 0)
-        const rotation = rotationAngle ? parseInt(rotationAngle) : 0;
-        
-        // REMOVE UNNECESSARY HYDROGENS: Clean up explicit H atoms
-        let cleanedContent = removeUnnecessaryHydrogens(content);
-        log.debug(`  After H removal: ${cleanedContent}`);
-        
-        // ADD ZIGZAG ANGLES: Simple chains without angles get automatic zigzag
-        let zigzagContent = addZigzagAngles(cleanedContent);
-        log.debug(`  After zigzag: ${zigzagContent}`);
-        
-        // SIMPLIFY CARBONS: Remove explicit CH, CH2, CH3 labels if option enabled
-        let simplifiedContent = simplifyChemfigCarbons(zigzagContent);
-        log.debug(`  Original: ${content}`);
-        if (simplifiedContent !== zigzagContent) {
-          log.debug(`  Simplified: ${simplifiedContent} (carbons as sticks)`);
-        }
-        
-        // Detect dark mode
-        const isDarkMode = detectDarkMode();
-        
-        // Build image URL based on selected rendering engine
-        // Pass the original content for chemfig to SMILES conversion
-        const latex = '$\\chemfig{' + simplifiedContent + '}$';
-        const imageUrl = buildChemfigImageUrl(latex, isDarkMode, content);
-        
-        // Build style attribute with rotation and consistent margins
-        const styleAttr = `style="transform: rotate(${rotation}deg); margin: 0 12px 8px 0; vertical-align: middle;"`;
-        
-        // Check if dev mode is enabled
-        let converted;
-        if (settings.devMode) {
-          // Developer mode: show raw chemfig text instead of rendering
-          const devStyle = `style="background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; padding: 8px 12px; font-family: monospace; font-size: 12px; color: #333; margin: 0 12px 8px 0; display: inline-block; white-space: pre-wrap; word-break: break-all; max-width: 500px;"`;
-          converted = `<span class="chemfig-dev-mode" ${devStyle}>chemfig{${content}}</span>`;
-        } else {
-          // ✅ ALWAYS use MoleculeViewer rendering
-          const moleculeViewerData = btoa(JSON.stringify(imageUrl));
-          converted = `<img src="" alt="chemfig" class="chemfig-diagram chemfig-molecule-viewer" data-molecule-viewer="${moleculeViewerData}" data-loaded="false" data-rotation="${rotation}" ${styleAttr}>`;
-        }
-        
-        log.debug(`  LaTeX: ${latex}`);
-        log.debug(`  Rotation: ${rotation}°`);
-        log.debug(`  Dark mode: ${isDarkMode}`);
-        if (settings.devMode) {
-          log.debug(`  🔧 DEV MODE: Showing raw text instead of rendering`);
-        }
-        const urlDebug = typeof imageUrl === 'object' ? `MoleculeViewer: ${imageUrl.smiles}` : String(imageUrl).substring(0, 100);
-        log.debug(`  URL: ${urlDebug}...`);
-        return converted;
-      });
-    }
   }
+  
+  // Pattern 4: chemfig{C=C}:30 (without backslash) - DISABLED (use chem: notation instead)
+  // This pattern is now covered by Pattern 0a: chem:\chemfig{...}
+  // Keeping this commented out to avoid duplicate processing
+  /*
+  log.debug('🧪 Pattern 4 DISABLED - use chem: notation instead');
+  const matches4 = [];
+  const regex4 = /\bchemfig\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}(?::(\d+))?/g;
+  let match4;
+  while ((match4 = regex4.exec(text)) !== null) {
+    matches4.push(match4[0]);
+  }
+  
+  if (matches4.length > 0) {
+    log.debug(`  Found ${matches4.length} chemfig{} patterns (IGNORED)`);
+    patternMatches.push(...matches4);
+  }
+  */
   
   // Pattern 5: Handle reaction arrows with conditions: →[Na/ether]
   // This makes reaction arrows more visible/formatted

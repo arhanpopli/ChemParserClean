@@ -1,0 +1,856 @@
+<!-- Mol2ChemFig Tab Content - Embedded in index.html -->
+<!-- This is the complete mol2chemfig interface designed to work as a tab in MoleculeViewer -->
+
+<style>
+    /* Mol2ChemFig specific styles */
+    .m2cf-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .m2cf-input-panel {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .m2cf-input-panel h3 {
+        color: #667eea;
+        margin-bottom: 20px;
+        font-size: 1.3em;
+    }
+
+    .m2cf-form-group {
+        margin-bottom: 15px;
+    }
+
+    .m2cf-form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-weight: 500;
+        font-size: 0.95em;
+    }
+
+    .m2cf-form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.95em;
+        min-height: 100px;
+        transition: border-color 0.3s;
+    }
+
+    .m2cf-form-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
+    }
+
+    .m2cf-options-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f9f9f9;
+        border-radius: 8px;
+    }
+
+    .m2cf-option-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        padding: 10px;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+
+    .m2cf-option-label:hover {
+        background: #f0f0f0;
+    }
+
+    .m2cf-option-label input[type="checkbox"] {
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+        margin: 0;
+    }
+
+    .m2cf-option-label span {
+        font-size: 0.95em;
+        color: #333;
+    }
+
+    .m2cf-button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .m2cf-button {
+        flex: 1;
+        padding: 12px 25px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .m2cf-button-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .m2cf-button-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .m2cf-button-secondary {
+        background: #f0f0f0;
+        color: #333;
+    }
+
+    .m2cf-button-secondary:hover {
+        background: #e0e0e0;
+    }
+
+    .m2cf-viewer-panel {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .m2cf-svg-container {
+        background: #f5f5f5;
+        border-radius: 8px;
+        padding: 20px;
+        min-height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        border: 2px dashed #ddd;
+        position: relative;
+    }
+
+    .m2cf-svg-container svg {
+        max-width: 100%;
+        max-height: 100%;
+    }
+
+    .m2cf-layer-stack {
+        position: relative;
+        width: 100%;
+        display: inline-block;
+    }
+
+    .m2cf-layer-svg {
+        position: absolute;
+        display: none;
+        width: 100%;
+        height: 100%;
+    }
+
+    .m2cf-layer-svg.active {
+        display: block;
+        position: static;
+    }
+
+    .m2cf-status-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 12px;
+        z-index: 10;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .m2cf-status-badge.base {
+        background: #007bff;
+        color: white;
+    }
+
+    .m2cf-status-badge.option {
+        background: #28a745;
+        color: white;
+    }
+
+    .m2cf-status-badge.multiple {
+        background: #ff9800;
+        color: white;
+    }
+
+    .m2cf-info-section {
+        background: #f9f9f9;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+    }
+
+    .m2cf-info-section h4 {
+        color: #667eea;
+        margin-bottom: 12px;
+        font-size: 1em;
+    }
+
+    .m2cf-info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .m2cf-info-item {
+        background: white;
+        padding: 10px;
+        border-radius: 6px;
+        border-left: 4px solid #667eea;
+    }
+
+    .m2cf-info-label {
+        font-size: 0.85em;
+        color: #999;
+        margin-bottom: 4px;
+    }
+
+    .m2cf-info-value {
+        font-size: 1.1em;
+        color: #333;
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+    }
+
+    .m2cf-error {
+        background: #fee;
+        border: 2px solid #fcc;
+        color: #c33;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+    }
+
+    .m2cf-success {
+        background: #efe;
+        border: 2px solid #cfc;
+        color: #3c3;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+    }
+
+    .m2cf-loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 10px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .m2cf-dropdown {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 0.95em;
+        background: white;
+        cursor: pointer;
+        transition: border-color 0.3s;
+    }
+
+    .m2cf-dropdown:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
+    }
+
+    @media (max-width: 768px) {
+        .m2cf-options-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .m2cf-info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="m2cf-container">
+    <!-- Input Panel -->
+    <div class="m2cf-input-panel">
+        <h3>🧬 Mol2ChemFig Generator</h3>
+        
+        <!-- Input Mode Toggle -->
+        <div class="m2cf-form-group">
+            <label style="color: #333; font-weight: 500; margin-bottom: 12px; display: block;">Input Mode:</label>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <label class="m2cf-option-label" style="flex: 1; justify-content: center; padding: 12px; background: #f0f0f0; border-radius: 6px;">
+                    <input type="radio" name="m2cf-input-mode" value="smiles" checked onchange="toggleM2CFInputMode()">
+                    <span>🧪 SMILES Input</span>
+                </label>
+                <label class="m2cf-option-label" style="flex: 1; justify-content: center; padding: 12px; background: #f0f0f0; border-radius: 6px;">
+                    <input type="radio" name="m2cf-input-mode" value="chemfig" onchange="toggleM2CFInputMode()">
+                    <span>📝 ChemFig Input</span>
+                </label>
+            </div>
+        </div>
+        
+        <!-- SMILES Input -->
+        <div class="m2cf-form-group" id="m2cf-smiles-section">
+            <label for="m2cf-smiles-input">Enter SMILES or Chemical Structure:</label>
+            <textarea id="m2cf-smiles-input" placeholder="e.g., C1=CC=CC=C1 (benzene)&#10;e.g., CCO (ethanol)&#10;e.g., c1ccc2c(c1)ccc3c2cccc3 (anthracene)"></textarea>
+        </div>
+
+        <!-- ChemFig Input (initially hidden) -->
+        <div class="m2cf-form-group" id="m2cf-chemfig-section" style="display: none;">
+            <label for="m2cf-chemfig-input">Enter ChemFig Code:</label>
+            <textarea id="m2cf-chemfig-input" placeholder="Examples (with or without \chemfig{...} wrapper):&#10;&#10;Benzene: *6(=-=-=-)&#10;Ethanol: H-C(-[2]H)(-[6]H)-C(-[2]H)(-[6]H)-OH&#10;Cyclohexane: *6(------)&#10;Acetone: C(-[2]H)(-[6]H)-C(=[2]O)-C(-[2]H)(-[6]H)(-[6]H)&#10;Naphthalene: **6(---(**6(------))--)"></textarea>
+            <div style="margin-top: 8px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                <small style="color: #856404;">
+                    💡 <strong>Tip:</strong> Enter raw ChemFig code (with or without \chemfig{...} wrapper). This will render directly without SMILES conversion.
+                </small>
+            </div>
+        </div>
+
+        <div id="m2cf-options-section">
+            <label style="color: #333; font-weight: 500; margin-bottom: 12px; display: block;">Rendering Options:</label>
+            <div class="m2cf-options-grid">
+                <label class="m2cf-option-label">
+                    <input type="checkbox" id="m2cf-aromatic" checked>
+                    <span>🔵 Aromatic Circles (-o)</span>
+                </label>
+                <label class="m2cf-option-label">
+                    <input type="checkbox" id="m2cf-carbon">
+                    <span>🅲 Show Carbons (-c)</span>
+                </label>
+                <label class="m2cf-option-label">
+                    <input type="checkbox" id="m2cf-methyl">
+                    <span>🅼 Show Methyls (-m)</span>
+                </label>
+                <label class="m2cf-option-label">
+                    <input type="checkbox" id="m2cf-numbers">
+                    <span>🔢 Atom Numbers (-n)</span>
+                </label>
+                <label class="m2cf-option-label">
+                    <input type="checkbox" id="m2cf-fancy" checked>
+                    <span>✨ Fancy Bonds (-f)</span>
+                </label>
+                <label class="m2cf-option-label">
+                    <input type="checkbox" id="m2cf-compact">
+                    <span>📦 Compact View (-z)</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="m2cf-button-group">
+            <button class="m2cf-button m2cf-button-primary" onclick="generateM2CF()">
+                🎨 Generate SVG
+            </button>
+            <button class="m2cf-button m2cf-button-secondary" onclick="loadM2CFExample('c1ccccc1')" id="m2cf-example-btn">
+                📚 Example: Benzene
+            </button>
+        </div>
+    </div>
+
+    <!-- Viewer Panel -->
+    <div class="m2cf-viewer-panel">
+        <h3>Molecule Rendering</h3>
+        <div id="m2cf-message-container"></div>
+        <div id="m2cf-svg-container" class="m2cf-svg-container">
+            <p style="color: #ccc; text-align: center;">Enter a SMILES and click "Generate SVG"</p>
+        </div>
+        <div id="m2cf-info-container"></div>
+    </div>
+</div>
+
+<script>
+    // ========================================
+    // MOL2CHEMFIG TAB JAVASCRIPT
+    // ========================================
+    
+    // API configuration - use the same host as MoleculeViewer
+    const M2CF_API_BASE = window.location.origin;
+    const M2CF_BACKEND = 'http://localhost:8000';
+
+    // Store current molecule data for layer management
+    let currentM2CFMolecule = {
+        smiles: null,
+        layers: {},
+        chemfig: null
+    };
+
+    function showM2CFMessage(text, type = 'info') {
+        const container = document.getElementById('m2cf-message-container');
+        container.innerHTML = `<div class="m2cf-${type}">${text}</div>`;
+        setTimeout(() => {
+            container.innerHTML = '';
+        }, 5000);
+    }
+
+    function showM2CFLoading(show = true) {
+        if (show) {
+            document.getElementById('m2cf-svg-container').innerHTML = '<div class="m2cf-loading"></div><span>Generating...</span>';
+        }
+    }
+
+    function loadM2CFExample(smiles) {
+        document.getElementById('m2cf-smiles-input').value = smiles;
+        // Switch to SMILES mode
+        document.querySelector('input[name="m2cf-input-mode"][value="smiles"]').checked = true;
+        toggleM2CFInputMode();
+        generateM2CF();
+    }
+
+    function toggleM2CFInputMode() {
+        const mode = document.querySelector('input[name="m2cf-input-mode"]:checked').value;
+        const smilesSection = document.getElementById('m2cf-smiles-section');
+        const chemfigSection = document.getElementById('m2cf-chemfig-section');
+        const optionsSection = document.getElementById('m2cf-options-section');
+        const exampleBtn = document.getElementById('m2cf-example-btn');
+        
+        if (mode === 'smiles') {
+            smilesSection.style.display = 'block';
+            chemfigSection.style.display = 'none';
+            optionsSection.style.display = 'block';
+            exampleBtn.style.display = 'block';
+        } else {
+            smilesSection.style.display = 'none';
+            chemfigSection.style.display = 'block';
+            optionsSection.style.display = 'none';
+            exampleBtn.style.display = 'none';
+        }
+    }
+
+    function getM2CFOptions() {
+        const options = [];
+        if (document.getElementById('m2cf-aromatic').checked) options.push('-o');
+        if (document.getElementById('m2cf-carbon').checked) options.push('-c');
+        if (document.getElementById('m2cf-methyl').checked) options.push('-m');
+        if (document.getElementById('m2cf-numbers').checked) options.push('-n');
+        if (document.getElementById('m2cf-fancy').checked) options.push('-f');
+        if (document.getElementById('m2cf-compact').checked) options.push('-z');
+        return options;
+    }
+
+    async function generateM2CF() {
+        const mode = document.querySelector('input[name="m2cf-input-mode"]:checked').value;
+        
+        if (mode === 'smiles') {
+            await generateM2CFFromSMILES();
+        } else {
+            await generateM2CFFromChemfig();
+        }
+    }
+
+    async function generateM2CFFromSMILES() {
+        const smiles = document.getElementById('m2cf-smiles-input').value.trim();
+        const options = getM2CFOptions();
+
+        if (!smiles) {
+            showM2CFMessage('Please enter a SMILES string', 'error');
+            return;
+        }
+
+        showM2CFLoading(true);
+
+        try {
+            // Step 1: Generate SVG from mol2chemfig backend
+            const response = await fetch(`${M2CF_BACKEND}/m2cf/apply`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    chem_data: smiles,
+                    chem_format: 'smiles',
+                    selections: options,
+                    angle: 0,
+                    indentation: 4,
+                    h2: 'keep'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Backend error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.error) {
+                showM2CFMessage(`Error: ${data.error}`, 'error');
+                document.getElementById('m2cf-svg-container').innerHTML = '';
+                return;
+            }
+
+            // Store molecule data
+            currentM2CFMolecule.smiles = smiles;
+            currentM2CFMolecule.chemfig = data.chemfig;
+            currentM2CFMolecule.options = options;
+
+            // Step 2: Generate SVG from chemfig code
+            const svgResponse = await fetch(`${M2CF_BACKEND}/m2cf/gensingle`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    chemfig_code: data.chemfig,
+                    format: 'svg'
+                })
+            });
+
+            if (!svgResponse.ok) {
+                throw new Error(`SVG generation error: ${svgResponse.statusText}`);
+            }
+
+            const svgData = await svgResponse.json();
+
+            if (svgData.error) {
+                showM2CFMessage(`Error generating SVG: ${svgData.error}`, 'error');
+                document.getElementById('m2cf-svg-container').innerHTML = '';
+                return;
+            }
+
+            // Display the SVG
+            displayM2CFSVG(svgData.svg, data.chemfig);
+
+            showM2CFMessage('✅ SVG generated successfully from SMILES!', 'success');
+
+        } catch (error) {
+            showM2CFMessage(`Error: ${error.message}`, 'error');
+            document.getElementById('m2cf-svg-container').innerHTML = '';
+            console.error('M2CF Error:', error);
+        }
+    }
+
+    async function generateM2CFFromChemfig() {
+        let chemfigCode = document.getElementById('m2cf-chemfig-input').value.trim();
+
+        if (!chemfigCode) {
+            showM2CFMessage('Please enter ChemFig code', 'error');
+            return;
+        }
+
+        // Remove \chemfig{...} wrapper if present
+        if (chemfigCode.includes('\\chemfig{')) {
+            chemfigCode = chemfigCode.replace(/\\chemfig\{/, '').replace(/\}$/, '');
+        }
+
+        showM2CFLoading(true);
+
+        try {
+            // Use /m2cf/apply endpoint to generate SVG from ChemFig (same as SMILES workflow)
+            const svgResponse = await fetch(`${M2CF_BACKEND}/m2cf/apply`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    chem_data: chemfigCode,
+                    chem_format: 'chemfig',
+                    selections: [],
+                    angle: 0,
+                    indentation: 4,
+                    h2: 'keep'
+                })
+            });
+
+            if (!svgResponse.ok) {
+                throw new Error(`SVG generation error: ${svgResponse.statusText}`);
+            }
+
+            const svgData = await svgResponse.json();
+
+            if (svgData.error) {
+                showM2CFMessage(`Error generating SVG: ${svgData.error}. Make sure your ChemFig syntax is valid.`, 'error');
+                document.getElementById('m2cf-svg-container').innerHTML = '';
+                return;
+            }
+
+            // Store molecule data
+            currentM2CFMolecule.chemfig = svgData.chemfig || chemfigCode;
+            currentM2CFMolecule.smiles = null;
+
+            // Display the SVG (svgData.svglink contains the SVG XML content)
+            if (svgData.svglink && svgData.svglink.trim().startsWith('<')) {
+                displayM2CFSVG(svgData.svglink, svgData.chemfig || chemfigCode);
+                showM2CFMessage('✅ ChemFig rendered successfully to SVG!', 'success');
+            } else if (svgData.pdflink && svgData.pdflink.startsWith('data:')) {
+                // Fallback to PDF if SVG not available
+                const svgContainer = document.getElementById('m2cf-svg-container');
+                let containerHTML = `<div class="m2cf-layer-stack" style="background: white; padding: 20px; border-radius: 8px; text-align: center;">`;
+                containerHTML += `<embed src="${svgData.pdflink}" type="application/pdf" width="100%" height="600px" style="border: 1px solid #ddd; border-radius: 4px;" />`;
+                containerHTML += `</div>`;
+                containerHTML += `<div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border: 2px solid #667eea; border-radius: 8px; text-align: center;">`;
+                containerHTML += `<a href="${svgData.pdflink}" download="molecule_${Date.now()}.pdf" class="m2cf-button m2cf-button-primary" style="margin-bottom: 10px;">⬇️ Download PDF</a>`;
+                containerHTML += `<small style="display: block; color: #666;">💾 Downloads as .pdf file for use in LaTeX or other applications</small>`;
+                containerHTML += `</div>`;
+                svgContainer.innerHTML = containerHTML;
+                
+                showM2CFMessage('✅ ChemFig rendered to PDF (SVG not available)!', 'success');
+            } else {
+                showM2CFMessage('No PDF data received from backend', 'error');
+            }
+
+        } catch (error) {
+            showM2CFMessage(`Error: ${error.message}`, 'error');
+            document.getElementById('m2cf-svg-container').innerHTML = '';
+            console.error('M2CF Error:', error);
+        }
+    }
+
+    function displayM2CFSVG(svgContent, chemfig) {
+        let containerHTML = `<div class="m2cf-layer-stack">`;
+        containerHTML += svgContent;
+        containerHTML += `</div>`;
+        containerHTML += `<div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border: 2px solid #667eea; border-radius: 8px; text-align: center;">`;
+        containerHTML += `<button class="m2cf-button m2cf-button-primary" onclick="downloadM2CFSVG('${btoa(svgContent)}', 'molecule_${Date.now()}.svg')" style="margin-bottom: 10px;">⬇️ Download SVG</button>`;
+        containerHTML += `<small style="display: block; color: #666;">💾 Downloads as .svg file for use in LaTeX or other applications</small>`;
+        containerHTML += `</div>`;
+
+        document.getElementById('m2cf-svg-container').innerHTML = containerHTML;
+
+        // Display chemfig code info
+        displayM2CFInfo(chemfig);
+    }
+
+    async function generateM2CF_OLD() {
+        const smiles = document.getElementById('m2cf-smiles-input').value.trim();
+        const options = getM2CFOptions();
+
+        if (!smiles) {
+            showM2CFMessage('Please enter a SMILES string', 'error');
+            return;
+        }
+
+        showM2CFLoading(true);
+
+        try {
+            // Step 1: Generate SVG from mol2chemfig backend
+            const response = await fetch(`${M2CF_BACKEND}/m2cf/apply`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    chem_data: smiles,
+                    chem_format: 'smiles',
+                    selections: options,
+                    angle: 0,
+                    indentation: 4,
+                    h2: 'keep'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Backend error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.error) {
+                showM2CFMessage(`Error: ${data.error}`, 'error');
+                document.getElementById('m2cf-svg-container').innerHTML = '';
+                return;
+            }
+
+            // Store molecule data
+            currentM2CFMolecule.smiles = smiles;
+            currentM2CFMolecule.chemfig = data.chemfig;
+            currentM2CFMolecule.options = options;
+
+            // Step 2: Generate SVG from chemfig code
+            const svgResponse = await fetch(`${M2CF_BACKEND}/m2cf/gensingle`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    chemfig_code: data.chemfig,
+                    format: 'svg'
+                })
+            });
+
+            if (!svgResponse.ok) {
+                throw new Error(`SVG generation error: ${svgResponse.statusText}`);
+            }
+
+            const svgData = await svgResponse.json();
+
+            if (svgData.error) {
+                showM2CFMessage(`Error generating SVG: ${svgData.error}`, 'error');
+                document.getElementById('m2cf-svg-container').innerHTML = '';
+                return;
+            }
+
+            // Display the SVG
+            let containerHTML = `<div class="m2cf-layer-stack">`;
+            containerHTML += svgData.svg;
+            containerHTML += `</div>`;
+            containerHTML += `<div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border: 2px solid #667eea; border-radius: 8px; text-align: center;">`;
+            containerHTML += `<button class="m2cf-button m2cf-button-primary" onclick="downloadM2CFSVG('${btoa(svgData.svg)}', 'molecule_${Date.now()}.svg')" style="margin-bottom: 10px;">⬇️ Download SVG</button>`;
+            containerHTML += `<small style="display: block; color: #666;">💾 Downloads as .svg file for use in LaTeX or other applications</small>`;
+            containerHTML += `</div>`;
+
+            document.getElementById('m2cf-svg-container').innerHTML = containerHTML;
+
+            // Display chemfig code info
+            displayM2CFInfo(data.chemfig);
+
+            showM2CFMessage('✅ SVG generated successfully!', 'success');
+
+        } catch (error) {
+            showM2CFMessage(`Error: ${error.message}`, 'error');
+            document.getElementById('m2cf-svg-container').innerHTML = '';
+            console.error('M2CF Error:', error);
+        }
+    }
+
+    function displayM2CFInfo(chemfig) {
+        const container = document.getElementById('m2cf-info-container');
+        
+        // Create HTML structure
+        container.innerHTML = `
+            <div class="m2cf-info-section">
+                <h4>📝 ChemFig Output (Editable)</h4>
+                <div style="background: white; border-radius: 6px; border: 2px solid #667eea; padding: 12px;">
+                    <textarea id="m2cf-chemfig-output" 
+                              style="width: 100%; min-height: 120px; padding: 10px; 
+                                     font-family: 'Courier New', monospace; font-size: 0.9em; 
+                                     border: 1px solid #e0e0e0; border-radius: 4px; 
+                                     resize: vertical; background: #f9f9f9; box-sizing: border-box;"
+                              placeholder="ChemFig code will appear here..."></textarea>
+                    <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
+                        <button class="m2cf-button m2cf-button-primary" 
+                                onclick="rerenderFromChemfigOutput()" 
+                                style="flex: 0 0 auto; padding: 10px 20px;">
+                            🔄 Re-render from Edited Code
+                        </button>
+                        <button class="m2cf-button m2cf-button-secondary" 
+                                onclick="copyChemfigOutput()" 
+                                style="flex: 0 0 auto; padding: 10px 20px;">
+                            📋 Copy Code
+                        </button>
+                        <small style="color: #666; flex: 1;">
+                            💡 Edit the ChemFig code above and click "Re-render" to see changes
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Set the textarea value AFTER DOM insertion
+        setTimeout(() => {
+            const textarea = document.getElementById('m2cf-chemfig-output');
+            if (textarea) {
+                textarea.value = chemfig;
+                textarea.focus();
+            }
+        }, 0);
+    }
+
+    async function rerenderFromChemfigOutput() {
+        const chemfigCode = document.getElementById('m2cf-chemfig-output').value.trim();
+        
+        if (!chemfigCode) {
+            showM2CFMessage('ChemFig output is empty!', 'error');
+            return;
+        }
+
+        showM2CFLoading(true);
+        
+        try {
+            // Generate SVG from the edited chemfig code
+            const svgResponse = await fetch(`${M2CF_BACKEND}/m2cf/gensingle`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    chemfig_code: chemfigCode,
+                    format: 'svg'
+                })
+            });
+
+            if (!svgResponse.ok) {
+                throw new Error(`SVG generation error: ${svgResponse.statusText}`);
+            }
+
+            const svgData = await svgResponse.json();
+
+            if (svgData.error) {
+                showM2CFMessage(`Error: ${svgData.error}`, 'error');
+                return;
+            }
+
+            // Update the display with new SVG
+            displayM2CFSVG(svgData.svg, chemfigCode);
+            
+            // Update stored chemfig
+            currentM2CFMolecule.chemfig = chemfigCode;
+
+            showM2CFMessage('✅ SVG re-rendered successfully from edited code!', 'success');
+
+        } catch (error) {
+            showM2CFMessage(`Error: ${error.message}`, 'error');
+            console.error('Re-render Error:', error);
+        }
+    }
+
+    function copyChemfigOutput() {
+        const chemfigCode = document.getElementById('m2cf-chemfig-output')?.value;
+        
+        if (!chemfigCode) {
+            showM2CFMessage('No ChemFig code to copy!', 'error');
+            return;
+        }
+        
+        navigator.clipboard.writeText(chemfigCode).then(() => {
+            showM2CFMessage('✅ ChemFig code copied to clipboard!', 'success');
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            showM2CFMessage('Failed to copy code', 'error');
+        });
+    }
+
+    function downloadM2CFSVG(base64SVG, filename) {
+        try {
+            if (!base64SVG) {
+                alert('SVG data not found');
+                return;
+            }
+            const svgContent = atob(base64SVG);
+            const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+            showM2CFMessage('✅ Downloaded: ' + filename, 'success');
+        } catch (e) {
+            console.error('Download failed:', e);
+            alert('Failed to download SVG: ' + e.message);
+        }
+    }
+
+    // Additional helper: Copy chemfig code to clipboard
+    function copyM2CFChemfig() {
+        if (!currentM2CFMolecule.chemfig) {
+            alert('No chemfig code generated yet');
+            return;
+        }
+        navigator.clipboard.writeText(currentM2CFMolecule.chemfig).then(() => {
+            showM2CFMessage('✅ ChemFig code copied to clipboard!', 'success');
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            alert('Failed to copy');
+        });
+    }
+</script>

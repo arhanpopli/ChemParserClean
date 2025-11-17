@@ -34,6 +34,21 @@ const m2cfCompactToggle = document.getElementById('m2cfCompactToggle');
 const m2cfFlipHorizontalToggle = document.getElementById('m2cfFlipHorizontalToggle');
 const m2cfFlipVerticalToggle = document.getElementById('m2cfFlipVerticalToggle');
 const m2cfHydrogensSelect = document.getElementById('m2cfHydrogensSelect');
+const use3DSmilesToggle = document.getElementById('use3DSmilesToggle');
+
+// PubChem options
+const pubchemOptions = document.getElementById('pubchemOptions');
+const pubchemImageSizeSelect = document.getElementById('pubchemImageSizeSelect');
+const pubchem3DToggle = document.getElementById('pubchem3DToggle');
+const pubchemRecordTypeSelect = document.getElementById('pubchemRecordTypeSelect');
+
+// Image size control options
+const saveSizePerImageToggle = document.getElementById('saveSizePerImageToggle');
+const saveSizeBySMILESToggle = document.getElementById('saveSizeBySMILESToggle');
+
+// 3D Viewer options
+const enable3DViewerToggle = document.getElementById('enable3DViewerToggle');
+const default3DViewSelect = document.getElementById('default3DViewSelect');
 
 // Safe selector function
 function safeGetElement(id) {
@@ -67,7 +82,18 @@ chrome.storage.sync.get({
   m2cfCompact: false,
   m2cfFlipHorizontal: false,
   m2cfFlipVertical: false,
-  m2cfHydrogensMode: 'keep'
+  m2cfHydrogensMode: 'keep',
+  use3DSmiles: false,
+  // Image size controls
+  saveSizePerImage: false,
+  saveSizeBySMILES: true,  // FIX: Enable by default - global size saving across all pages
+  // PubChem options
+  pubchemImageSize: 'large',
+  pubchem3DEnabled: true,
+  pubchemRecordType: '2d',
+  // 3D Viewer options
+  enable3DViewer: false,
+  default3DView: '2d'
 }, (settings) => {
   enabledToggle.checked = settings.enabled;
   mhchemToggle.checked = settings.renderMhchem;
@@ -95,21 +121,38 @@ chrome.storage.sync.get({
   if (m2cfFlipHorizontalToggle) m2cfFlipHorizontalToggle.checked = settings.m2cfFlipHorizontal;
   if (m2cfFlipVerticalToggle) m2cfFlipVerticalToggle.checked = settings.m2cfFlipVertical;
   if (m2cfHydrogensSelect) m2cfHydrogensSelect.value = settings.m2cfHydrogensMode;
-  
+  if (use3DSmilesToggle) use3DSmilesToggle.checked = settings.use3DSmiles;
+
+  // Load PubChem options
+  if (pubchemImageSizeSelect) pubchemImageSizeSelect.value = settings.pubchemImageSize;
+  if (pubchem3DToggle) pubchem3DToggle.checked = settings.pubchem3DEnabled;
+  if (pubchemRecordTypeSelect) pubchemRecordTypeSelect.value = settings.pubchemRecordType;
+
+  // Load image size control options
+  if (saveSizePerImageToggle) saveSizePerImageToggle.checked = settings.saveSizePerImage;
+  if (saveSizeBySMILESToggle) saveSizeBySMILESToggle.checked = settings.saveSizeBySMILES;
+
+  // Load 3D Viewer options
+  if (enable3DViewerToggle) enable3DViewerToggle.checked = settings.enable3DViewer;
+  if (default3DViewSelect) default3DViewSelect.value = settings.default3DView;
+
   // Set rendering engine radio button
   const engineRadios = document.querySelectorAll('input[name="renderingEngine"]');
   engineRadios.forEach(radio => {
     radio.checked = (radio.value === settings.rendererEngine);
   });
   
-  // Show MoleculeViewer or mol2chemfig options based on selected engine
+  // Show MoleculeViewer, mol2chemfig, or PubChem options based on selected engine
   if (moleculeViewerOptions) {
     moleculeViewerOptions.style.display = (settings.rendererEngine === 'moleculeviewer') ? 'block' : 'none';
   }
   if (mol2chemfigOptions) {
     mol2chemfigOptions.style.display = (settings.rendererEngine === 'mol2chemfig') ? 'block' : 'none';
   }
-  
+  if (pubchemOptions) {
+    pubchemOptions.style.display = (settings.rendererEngine === 'pubchem') ? 'block' : 'none';
+  }
+
   // Update engine info
   updateEngineInfo(settings.rendererEngine);
 });
@@ -145,6 +188,23 @@ devModeToggle.addEventListener('change', (e) => {
     showStatus('Developer mode ' + (e.target.checked ? 'enabled' : 'disabled') + '. Show raw chemfig text ' + (e.target.checked ? 'ON' : 'OFF') + '. Reload page to apply.', 'success');
   });
 });
+
+// Image size control toggles
+if (saveSizePerImageToggle) {
+  saveSizePerImageToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ saveSizePerImage: e.target.checked }, () => {
+      showStatus('Save size per page ' + (e.target.checked ? 'enabled' : 'disabled') + '. Size changes will be remembered for each page.', 'success');
+    });
+  });
+}
+
+if (saveSizeBySMILESToggle) {
+  saveSizeBySMILESToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ saveSizeBySMILES: e.target.checked }, () => {
+      showStatus('Save size by SMILES ' + (e.target.checked ? 'enabled' : 'disabled') + '. Same size will be used for all molecules with the same SMILES.', 'success');
+    });
+  });
+}
 
 // MoleculeViewer rendering options
 if (showCarbonsToggle) {
@@ -284,6 +344,56 @@ if (m2cfHydrogensSelect) {
   });
 }
 
+if (use3DSmilesToggle) {
+  use3DSmilesToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ use3DSmiles: e.target.checked }, () => {
+      showStatus('3D SMILES (OPSIN) ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+// PubChem options event listeners
+if (pubchemImageSizeSelect) {
+  pubchemImageSizeSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ pubchemImageSize: e.target.value }, () => {
+      showStatus('Image size set to ' + e.target.value + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (pubchem3DToggle) {
+  pubchem3DToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ pubchem3DEnabled: e.target.checked }, () => {
+      showStatus('3D models ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (pubchemRecordTypeSelect) {
+  pubchemRecordTypeSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ pubchemRecordType: e.target.value }, () => {
+      showStatus('Record type set to ' + e.target.value + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+// 3D Viewer event listeners
+if (enable3DViewerToggle) {
+  enable3DViewerToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ enable3DViewer: e.target.checked }, () => {
+      showStatus('3D Viewer ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (default3DViewSelect) {
+  default3DViewSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ default3DView: e.target.value }, () => {
+      showStatus('Default view set to ' + e.target.value + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
 // Add event listeners for rendering engine radio buttons
 const engineRadios = document.querySelectorAll('input[name="renderingEngine"]');
 engineRadios.forEach(radio => {
@@ -303,15 +413,22 @@ engineRadios.forEach(radio => {
  */
 function updateEngineInfo(engine) {
   if (!engineInfo) return;
-  
+
   if (engine === 'moleculeviewer') {
     engineInfo.textContent = '🧪 MoleculeViewer Server (localhost:5000)';
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'block';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
+    if (pubchemOptions) pubchemOptions.style.display = 'none';
   } else if (engine === 'mol2chemfig') {
     engineInfo.textContent = '📐 mol2chemfig Server (localhost:8000)';
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'block';
+    if (pubchemOptions) pubchemOptions.style.display = 'none';
+  } else if (engine === 'pubchem') {
+    engineInfo.textContent = '🌐 PubChem Server (localhost:5002)';
+    if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
+    if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
+    if (pubchemOptions) pubchemOptions.style.display = 'block';
   }
 }
 

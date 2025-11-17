@@ -7,6 +7,7 @@ Called by Node.js server via subprocess
 import sys
 import json
 from io import StringIO
+from datetime import datetime
 
 try:
     from rdkit import Chem
@@ -38,6 +39,17 @@ try:
             drawer.DrawMolecule(mol)
             drawer.FinishDrawing()
             svg = drawer.GetDrawingText()
+
+            # Embed SMILES metadata in SVG for deduplication
+            # Get canonical SMILES
+            canonical_smiles = Chem.MolToSmiles(mol, canonical=True)
+
+            # Insert metadata comment after SVG declaration
+            svg_lines = svg.split('\n')
+            if len(svg_lines) > 1:
+                svg_lines.insert(1, f'<!-- SMILES: {canonical_smiles} -->')
+                svg_lines.insert(2, f'<!-- Generated: {datetime.now().isoformat()} -->')
+                svg = '\n'.join(svg_lines)
 
             return {"svg": svg}
 

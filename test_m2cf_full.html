@@ -796,6 +796,12 @@ Or paste existing chemfig code"></textarea>
         let lastMoleculeFormat = null;
         let lastReactionData = null;
         let hideTooltips = false;
+        let savedOptions = {
+            selections: [],
+            angle: 0,
+            indentation: 4,
+            h2: 'keep'
+        };
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -804,6 +810,7 @@ Or paste existing chemfig code"></textarea>
             populateOptions();
             hookOptionCheckboxes();
             loadSettings();
+            loadSavedChemfigOptions(); // Load saved chemfig options
         });
 
         // Switch between SVG and PDF viewer
@@ -1196,9 +1203,9 @@ Or paste existing chemfig code"></textarea>
                     showError('moleculeError', data.error);
                 } else if (data.smiles) {
                     document.getElementById('moleculeTextarea').value = data.smiles;
-                    // Auto-submit
+                    // Auto-submit (which will auto-apply saved options)
                     await submitMolecule();
-                    
+
                     // Load into composer if setting enabled
                     if (document.getElementById('setting_intoComposer').checked && data.molblock) {
                         try {
@@ -1252,7 +1259,7 @@ Or paste existing chemfig code"></textarea>
             const textarea = document.getElementById('moleculeTextarea');
             const data = textarea.value.trim();
             const btn = document.getElementById('submitBtn');
-            
+
             if (!data) {
                 showError('moleculeError', 'Please enter SMILES, MOL, or chemfig data!');
                 return;
@@ -1270,7 +1277,7 @@ Or paste existing chemfig code"></textarea>
                 });
 
                 const result = await response.json();
-                
+
                 if (result.error) {
                     showError('moleculeError', result.error);
                 } else {
@@ -1283,9 +1290,21 @@ Or paste existing chemfig code"></textarea>
                     }
                     lastMoleculeData = result.chem_data;
                     lastMoleculeFormat = result.chem_format;
-                    
+
                     // Fetch layers for layered mode
                     await fetchMoleculeLayers(result.chem_data, result.chem_format);
+
+                    // Auto-apply saved options if they exist
+                    if (savedOptions.selections.length > 0) {
+                        console.log('🔄 Auto-applying saved options after molecule generation');
+                        btn.innerHTML = '<span class="loading">⏳</span> Applying saved options...';
+                        setTimeout(async () => {
+                            await applyMoleculeOptions();
+                            btn.disabled = false;
+                            btn.textContent = 'Generate Chemfig';
+                        }, 500);
+                        return; // Skip the finally block since we handle button state above
+                    }
                 }
             } catch (error) {
                 showError('moleculeError', 'Network error: ' + error.message);
@@ -1325,8 +1344,21 @@ Or paste existing chemfig code"></textarea>
             }
 
             const selected = getSelectedOptions('mol');
+            const angle = parseInt(document.getElementById('moleculeAngle').value) || 0;
+            const indentation = parseInt(document.getElementById('moleculeIndent').value) || 4;
+            const h2 = document.getElementById('moleculeH2').value;
             const viewerType = document.getElementById('viewerType').value;
-            
+
+            // Save options to localStorage for persistence
+            savedOptions = {
+                selections: selected,
+                angle: angle,
+                indentation: indentation,
+                h2: h2
+            };
+            localStorage.setItem('chemfig_options', JSON.stringify(savedOptions));
+            console.log('💾 Saved chemfig options to localStorage:', savedOptions);
+
             // Special handling for layered mode
             if (viewerType === 'layered') {
                 if (selected.length === 0 || selected.length === 1) {
@@ -1343,9 +1375,9 @@ Or paste existing chemfig code"></textarea>
                 chem_data: lastMoleculeData,
                 chem_format: lastMoleculeFormat,
                 selections: selected,
-                angle: parseInt(document.getElementById('moleculeAngle').value) || 0,
-                indentation: parseInt(document.getElementById('moleculeIndent').value) || 4,
-                h2: document.getElementById('moleculeH2').value
+                angle: angle,
+                indentation: indentation,
+                h2: h2
             };
 
             console.log('🔧 Applying molecule options:', payload);
@@ -1360,19 +1392,35 @@ Or paste existing chemfig code"></textarea>
 
                 const result = await response.json();
                 console.log('📊 Apply response:', result);
-                
+
                 if (result.error) {
                     showError('moleculeError', result.error);
                 } else {
-                    document.getElementById('moleculeOutput').textContent = result.chemfig;
-                    
+                    // Display chemfig output with cache links if available
+                    let outputText = result.chemfig;
+
+                    // Add cache links section
+                    if (result.pdflink || result.svglink) {
+                        outputText += '\n\n--- Cache Links ---\n';
+                        if (result.svglink) {
+                            const svgCacheUrl = result.svglink.startsWith('http') ? result.svglink : `${API_BASE.replace('/m2cf', '')}${result.svglink}`;
+                            outputText += `SVG: ${svgCacheUrl}\n`;
+                        }
+                        if (result.pdflink) {
+                            const pdfCacheUrl = result.pdflink.startsWith('http') ? result.pdflink : `${API_BASE.replace('/m2cf', '')}${result.pdflink}`;
+                            outputText += `PDF: ${pdfCacheUrl}\n`;
+                        }
+                    }
+
+                    document.getElementById('moleculeOutput').textContent = outputText;
+
                     // For multiple options in layered mode, switch to normal SVG viewer
                     if (viewerType === 'layered' && selected.length > 1) {
                         document.getElementById('viewerType').value = 'svg';
                         switchViewer();
                         console.log('✅ Switched to normal SVG viewer for combined view');
                     }
-                    
+
                     if (result.pdflink) {
                         // Force PDF refresh by resetting src first
                         const pdfElement = document.getElementById('moleculePDF');
@@ -1381,16 +1429,29 @@ Or paste existing chemfig code"></textarea>
                             pdfElement.src = result.pdflink;
                         }, 100);
                     }
-                    
+
                     // Display SVG if available
                     if (result.svglink) {
                         displaySVG(result.svglink);
                     }
-                    
+
                     // Check if aromatic circle code is present
                     if (result.chemfig.includes('mcfcringle')) {
                         console.log('✅ AROMATIC CIRCLE DETECTED in chemfig!');
                     }
+
+                    // Show success message
+                    const successDiv = document.createElement('div');
+                    successDiv.className = 'success-banner';
+                    successDiv.textContent = '✅ Options applied and saved! They will be used for future conversions.';
+                    successDiv.style.marginBottom = '15px';
+                    const errorDiv = document.getElementById('moleculeError');
+                    errorDiv.innerHTML = '';
+                    errorDiv.appendChild(successDiv);
+                    errorDiv.style.display = 'block';
+                    setTimeout(() => {
+                        errorDiv.style.display = 'none';
+                    }, 4000);
                 }
             } catch (error) {
                 showError('moleculeError', 'Failed to apply options: ' + error.message);
@@ -1540,6 +1601,54 @@ Or paste existing chemfig code"></textarea>
             setTimeout(() => {
                 successMsg.remove();
             }, 2000);
+        }
+
+        // Load saved chemfig options from localStorage
+        function loadSavedChemfigOptions() {
+            const savedOptionsStr = localStorage.getItem('chemfig_options');
+            if (savedOptionsStr) {
+                try {
+                    savedOptions = JSON.parse(savedOptionsStr);
+                    console.log('📂 Loaded saved chemfig options:', savedOptions);
+
+                    // Apply saved checkbox selections
+                    OPTIONS.forEach((opt, idx) => {
+                        const checkbox = document.getElementById(`mol_opt_${idx}`);
+                        if (checkbox && savedOptions.selections.includes(opt.value)) {
+                            checkbox.checked = true;
+                        }
+                    });
+
+                    // Apply saved numeric values
+                    if (savedOptions.angle !== undefined) {
+                        document.getElementById('moleculeAngle').value = savedOptions.angle;
+                    }
+                    if (savedOptions.indentation !== undefined) {
+                        document.getElementById('moleculeIndent').value = savedOptions.indentation;
+                    }
+                    if (savedOptions.h2) {
+                        document.getElementById('moleculeH2').value = savedOptions.h2;
+                    }
+
+                    // Update the preview
+                    updateActiveOptions();
+                } catch (e) {
+                    console.error('Failed to load saved options:', e);
+                }
+            }
+        }
+
+        // Auto-apply saved options when submitting molecule
+        async function submitMoleculeWithOptions() {
+            await submitMolecule();
+
+            // If saved options exist and molecule data was generated, auto-apply them
+            if (lastMoleculeData && savedOptions.selections.length > 0) {
+                console.log('🔄 Auto-applying saved options after molecule generation');
+                setTimeout(async () => {
+                    await applyMoleculeOptions();
+                }, 500);
+            }
         }
 
         // Settings functions

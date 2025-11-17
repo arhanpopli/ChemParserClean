@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Molecular Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f0f1e;
+            color: #fff;
+            overflow: hidden;
+        }
+        
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(15, 15, 30, 0.95);
+            padding: 10px 15px;
+            border-bottom: 2px solid #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            z-index: 10;
+            flex-shrink: 0;
+        }
+        
+        .header h1 {
+            font-size: 16px;
+            color: #667eea;
+            margin-bottom: 3px;
+        }
+        
+        .compound-info {
+            font-size: 12px;
+            color: #aaa;
+        }
+        
+        .viewer-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #pubchem-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 5;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #2a2a4e;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid #ef4444;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 400px;
+        }
+        
+        .error-message h2 {
+            color: #ef4444;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+        
+        .error-message p {
+            color: #fca5a5;
+            line-height: 1.5;
+            font-size: 13px;
+        }
+
+        .embed-mode .header {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="container">
+        <div class="header">
+            <h1>🔬 3D Molecular Viewer</h1>
+            <div class="compound-info" id="compound-info">
+                Loading compound...
+            </div>
+        </div>
+        
+        <div class="viewer-wrapper">
+            <div class="loading" id="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading 3D viewer...</p>
+            </div>
+            
+            <iframe id="pubchem-iframe" style="display: none;"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Get parameters from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const compoundName = urlParams.get('name') || urlParams.get('cid');
+        const embedMode = urlParams.get('embed') === 'true';
+        
+        // Apply embed mode styling
+        if (embedMode) {
+            document.getElementById('container').classList.add('embed-mode');
+        }
+        
+        // Initialize viewer
+        async function initViewer() {
+            try {
+                if (!compoundName) {
+                    showError('No compound specified', 'Please provide a compound name or CID.');
+                    return;
+                }
+                
+                console.log('Loading 3D viewer for:', compoundName);
+                
+                // Get CID
+                let cid = urlParams.get('cid');
+                if (!cid) {
+                    cid = await getCID(compoundName);
+                }
+                
+                if (!cid) {
+                    showError('Compound not found', `Could not find "${compoundName}" in PubChem.`);
+                    return;
+                }
+                
+                console.log('Found CID:', cid);
+                
+                // Update compound info
+                if (!embedMode) {
+                    document.getElementById('compound-info').innerHTML = 
+                        `<strong>${compoundName}</strong> • CID: ${cid}`;
+                }
+                
+                // Load PubChem's 3D viewer iframe
+                const iframe = document.getElementById('pubchem-iframe');
+                
+                // PubChem's 3D conformer viewer URL
+                iframe.src = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/PNG?image_size=large&record_type=3d`;
+                
+                // Actually, use the proper 3D viewer widget
+                iframe.src = `https://embed.molview.org/v1/?mode=balls&cid=${cid}`;
+                
+                iframe.onload = () => {
+                    document.getElementById('loading').style.display = 'none';
+                    iframe.style.display = 'block';
+                    console.log('3D viewer loaded successfully');
+                };
+                
+                iframe.onerror = () => {
+                    showError('Failed to load', 'Could not load 3D viewer.');
+                };
+                
+            } catch (error) {
+                console.error('Error initializing viewer:', error);
+                showError('Error', error.message);
+            }
+        }
+        
+        // Get CID from compound name
+        async function getCID(name) {
+            try {
+                // Use absolute URL to the server
+                const url = `http://localhost:5002/info/${encodeURIComponent(name)}`;
+                console.log('Fetching CID from:', url);
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.error('Response not OK:', response.status, response.statusText);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Got CID:', data.cid);
+                return data.cid;
+            } catch (error) {
+                console.error('Error fetching CID:', error);
+                return null;
+            }
+        }
+        
+        // Show error message
+        function showError(title, message) {
+            document.getElementById('loading').innerHTML = `
+                <div class="error-message">
+                    <h2>${title}</h2>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+        
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', initViewer);
+    </script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features Fixes Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-item {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #2196F3;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.pass { background: #4CAF50; color: white; }
+        .status.fail { background: #f44336; color: white; }
+        .status.pending { background: #FF9800; color: white; }
+        code {
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .molecule-display {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border: 1px dashed #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Features Fixes Test Page</h1>
+
+    <!-- Test 1: Size Controls -->
+    <div class="test-section">
+        <h2>Test 1: Size Control Arrows <span class="status pending" id="test1-status">PENDING</span></h2>
+        <div class="instructions">
+            <strong>Expected Behavior:</strong>
+            <ul>
+                <li>Hover over molecule images below</li>
+                <li>Up/down arrow buttons should appear in bottom-left corner</li>
+                <li>Clicking arrows should resize the molecule</li>
+                <li>Size should persist on page reload</li>
+            </ul>
+        </div>
+
+        <div class="test-item">
+            <p><strong>Test Molecule 1:</strong> chem:ethanol:</p>
+            <div class="molecule-display">chem:ethanol:</div>
+        </div>
+
+        <div class="test-item">
+            <p><strong>Test Molecule 2:</strong> chem:benzene:</p>
+            <div class="molecule-display">chem:benzene:</div>
+        </div>
+
+        <div class="test-item">
+            <p><strong>Test Molecule 3:</strong> chem:aspirin:</p>
+            <div class="molecule-display">chem:aspirin:</div>
+        </div>
+    </div>
+
+    <!-- Test 2: OPSIN 3D Stereochemistry -->
+    <div class="test-section">
+        <h2>Test 2: OPSIN 3D Stereochemistry <span class="status pending" id="test2-status">PENDING</span></h2>
+        <div class="instructions">
+            <strong>Expected Behavior:</strong>
+            <ul>
+                <li>Open extension popup and enable "3D Stereochemistry (OPSIN)"</li>
+                <li>Reload this page</li>
+                <li>Check browser console for OPSIN 3D conversion logs</li>
+                <li>Molecules should show 3D stereochemistry info in console</li>
+            </ul>
+        </div>
+
+        <div class="test-item">
+            <p><strong>Test Molecule 4:</strong> chem:glucose: (should show stereochemistry with OPSIN)</p>
+            <div class="molecule-display">chem:glucose:</div>
+            <p><em>Expected SMILES with OPSIN 3D: O=C[C@H](O)[C@@H](O)[C@H](O)[C@H](O)CO (with @ symbols)</em></p>
+        </div>
+
+        <div class="test-item">
+            <p><strong>Test Molecule 5:</strong> chem:D-glucose: (should preserve D- configuration)</p>
+            <div class="molecule-display">chem:D-glucose:</div>
+        </div>
+
+        <div class="test-item">
+            <p><strong>Test Molecule 6:</strong> chem:L-alanine: (should preserve L- configuration)</p>
+            <div class="molecule-display">chem:L-alanine:</div>
+        </div>
+    </div>
+
+    <!-- Test 3: MolView.org 3D Viewer -->
+    <div class="test-section">
+        <h2>Test 3: MolView.org 3D Viewer <span class="status pending" id="test3-status">PENDING</span></h2>
+        <div class="instructions">
+            <strong>Expected Behavior:</strong>
+            <ul>
+                <li>3D viewer button should appear on molecule images</li>
+                <li>Clicking should show MolView.org iframe (NOT PubChem 3D viewer)</li>
+                <li>MolView iframe URL should be: https://embed.molview.org/v1/?mode=balls&smiles=...</li>
+                <li>Viewer should support toggling between 2D image and 3D model</li>
+            </ul>
+        </div>
+
+        <div class="test-item">
+            <p><strong>Test Molecule 7:</strong> chem:caffeine: (complex molecule for 3D)</p>
+            <div class="molecule-display">chem:caffeine:</div>
+            <p><em>Click 3D button - should see MolView.org embedded viewer</em></p>
+        </div>
+
+        <div class="test-item">
+            <p><strong>Test Molecule 8:</strong> chem:cholesterol: (steroid with 3D structure)</p>
+            <div class="molecule-display">chem:cholesterol:</div>
+        </div>
+    </div>
+
+    <!-- Manual Testing Instructions -->
+    <div class="test-section">
+        <h2>Manual Testing Checklist</h2>
+        <div class="instructions">
+            <h3>Problem 1: Size Controls</h3>
+            <ol>
+                <li>Load this page with extension enabled</li>
+                <li>Hover over ethanol molecule - do arrows appear?</li>
+                <li>Click up arrow 3 times - does molecule get bigger?</li>
+                <li>Click down arrow 2 times - does molecule get smaller?</li>
+                <li>Reload page - does size persist?</li>
+            </ol>
+
+            <h3>Problem 2: OPSIN 3D</h3>
+            <ol>
+                <li>Open extension popup</li>
+                <li>Enable "3D Stereochemistry (OPSIN)" toggle</li>
+                <li>Reload this page</li>
+                <li>Open browser console (F12)</li>
+                <li>Look for "OPSIN 3D conversion SUCCESS" messages</li>
+                <li>Check that glucose SMILES contains @ symbols (stereochemistry)</li>
+            </ol>
+
+            <h3>Problem 3: MolView Replacement</h3>
+            <ol>
+                <li>Look for 3D button on molecules (or enable in popup if needed)</li>
+                <li>Click 3D button on caffeine</li>
+                <li>Verify iframe URL contains "embed.molview.org"</li>
+                <li>NOT "pubchem.ncbi.nlm.nih.gov"</li>
+                <li>Check that 3D model appears and is interactive</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Console Output Helper -->
+    <script>
+        console.log('%c=== Features Fixes Test Page Loaded ===', 'background: #4CAF50; color: white; font-size: 16px; padding: 10px;');
+        console.log('This page tests 3 features:');
+        console.log('1. Size control arrows (hover over molecules)');
+        console.log('2. OPSIN 3D stereochemistry (enable in popup, check console)');
+        console.log('3. MolView.org 3D viewer (click 3D button, check iframe URL)');
+        console.log('');
+        console.log('Watch for these console messages:');
+        console.log('- "OPSIN 3D conversion SUCCESS" (green)');
+        console.log('- "embed.molview.org" in iframe src (for 3D viewer)');
+        console.log('- Size adjustment logs when clicking arrows');
+    </script>
+</body>
+</html>

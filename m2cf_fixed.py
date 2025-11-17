@@ -143,8 +143,8 @@ def chemfig_to_svg(chemfig_code):
 \setcrambond{2.5pt}{0.4pt}{1.0pt}
 \setbondoffset{1pt}
 \setdoublesep{3pt}
-\setatomsep{16pt}
-\renewcommand{\printatom}[1]{\fontsize{8pt}{10pt}\selectfont{\ensuremath{\mathsf{#1}}}}
+\setatomsep{28pt}
+\renewcommand{\printatom}[1]{\fontsize{12pt}{14pt}\selectfont{\ensuremath{\mathsf{#1}}}}
 \setlength{\parindent}{0pt}
 \begin{document}
 %s
@@ -231,19 +231,19 @@ def get_smiles_from_opsin(compound_name):
     try:
         import subprocess
         import os
-        
+
         # Check if OPSIN JAR exists
         opsin_jar = "/usr/src/app/opsin-cli.jar"
         if not os.path.exists(opsin_jar):
             return "OPSIN not available", None
-        
+
         # Call OPSIN to convert name to SMILES
         result = subprocess.check_output([
             "java", "-jar", opsin_jar,
             "-o", "smi",  # Output SMILES format
             compound_name
         ], stderr=subprocess.STDOUT, timeout=10)
-        
+
         smiles = result.decode('utf-8').strip()
         if smiles and not smiles.startswith("Error"):
             return None, smiles
@@ -251,6 +251,39 @@ def get_smiles_from_opsin(compound_name):
             return "OPSIN could not parse '{}'".format(compound_name), None
     except Exception as e:
         return "OPSIN error: {}".format(str(e)), None
+
+
+def get_3d_smiles_from_opsin_web(compound_name):
+    """
+    Fetch 3D SMILES with stereochemistry from OPSIN web API.
+    The new OPSIN API is at https://www.ebi.ac.uk/opsin/ws/
+    Returns (error, smiles)
+    """
+    try:
+        # URL encode the compound name
+        try:
+            from urllib import quote
+        except ImportError:
+            from urllib.parse import quote
+
+        encoded_name = quote(compound_name.encode('utf-8'))
+
+        # Use the new OPSIN web service API
+        url = "https://www.ebi.ac.uk/opsin/ws/{}.smi".format(encoded_name)
+
+        try:
+            response = urllib_request.urlopen(url, timeout=10)
+            smiles = response.read().decode('utf-8').strip()
+
+            if smiles and not smiles.lower().startswith("error") and len(smiles) > 0:
+                return None, smiles
+            else:
+                return "OPSIN could not parse '{}'".format(compound_name), None
+        except Exception as e:
+            return "OPSIN web API request failed: {}".format(str(e)), None
+
+    except Exception as e:
+        return "OPSIN 3D SMILES error: {}".format(str(e)), None
 
 
 def get_smiles_from_pubchem_api(compound_name):
@@ -356,7 +389,7 @@ def search():
 
     # Use PubChem REST API to convert nomenclature to SMILES
     error, smiles = get_smiles_from_pubchem_api(search_term)
-    
+
     if smiles is None:
         return jsonify(
             {
@@ -410,15 +443,77 @@ def search():
         )
 
 
+@m2cf.route('/opsin-3d', methods=["POST", "GET"])
+def opsin_3d():
+    """
+    Convert chemical name to 3D SMILES with stereochemistry using OPSIN web API.
+    Supports both GET and POST requests.
+
+    GET: /m2cf/opsin-3d?name=glucose
+    POST: {"name": "glucose"}
+
+    Returns JSON with 3D SMILES string
+    """
+    # Support both POST (JSON body) and GET (query param)
+    if request.method == "GET":
+        compound_name = request.args.get('name', '').strip()
+    else:
+        data = request.get_json()
+        compound_name = data.get('name', '').strip()
+
+    if not compound_name:
+        return jsonify(
+            {
+                "error": "Missing 'name' parameter",
+                "smiles": None,
+                "source": "OPSIN"
+            }
+        ), 400
+
+    # Fetch 3D SMILES from OPSIN web API
+    error, smiles_3d = get_3d_smiles_from_opsin_web(compound_name)
+
+    if smiles_3d is None:
+        return jsonify(
+            {
+                "error": error or "OPSIN could not convert '{}'".format(compound_name),
+                "smiles": None,
+                "source": "OPSIN",
+                "name": compound_name
+            }
+        ), 404
+
+    return jsonify(
+        {
+            "error": None,
+            "smiles": smiles_3d,
+            "source": "OPSIN",
+            "name": compound_name,
+            "has_stereochemistry": ('@' in smiles_3d)  # Indicate if 3D info present
+        }
+    ), 200
+
+
 @m2cf.route('/submit', methods=["POST"])
 def submit():
     data = request.get_json()
     text_area_data = data['textAreaData'].strip()
 
+    # Check if options were provided - if so, use /apply logic instead
+    selections = data.get('selections', [])
+    h2 = data.get('h2', 'keep')
+
+    # If options are provided, handle them properly
+    args = None
+    if selections:
+        angle = str(data.get('angle', 0))
+        indentation = str(data.get('indentation', 4))
+        args = combine_args(selections, angle, indentation, h2)
+
     # for molfiles
     if "END" in text_area_data:
         try:
-            chemfig, pdflink, error = convert_mol_format(text_area_data)
+            chemfig, pdflink, error = convert_mol_format(text_area_data, args=args)
             chem_data = text_area_data
             chem_format = "mol"
         except Exception as e:
@@ -449,9 +544,14 @@ def submit():
             )
 
         smiles = Chem.MolToSmiles(mol, kekuleSmiles=True)
-        chemfig, pdflink, error = smiles_mol_to_chemfig("-w",
-                                                        '-i direct {}'
-                                                        .format(smiles))
+
+        # Apply options if provided
+        if args:
+            chemfig, pdflink, error = smiles_mol_to_chemfig("-w " + args + " -i direct {}".format(smiles))
+        else:
+            chemfig, pdflink, error = smiles_mol_to_chemfig("-w",
+                                                            '-i direct {}'
+                                                            .format(smiles))
         chem_data = smiles
         chem_format = 'smiles'
 

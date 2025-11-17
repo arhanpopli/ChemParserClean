@@ -10,10 +10,12 @@
 // LOCAL TESTING - Use localhost to avoid HTTPS mixed content errors
 const MOLECULE_VIEWER_API = 'http://localhost:5000';
 const MOL2CHEMFIG_API = 'http://localhost:8000';
+const PUBCHEM_API = 'http://localhost:5002';
 
 // For Heroku production (uncomment when ready to deploy):
 // const MOLECULE_VIEWER_API = 'https://YOUR-HEROKU-APP.herokuapp.com';
 // const MOL2CHEMFIG_API = 'https://YOUR-MOL2CHEMFIG-APP.herokuapp.com';
+// const PUBCHEM_API = 'https://YOUR-PUBCHEM-APP.herokuapp.com';
 // const 
 
 // ============================================
@@ -140,6 +142,197 @@ window.chemRendererPerformance = {
     console.log(`   • Load time range: ${stats.minLoadTime} - ${stats.maxLoadTime}`);
   },
 };
+
+// ============================================
+// IMAGE SIZE CONTROLS
+// ============================================
+const SIZE_STEP = 20;
+const MIN_SIZE = 100;
+const MAX_SIZE = 800;
+const DEFAULT_WIDTH = 300;
+const DEFAULT_HEIGHT = 200;
+
+function getImageKey(moleculeData) {
+  if (!moleculeData) return null;
+  if (moleculeData.smiles) return `smiles:${moleculeData.smiles}`;
+  if (moleculeData.nomenclature) return `nomenclature:${moleculeData.nomenclature}`;
+  return null;
+}
+
+function getPageImageKey(moleculeData, pageUrl) {
+  const imageKey = getImageKey(moleculeData);
+  if (!imageKey) return null;
+  return `page:${pageUrl}:${imageKey}`;
+}
+
+async function loadImageSize(moleculeData, pageUrl, settings) {
+  try {
+    const imageKey = getImageKey(moleculeData);
+    if (!imageKey) return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+    if (!settings.saveSizePerImage && !settings.saveSizeBySMILES) {
+      return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+    }
+    let storageKey;
+    if (settings.saveSizePerImage && !settings.saveSizeBySMILES) {
+      storageKey = getPageImageKey(moleculeData, pageUrl);
+    } else {
+      storageKey = imageKey;
+    }
+    if (!storageKey) return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+    return new Promise((resolve) => {
+      chrome.storage.local.get([storageKey], (result) => {
+        if (result[storageKey]) {
+          resolve(result[storageKey]);
+        } else {
+          resolve({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT });
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error loading image size:', error);
+    return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+  }
+}
+
+async function saveImageSize(moleculeData, pageUrl, size, settings) {
+  try {
+    const imageKey = getImageKey(moleculeData);
+    if (!imageKey) return;
+    if (!settings.saveSizePerImage && !settings.saveSizeBySMILES) return;
+    let storageKey;
+    if (settings.saveSizePerImage && !settings.saveSizeBySMILES) {
+      storageKey = getPageImageKey(moleculeData, pageUrl);
+    } else {
+      storageKey = imageKey;
+    }
+    if (!storageKey) return;
+    const data = {};
+    data[storageKey] = size;
+    chrome.storage.local.set(data, () => {
+      console.log(`Saved size for ${storageKey}:`, size);
+    });
+  } catch (error) {
+    console.error('Error saving image size:', error);
+  }
+}
+
+function createSizeControls(container, svgImg, moleculeData, settings) {
+  console.log('🎛️ Creating size controls:', {settings, moleculeData});
+
+  const controlsDiv = document.createElement('div');
+  controlsDiv.className = 'chem-size-controls';
+  controlsDiv.style.cssText = `
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    display: flex !important;
+    flex-direction: column;
+    gap: 2px;
+    opacity: 0;
+    pointer-events: auto;
+    transition: opacity 0.2s;
+    z-index: 1000;
+  `;
+  const upButton = document.createElement('button');
+  upButton.className = 'chem-size-btn chem-size-up';
+  upButton.innerHTML = '▲';
+  upButton.title = 'Increase size';
+  upButton.style.cssText = `
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    pointer-events: auto;
+  `;
+  const downButton = document.createElement('button');
+  downButton.className = 'chem-size-btn chem-size-down';
+  downButton.innerHTML = '▼';
+  downButton.title = 'Decrease size';
+  downButton.style.cssText = upButton.style.cssText;
+  [upButton, downButton].forEach(btn => {
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = 'rgba(0, 0, 0, 0.9)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'rgba(0, 0, 0, 0.7)';
+    });
+  });
+  upButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    adjustImageSize(container, svgImg, moleculeData, SIZE_STEP, settings);
+  });
+  downButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    adjustImageSize(container, svgImg, moleculeData, -SIZE_STEP, settings);
+  });
+  controlsDiv.appendChild(upButton);
+  controlsDiv.appendChild(downButton);
+  container.addEventListener('mouseenter', () => {
+    console.log('🖱️ Mouse entered container');
+    controlsDiv.style.opacity = '1';
+  });
+  container.addEventListener('mouseleave', () => {
+    controlsDiv.style.opacity = '0';
+  });
+  return controlsDiv;
+}
+
+function adjustImageSize(container, svgImg, moleculeData, delta, settings) {
+  const currentWidth = parseInt(svgImg.style.maxWidth) || DEFAULT_WIDTH;
+  const currentHeight = parseInt(svgImg.style.maxHeight) || DEFAULT_HEIGHT;
+  let newWidth = currentWidth + delta;
+  let newHeight = currentHeight + Math.round(delta * (currentHeight / currentWidth));
+  newWidth = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newWidth));
+  newHeight = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newHeight));
+  svgImg.style.maxWidth = `${newWidth}px`;
+  svgImg.style.maxHeight = `${newHeight}px`;
+  const pageUrl = window.location.href;
+  const size = { width: newWidth, height: newHeight };
+  saveImageSize(moleculeData, pageUrl, size, settings);
+  console.log(`Adjusted size: ${newWidth}x${newHeight}`);
+}
+
+async function wrapImageWithSizeControls(svgImg, originalImg, moleculeData, settings) {
+  try {
+    console.log('📦 Wrapping image with size controls', { settings, moleculeData });
+
+    const container = document.createElement('div');
+    container.className = 'chem-image-container';
+    container.style.cssText = `
+      position: relative;
+      display: inline-block;
+      margin: 0 12px 8px 0;
+      vertical-align: middle;
+    `;
+    const pageUrl = window.location.href;
+    const savedSize = await loadImageSize(moleculeData, pageUrl, settings);
+    svgImg.style.maxWidth = `${savedSize.width}px`;
+    svgImg.style.maxHeight = `${savedSize.height}px`;
+    if (moleculeData) {
+      svgImg.dataset.moleculeData = JSON.stringify(moleculeData);
+    }
+    const controls = createSizeControls(container, svgImg, moleculeData, settings);
+    originalImg.parentNode.insertBefore(container, originalImg);
+    container.appendChild(svgImg);
+    container.appendChild(controls);
+    originalImg.remove();
+
+    console.log('✅ Size controls wrapper created successfully');
+    return container;
+  } catch (error) {
+    console.error('❌ Error wrapping image with size controls:', error);
+    originalImg.parentNode.replaceChild(svgImg, originalImg);
+    return svgImg;
+  }
+}
 
 // Create debug interface EARLY so it's always available
 window.chemRendererDebug = {
@@ -438,7 +631,8 @@ let settings = {
   m2cfCompact: false,
   m2cfFlipHorizontal: false,
   m2cfFlipVertical: false,
-  m2cfHydrogensMode: 'keep'
+  m2cfHydrogensMode: 'keep',
+  use3DSmiles: false  // Enable 3D stereochemistry via OPSIN
 };
 
 log.info('📦 Loading settings from storage...');
@@ -449,8 +643,17 @@ chrome.storage.sync.get(null, (result) => {
   settings = { ...settings, ...result };
   
   // ✅ DO NOT FORCE - Respect user's renderer choice
-  const engineName = settings.rendererEngine === 'mol2chemfig' ? '📐 mol2chemfig' : '🧪 MoleculeViewer';
-  const enginePort = settings.rendererEngine === 'mol2chemfig' ? '8000' : '5000';
+  let engineName, enginePort;
+  if (settings.rendererEngine === 'mol2chemfig') {
+    engineName = '📐 mol2chemfig';
+    enginePort = '8000';
+  } else if (settings.rendererEngine === 'pubchem') {
+    engineName = '🌐 PubChem';
+    enginePort = '5002';
+  } else {
+    engineName = '🧪 MoleculeViewer';
+    enginePort = '5000';
+  }
   
   log.success('✅ Settings loaded', settings);
   log.info(`Renderer Engine: ${engineName} (localhost:${enginePort})`);
@@ -476,7 +679,14 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes.rendererEngine) {
     log.info('🔄 Renderer engine changed, updating...', changes.rendererEngine);
     settings.rendererEngine = changes.rendererEngine.newValue;
-    const engineName = settings.rendererEngine === 'mol2chemfig' ? '📐 mol2chemfig' : '🧪 MoleculeViewer';
+    let engineName;
+    if (settings.rendererEngine === 'mol2chemfig') {
+      engineName = '📐 mol2chemfig';
+    } else if (settings.rendererEngine === 'pubchem') {
+      engineName = '🌐 PubChem';
+    } else {
+      engineName = '🧪 MoleculeViewer';
+    }
     log.success(`✅ Switched to ${engineName} renderer`);
     
     // Reload page to apply new renderer to all content
@@ -884,7 +1094,11 @@ function setupLazyLoading() {
               .replace(/#000\b/gi, '#FFF')
               .replace(/rgb\(0,\s*0,\s*0\)/gi, 'rgb(255, 255, 255)')
               .replace(/stroke="black"/gi, 'stroke="white"')
-              .replace(/fill="black"/gi, 'fill="white"');
+              .replace(/fill="black"/gi, 'fill="white"')
+              // Also replace text element fill colors for atom labels (O, N, Cl, etc.)
+              .replace(/(<text[^>]*fill=["'])black(["'])/gi, '$1white$2')
+              .replace(/(<text[^>]*fill=["'])#000000(["'])/gi, '$1#FFFFFF$2')
+              .replace(/(<text[^>]*fill=["'])#000(["'])/gi, '$1#FFF$2');
           }
           
           // Create clean SVG image with dark mode support
@@ -901,12 +1115,16 @@ function setupLazyLoading() {
             cursor: pointer;
           `;
           
-          // Just add the image directly to the page (no controls!)
           // Mark as loaded
           img.dataset.loaded = 'true';
-          
-          // Replace original img element with the SVG image
-          img.parentNode.replaceChild(svgImg, img);
+
+          // Replace original img element with size controls
+          chrome.storage.sync.get({
+            saveSizePerImage: false,
+            saveSizeBySMILES: true  // FIX: Enable by default
+          }, async (sizeSettings) => {
+            await wrapImageWithSizeControls(svgImg, img, moleculeData, sizeSettings);
+          });
           
           console.log('%c✅ Image loaded successfully', 'color: green; font-weight: bold;');
           console.log('%c📍 Cache URL:', 'color: #0066cc; font-weight: bold;', data.cache_url);
@@ -930,6 +1148,314 @@ function setupLazyLoading() {
       console.error(`%c❌ Error: ${error.message}`, 'color: red; font-weight: bold;');
       activeLoads--;
     }
+  }
+
+  // Helper function to load PubChem images
+  async function loadPubChemImage(img) {
+    activeLoads++;
+    console.log('%c🌐 LOADPUBCHEMIMAGE CALLED!', 'background: #222; color: #4CAF50; font-size: 20px; padding: 10px;');
+    console.log('Image element:', img);
+    console.log('Dataset:', img.dataset);
+    log.debug(`🌐 Loading PubChem image (#${activeLoads})`);
+
+    try {
+      const moleculeData = JSON.parse(atob(img.dataset.moleculeViewer || img.dataset.mol2chemfig));
+      console.log('%c📦 Decoded molecule data:', 'color: #4CAF50; font-weight: bold;', moleculeData);
+
+      // Determine the compound name or SMILES for PubChem
+      let compoundName = '';
+      if (moleculeData.nomenclature) {
+        compoundName = moleculeData.nomenclature;
+      } else if (moleculeData.smiles) {
+        compoundName = moleculeData.smiles;
+      } else if (moleculeData.type === 'chemfig' && moleculeData.fallback && moleculeData.fallback.smiles) {
+        compoundName = moleculeData.fallback.smiles;
+      } else {
+        throw new Error('No valid compound identifier found');
+      }
+
+      console.log('%c🔍 Looking up compound:', 'color: #4CAF50; font-weight: bold;', compoundName);
+
+      // Build PubChem API URL
+      const apiUrl = `${PUBCHEM_API}/pubchem/img/${encodeURIComponent(compoundName)}?size=${settings.pubchemImageSize || 'large'}&type=${settings.pubchemRecordType || '2d'}`;
+      console.log('%c📡 PubChem API URL:', 'color: #4CAF50; font-weight: bold;', apiUrl);
+
+      // Fetch the image directly
+      fetch(apiUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`PubChem returned ${response.status}: ${response.statusText}`);
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          // Create image from blob
+          const imageUrl = URL.createObjectURL(blob);
+          const pubchemImg = document.createElement('img');
+          pubchemImg.src = imageUrl;
+          pubchemImg.alt = `PubChem: ${compoundName}`;
+          pubchemImg.className = 'chemfig-diagram pubchem-diagram';
+          pubchemImg.style.cssText = `
+            display: inline-block;
+            max-width: 300px;
+            max-height: 200px;
+            margin: 0 12px 8px 0;
+            vertical-align: middle;
+            cursor: pointer;
+          `;
+
+          // Mark as loaded
+          img.dataset.loaded = 'true';
+
+          // Replace original img element with container including 3D button if enabled
+          chrome.storage.sync.get({
+            enable3DViewer: false,  // Match popup.js setting name
+            saveSizePerImage: false,
+            saveSizeBySMILES: true  // FIX: Enable by default
+          }, async (pubchemSettings) => {
+            // Check if user wants 3D viewer shown inline
+            if (pubchemSettings.enable3DViewer) {
+              // Show 3D viewer inline instead of 2D image
+              await show3DViewerInline(img, compoundName, moleculeData);
+            } else {
+              // Show 2D image (default behavior)
+              await wrapImageWithSizeControls(pubchemImg, img, moleculeData, pubchemSettings);
+            }
+          });
+
+          console.log('%c✅ PubChem image loaded successfully', 'color: green; font-weight: bold;');
+          activeLoads--;
+        })
+        .catch(error => {
+          console.error('%c❌ Error loading PubChem image:', 'color: red; font-weight: bold;', error.message);
+
+          // Fallback: show error message
+          img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2ZmZiIvPjx0ZXh0IHg9IjEwIiB5PSIzMCIgZmlsbD0iI2YwMCIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSIgZm9udC1zaXplPSIxNCI+UHViQ2hlbTogTm90IEZvdW5kPC90ZXh0Pjwvc3ZnPg==';
+          img.classList.add('chemfig-fadein');
+          img.classList.remove('chemfig-loading');
+          img.dataset.loaded = 'true';
+
+          activeLoads--;
+        });
+
+    } catch (error) {
+      console.error(`%c❌ Error: ${error.message}`, 'color: red; font-weight: bold;');
+      activeLoads--;
+    }
+  }
+
+  // Helper function to show 3D viewer inline using MolView.org (replaces the img element)
+  async function show3DViewerInline(img, compoundName, moleculeData) {
+    console.log('%c🔮 SHOWING MOLVIEW 3D VIEWER INLINE', 'background: #764ba2; color: white; font-size: 14px; padding: 8px;');
+    
+    try {
+      // Create container for 3D viewer
+      const viewer3DContainer = document.createElement('div');
+      viewer3DContainer.className = 'molecule-viewer-container molecule-3d-viewer';
+      viewer3DContainer.style.cssText = `
+        display: inline-block;
+        width: 600px;
+        height: 400px;
+        margin: 0 12px 8px 0;
+        vertical-align: middle;
+        position: relative;
+        border: 2px solid #667eea;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #0f0f1e;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      `;
+      
+      // Create iframe for 3D viewer using MolView.org
+      const viewer3DIframe = document.createElement('iframe');
+      // FIX: Use MolView.org instead of PubChem 3D viewer
+      // Try to use SMILES if available (more accurate), otherwise use compound name
+      let molviewUrl;
+      if (moleculeData && moleculeData.smiles) {
+        molviewUrl = `https://embed.molview.org/v1/?mode=balls&smiles=${encodeURIComponent(moleculeData.smiles)}`;
+      } else {
+        molviewUrl = `https://embed.molview.org/v1/?mode=balls&q=${encodeURIComponent(compoundName)}`;
+      }
+      viewer3DIframe.src = molviewUrl;
+      viewer3DIframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+      viewer3DIframe.setAttribute('allowfullscreen', 'true');
+      console.log('%c📍 MolView URL:', 'color: #0066cc; font-weight: bold;', molviewUrl);
+      viewer3DIframe.style.cssText = `
+        width: 100%;
+        height: 100%;
+        border: none;
+        display: block;
+      `;
+      viewer3DIframe.title = `3D Viewer: ${compoundName}`;
+      
+      // Add toggle button to switch between 2D and 3D
+      const toggleBtn = document.createElement('button');
+      toggleBtn.innerHTML = '📷 2D';
+      toggleBtn.title = 'Switch to 2D view';
+      toggleBtn.className = 'view-toggle-btn';
+      toggleBtn.style.cssText = `
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(102, 126, 234, 0.9);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: bold;
+        cursor: pointer;
+        z-index: 100;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+      `;
+      
+      toggleBtn.addEventListener('mouseenter', () => {
+        toggleBtn.style.background = 'rgba(85, 104, 211, 1)';
+        toggleBtn.style.transform = 'scale(1.05)';
+      });
+      
+      toggleBtn.addEventListener('mouseleave', () => {
+        toggleBtn.style.background = 'rgba(102, 126, 234, 0.9)';
+        toggleBtn.style.transform = 'scale(1)';
+      });
+      
+      let showing3D = true;
+      toggleBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        
+        if (showing3D) {
+          // Switch to 2D
+          toggleBtn.innerHTML = '🔮 3D';
+          toggleBtn.title = 'Switch to 3D view';
+          
+          // Replace iframe with 2D image
+          viewer3DIframe.remove();
+          
+          const img2D = document.createElement('img');
+          img2D.src = `${PUBCHEM_API}/img/${encodeURIComponent(compoundName)}?size=large`;
+          img2D.alt = `PubChem: ${compoundName}`;
+          img2D.className = 'chemfig-diagram pubchem-diagram';
+          img2D.style.cssText = `
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 20px;
+          `;
+          viewer3DContainer.insertBefore(img2D, toggleBtn);
+          showing3D = false;
+        } else {
+          // Switch to 3D
+          toggleBtn.innerHTML = '📷 2D';
+          toggleBtn.title = 'Switch to 2D view';
+          
+          // Remove 2D image
+          const img2D = viewer3DContainer.querySelector('.chemfig-diagram');
+          if (img2D) img2D.remove();
+          
+          // Add 3D iframe back
+          viewer3DContainer.insertBefore(viewer3DIframe, toggleBtn);
+          showing3D = true;
+        }
+      });
+      
+      // Add compound name label
+      const nameLabel = document.createElement('div');
+      nameLabel.textContent = compoundName;
+      nameLabel.style.cssText = `
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        z-index: 100;
+      `;
+      
+      // Assemble container
+      viewer3DContainer.appendChild(viewer3DIframe);
+      viewer3DContainer.appendChild(toggleBtn);
+      viewer3DContainer.appendChild(nameLabel);
+
+      // Replace original img with 3D viewer
+      if (img.parentNode) {
+        img.parentNode.replaceChild(viewer3DContainer, img);
+        console.log('%c✅ 3D viewer embedded inline', 'color: green; font-weight: bold;');
+      } else {
+        console.error('%c❌ Cannot replace image - no parent node', 'color: red; font-weight: bold;');
+        // If no parent, insert after the img element as fallback
+        if (img.nextSibling) {
+          img.parentElement.insertBefore(viewer3DContainer, img.nextSibling);
+        } else {
+          img.parentElement.appendChild(viewer3DContainer);
+        }
+        img.style.display = 'none';
+      }
+      activeLoads--;
+      
+    } catch (error) {
+      console.error('%c❌ Error showing 3D viewer inline:', 'color: red; font-weight: bold;', error);
+      // Fallback to regular image
+      img.src = `${PUBCHEM_API}/img/${encodeURIComponent(compoundName)}`;
+      img.classList.add('chemfig-fadein');
+      img.classList.remove('chemfig-loading');
+      activeLoads--;
+    }
+  }
+
+  // Helper function to add 3D view button to PubChem images
+  function add3DViewButton(container, compoundName) {
+    // Find or create a control panel
+    let controlPanel = container.querySelector('.molecule-controls');
+    if (!controlPanel) {
+      controlPanel = document.createElement('div');
+      controlPanel.className = 'molecule-controls';
+      controlPanel.style.cssText = `
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        display: flex;
+        gap: 5px;
+        z-index: 10;
+      `;
+      container.style.position = 'relative';
+      container.appendChild(controlPanel);
+    }
+
+    // Create 3D view button
+    const view3DBtn = document.createElement('button');
+    view3DBtn.innerHTML = '🔮 3D';
+    view3DBtn.title = 'View 3D model on PubChem';
+    view3DBtn.className = 'pubchem-3d-btn';
+    view3DBtn.style.cssText = `
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transition: transform 0.2s;
+    `;
+    view3DBtn.addEventListener('mouseenter', () => {
+      view3DBtn.style.transform = 'scale(1.05)';
+    });
+    view3DBtn.addEventListener('mouseleave', () => {
+      view3DBtn.style.transform = 'scale(1)';
+    });
+    view3DBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Use local 3D viewer with canvas element instead of redirecting to PubChem
+      const viewerUrl = `${PUBCHEM_API}/viewer-3d/${encodeURIComponent(compoundName)}`;
+      window.open(viewerUrl, '_blank', 'width=1000,height=700');
+    });
+
+    controlPanel.appendChild(view3DBtn);
   }
 
   // Helper function to load mol2chemfig rendering with caching
@@ -967,14 +1493,37 @@ function setupLazyLoading() {
       }
 
       // If this is a nomenclature name, try converting it to SMILES with fallback priority:
-      // 1. OPSIN (https://opsin.ch.cam.ac.uk/opsin/)
-      // 2. PubChem (via MoleculeViewer local API)
-      // 3. If all fail, throw error (do NOT auto-switch to MoleculeViewer)
-      async function convertNameToSmilesWithFallbacks(name) {
-        // Priority 1: OPSIN direct API
-        console.log('%c🔬 Trying OPSIN for name→SMILES conversion...', 'color: #0088FF; font-weight: bold;');
+      // 1. OPSIN 3D (if enabled) - via local backend endpoint
+      // 2. OPSIN 2D (https://www.ebi.ac.uk/opsin/ws/)
+      // 3. PubChem (via MoleculeViewer local API)
+      // 4. If all fail, throw error (do NOT auto-switch to MoleculeViewer)
+      async function convertNameToSmilesWithFallbacks(name, use3DSmiles = false) {
+        // Priority 0: OPSIN 3D via local backend (if enabled)
+        if (use3DSmiles) {
+          console.log('%c🔮 Trying OPSIN 3D for name→3D SMILES conversion...', 'color: #FF00FF; font-weight: bold;');
+          try {
+            const opsin3DResp = await fetch(`${MOL2CHEMFIG_API}/m2cf/opsin-3d?name=${encodeURIComponent(name)}`, {
+              method: 'GET',
+              headers: { 'Accept': 'application/json' }
+            });
+            if (opsin3DResp.ok) {
+              const data = await opsin3DResp.json();
+              if (data && data.smiles && !data.error) {
+                const stereoMarker = data.has_stereochemistry ? ' (with stereochemistry)' : '';
+                console.log('%c✅ OPSIN 3D conversion SUCCESS:', 'color: #00FF00; font-weight: bold;', data.smiles + stereoMarker);
+                return { smiles: data.smiles, source: 'OPSIN-3D', has_stereochemistry: data.has_stereochemistry };
+              }
+            }
+            console.warn('⚠️ OPSIN 3D conversion failed, falling back to 2D OPSIN');
+          } catch (eOpsin3D) {
+            console.warn('⚠️ OPSIN 3D API request failed:', eOpsin3D.message);
+          }
+        }
+
+        // Priority 1: OPSIN direct API (2D - updated URL)
+        console.log('%c🔬 Trying OPSIN 2D for name→SMILES conversion...', 'color: #0088FF; font-weight: bold;');
         try {
-          const opsinResp = await fetch(`https://opsin.ch.cam.ac.uk/opsin/${encodeURIComponent(name)}.smi`, {
+          const opsinResp = await fetch(`https://www.ebi.ac.uk/opsin/ws/${encodeURIComponent(name)}.smi`, {
             method: 'GET',
             headers: { 'Accept': 'text/plain' }
           });
@@ -982,13 +1531,13 @@ function setupLazyLoading() {
             const smilesText = await opsinResp.text();
             const smiles = smilesText.trim();
             if (smiles && smiles.length > 0 && !smiles.toLowerCase().includes('error')) {
-              console.log('%c✅ OPSIN conversion SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
+              console.log('%c✅ OPSIN 2D conversion SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
               return { smiles, source: 'OPSIN' };
             }
           }
-          console.warn('⚠️ OPSIN conversion failed or returned empty/error');
+          console.warn('⚠️ OPSIN 2D conversion failed or returned empty/error');
         } catch (eOpsin) {
-          console.warn('⚠️ OPSIN API request failed:', eOpsin.message);
+          console.warn('⚠️ OPSIN 2D API request failed:', eOpsin.message);
         }
 
         // Priority 2: PubChem via local MoleculeViewer API
@@ -1017,10 +1566,11 @@ function setupLazyLoading() {
       }
 
       if (isNomenclature) {
-        // Try conversion with OPSIN → PubChem fallback chain
-        const conv = await convertNameToSmilesWithFallbacks(inputData);
+        // Try conversion with OPSIN 3D (if enabled) → OPSIN 2D → PubChem fallback chain
+        const conv = await convertNameToSmilesWithFallbacks(inputData, settings.use3DSmiles);
         if (conv && conv.smiles) {
-          console.log('%c🔁 Converted name→SMILES:', 'color: #00AAFF; font-weight: bold;', conv.smiles, '(Source:', conv.source + ')');
+          const stereoInfo = conv.has_stereochemistry ? ' [3D stereochemistry]' : '';
+          console.log('%c🔁 Converted name→SMILES:', 'color: #00AAFF; font-weight: bold;', conv.smiles + stereoInfo, '(Source:', conv.source + ')');
           inputData = conv.smiles;
         } else {
           // All conversion methods failed — throw error and show fallback image
@@ -1115,7 +1665,12 @@ function setupLazyLoading() {
                 svgImg.alt = 'chemfig (fallback)';
                 svgImg.className = 'chemfig-diagram';
                 svgImg.style.cssText = `display: inline-block; max-width: 300px; max-height: 160px; margin: 0 12px 8px 0; vertical-align: middle; cursor: pointer;`;
-                img.parentNode.replaceChild(svgImg, img);
+                chrome.storage.sync.get({
+                  saveSizePerImage: false,
+                  saveSizeBySMILES: true  // FIX: Enable by default
+                }, async (sizeSettings) => {
+                  await wrapImageWithSizeControls(svgImg, img, moleculeData, sizeSettings);
+                });
                 svgImg.onload = () => { URL.revokeObjectURL(url); };
                 log.warn('⚠️ mol2chemfig response had no svglink — showing chemfig fallback');
                 activeLoads--;
@@ -1185,8 +1740,12 @@ function setupLazyLoading() {
                   .replace(/#000000/gi, '#FFFFFF')
                   .replace(/#000\b/gi, '#FFF')
                   .replace(/rgb\(0,\s*0,\s*0\)/gi, 'rgb(255, 255, 255)')
-                  .replace(/stroke="black"/gi, 'stroke="white"')
-                  .replace(/fill="black"/gi, 'fill="white"');
+                  .replace(/stroke=["']black["']/gi, 'stroke="white"')
+                  .replace(/fill=["']black["']/gi, 'fill="white"')
+                  // Also replace text element fill colors for atom labels (O, N, Cl, etc.)
+                  .replace(/(<text[^>]*fill=["'])black(["'])/gi, '$1white$2')
+                  .replace(/(<text[^>]*fill=["'])#000000(["'])/gi, '$1#FFFFFF$2')
+                  .replace(/(<text[^>]*fill=["'])#000(["'])/gi, '$1#FFF$2');
               }
               
               // Create Blob URL from modified SVG
@@ -1212,7 +1771,12 @@ function setupLazyLoading() {
             ${transform ? `transform: ${transform.trim()};` : ''}
           `;
               img.dataset.loaded = 'true';
-              img.parentNode.replaceChild(svgImg, img);
+              chrome.storage.sync.get({
+                saveSizePerImage: false,
+                saveSizeBySMILES: true  // FIX: Enable by default
+              }, async (sizeSettings) => {
+                await wrapImageWithSizeControls(svgImg, img, moleculeData, sizeSettings);
+              });
               svgImg.onload = () => { URL.revokeObjectURL(url); };
               log.debug(`✅ Used data URI with dark mode applied (${activeLoads} active loads remaining)`);
               activeLoads--;
@@ -1233,8 +1797,12 @@ function setupLazyLoading() {
                   .replace(/#000000/gi, '#FFFFFF')
                   .replace(/#000\b/gi, '#FFF')
                   .replace(/rgb\(0,\s*0,\s*0\)/gi, 'rgb(255, 255, 255)')
-                  .replace(/stroke="black"/gi, 'stroke="white"')
-                  .replace(/fill="black"/gi, 'fill="white"');
+                  .replace(/stroke=["']black["']/gi, 'stroke="white"')
+                  .replace(/fill=["']black["']/gi, 'fill="white"')
+                  // Also replace text element fill colors for atom labels (O, N, Cl, etc.)
+                  .replace(/(<text[^>]*fill=["'])black(["'])/gi, '$1white$2')
+                  .replace(/(<text[^>]*fill=["'])#000000(["'])/gi, '$1#FFFFFF$2')
+                  .replace(/(<text[^>]*fill=["'])#000(["'])/gi, '$1#FFF$2');
               }
               
               const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
@@ -1259,7 +1827,12 @@ function setupLazyLoading() {
             ${transform ? `transform: ${transform.trim()};` : ''}
           `;
               img.dataset.loaded = 'true';
-              img.parentNode.replaceChild(svgImg, img);
+              chrome.storage.sync.get({
+                saveSizePerImage: false,
+                saveSizeBySMILES: true  // FIX: Enable by default
+              }, async (sizeSettings) => {
+                await wrapImageWithSizeControls(svgImg, img, moleculeData, sizeSettings);
+              });
               // Revoke URL after image loads to free memory
               svgImg.onload = () => { URL.revokeObjectURL(url); };
               log.debug(`✅ Used Blob URL for raw SVG with dark mode applied (${activeLoads} active loads remaining)`);
@@ -1292,15 +1865,19 @@ function setupLazyLoading() {
           
           // Detect dark mode
           const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-          
+
           // Replace black color references in dark mode
           if (isDarkMode) {
             svgContent = svgContent
               .replace(/#000000/gi, '#FFFFFF')
               .replace(/#000\b/gi, '#FFF')
               .replace(/rgb\(0,\s*0,\s*0\)/gi, 'rgb(255, 255, 255)')
-              .replace(/stroke="black"/gi, 'stroke="white"')
-              .replace(/fill="black"/gi, 'fill="white"');
+              .replace(/stroke=["']black["']/gi, 'stroke="white"')
+              .replace(/fill=["']black["']/gi, 'fill="white"')
+              // Also replace text element fill colors for atom labels (O, N, Cl, etc.)
+              .replace(/(<text[^>]*fill=["'])black(["'])/gi, '$1white$2')
+              .replace(/(<text[^>]*fill=["'])#000000(["'])/gi, '$1#FFFFFF$2')
+              .replace(/(<text[^>]*fill=["'])#000(["'])/gi, '$1#FFF$2');
           }
           
           // Create clean SVG image with dark mode support
@@ -1328,8 +1905,13 @@ function setupLazyLoading() {
             const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             svgImg.src = url;
-            // Replace original img element with the SVG image
-            img.parentNode.replaceChild(svgImg, img);
+            // Replace original img element with size controls
+            chrome.storage.sync.get({
+              saveSizePerImage: false,
+              saveSizeBySMILES: true  // FIX: Enable by default
+            }, async (sizeSettings) => {
+              await wrapImageWithSizeControls(svgImg, img, moleculeData, sizeSettings);
+            });
             // Revoke object URL after image loads
             svgImg.onload = () => { URL.revokeObjectURL(url); };
           } catch (eBlob) {
@@ -1337,11 +1919,21 @@ function setupLazyLoading() {
             try {
               const utf8Base64 = btoa(unescape(encodeURIComponent(svgContent)));
               svgImg.src = 'data:image/svg+xml;base64,' + utf8Base64;
-              img.parentNode.replaceChild(svgImg, img);
+              chrome.storage.sync.get({
+                saveSizePerImage: false,
+                saveSizeBySMILES: true  // FIX: Enable by default
+              }, async (sizeSettings) => {
+                await wrapImageWithSizeControls(svgImg, img, moleculeData, sizeSettings);
+              });
             } catch (eBtoa) {
               // Last resort: put raw SVG into data URI (may break in some browsers)
               svgImg.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svgContent);
-              img.parentNode.replaceChild(svgImg, img);
+              chrome.storage.sync.get({
+                saveSizePerImage: false,
+                saveSizeBySMILES: true  // FIX: Enable by default
+              }, async (sizeSettings) => {
+                await wrapImageWithSizeControls(svgImg, img, moleculeData, sizeSettings);
+              });
             }
           }
 
@@ -1376,6 +1968,9 @@ function setupLazyLoading() {
     if (settings.rendererEngine === 'mol2chemfig') {
       console.log('%c📐 Using MOL2CHEMFIG renderer engine', 'background: #FF6B00; color: #FFF; font-size: 14px; padding: 5px;');
       loadMol2chemfigImage(img);
+    } else if (settings.rendererEngine === 'pubchem') {
+      console.log('%c🌐 Using PUBCHEM renderer engine', 'background: #4CAF50; color: #FFF; font-size: 14px; padding: 5px;');
+      loadPubChemImage(img);
     } else {
       console.log('%c🧪 Using MOLECULEVIEWER renderer engine', 'background: #0088FF; color: #FFF; font-size: 14px; padding: 5px;');
       loadMoleculeViewerImage(img);

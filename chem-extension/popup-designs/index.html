@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Chemistry Renderer - Design Selector</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 50px;
+    }
+
+    .header h1 {
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .header p {
+      font-size: 20px;
+      opacity: 0.95;
+      margin-bottom: 8px;
+    }
+
+    .header small {
+      font-size: 14px;
+      opacity: 0.8;
+      display: block;
+      margin-top: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+
+    .design-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .design-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+    }
+
+    .design-number {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+
+    .design-card h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #1a1a2e;
+    }
+
+    .design-card .description {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .feature-tag {
+      background: #f0f0f0;
+      color: #555;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+
+    .preview-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.3s;
+      text-align: center;
+      width: 100%;
+    }
+
+    .design-card:hover .preview-btn {
+      background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+      box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .footer {
+      text-align: center;
+      color: white;
+      margin-top: 50px;
+      padding: 30px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+    }
+
+    .footer h3 {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    .footer p {
+      font-size: 14px;
+      line-height: 1.8;
+      margin-bottom: 8px;
+    }
+
+    .info-box {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .info-box h3 {
+      color: #667eea;
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    .info-box p {
+      color: #555;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .info-box ul {
+      margin: 12px 0 0 20px;
+      color: #555;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚗️ Chemistry Renderer</h1>
+      <p>Choose Your Favorite Design</p>
+      <small>Click on any design to view it in action</small>
+    </div>
+
+    <div class="info-box">
+      <h3>About These Designs</h3>
+      <p>We've created 10 completely different UI designs for the Chemistry Renderer extension popup. Each design maintains all the same functionality but presents it with a unique visual style, layout, and aesthetic. Choose the one that matches your preference!</p>
+      <ul>
+        <li>All designs preserve 100% of functionality</li>
+        <li>Same popup.js works with all designs</li>
+        <li>Each design has a distinct layout and visual identity</li>
+        <li>Click any design card to preview it</li>
+      </ul>
+    </div>
+
+    <div class="grid">
+      <!-- Design 1 -->
+      <a href="popup-design-01-modern.html" class="design-card" target="_blank">
+        <span class="design-number">Design 01</span>
+        <h2>Modern Gradient</h2>
+        <p class="description">Clean gradients, rounded corners, and a modern aesthetic with smooth animations and hover effects. Purple gradient theme with card-based sections.</p>
+        <div class="features">
+          <span class="feature-tag">Gradients</span>
+          <span class="feature-tag">Rounded Corners</span>
+          <span class="feature-tag">Animations</span>
+          <span class="feature-tag">Modern</span>
+        </div>
+        <div class="preview-btn">View Design →</div>
+      </a>
+
+      <!-- Design 2 -->
+      <a href="popup-design-02-dark-cyberpunk.html" class="design-card" target="_blank">
+        <span class="design-number">Design 02</span>
+        <h2>Dark Cyberpunk</h2>
+        <p class="description">Dark theme with neon cyan and magenta accents. Futuristic vibes with glowing effects, scanlines, and terminal-style aesthetics. Perfect for night owls.</p>
+        <div class="features">
+          <span class="feature-tag">Dark Theme</span>
+          <span class="feature-tag">Neon Effects</span>
+          <span class="feature-tag">Futuristic</span>
+          <span class="feature-tag">Cyberpunk</span>
+        </div>
+        <div class="preview-btn">View Design →</div>
+      </a>
+
+      <!-- Design 3 -->
+      <a href="popup-design-03-minimal.html" class="design-card" target="_blank">
+        <span class="design-number">Design 03</span>
+        <h2>Minimal Clean</h2>
+        <p class="description">Maximum white space, simple black and white color scheme, clean lines, and ultra-minimal typography. Less is more philosophy with elegant simplicity.</p>
+        <div class="features">
+          <span class="feature-tag">Minimal</span>
+          <span class="feature-tag">White Space</span>
+          <span class="feature-tag">Clean</span>
+          <span class="feature-tag">Simple</span>
+        </div>
+        <div class="preview-btn">View Design →</div>
+      </a>
+
+      <!-- Design 4 -->
+      <a href="popup-design-04-cards.html" class="design-card" target="_blank">
+        <span class="design-number">Design 04</span>
+        <h2>Card-Based</h2>
+        <p class="description">Options grouped in individual cards with shadows and spacing. Grid layout with hover effects. Modern card-based interface with depth and dimension.</p>
+        <div class="features">
+          <span class="feature-tag">Cards</span>
+          <span class="feature-tag">Shadows</span>
+          <span class="feature-tag">Grid Layout</span>
+          <span class="feature-tag">Organized</span>
+        </div>
+        <div class="preview-btn">View Design →</div>
+      </a>
+
+      <!-- Design 5 -->
+      <a href="popup-design-05-sidebar.html" class="design-card" target="_blank">
+        <span class="design-number">Design 05</span>
+        <h2>Sidebar Layout</h2>
+        <p class="description">Vertical navigation sidebar with dedicated content area. Multi-page navigation system. Professional dashboard-style interface with organized sections.</p>
+        <div class="features">
+          <span class="feature-tag">Sidebar</span>
+          <span class="feature-tag">Navigation</span>
+          <span class="feature-tag">Multi-page</span>
+          <span class="feature-tag">Professional</span>
+        </div>
+        <div class="preview-btn">View Design →</div>
+      </a>
+
+      <!-- Design 6 -->
+      <a href="popup-design-06-glassmorphism.html" class="design-card" target="_blank">
+        <span class="design-number">Design 06</span>
+        <h2>Glassmorphism</h2>
+        <p class="description">Frosted glass effect with blur, semi-transparency, and floating shapes. Dreamy gradient background with modern glass panels. iOS-inspired aesthetic.</p>
+        <div class="features">
+          <span class="feature-tag">Glass Effect</span>
+          <span class="feature-tag">Blur</span>
+          <span class="feature-tag">Transparency</span>
+          <span class="feature-tag">Modern</span>
+        </div>
+        <div class="preview-btn">View Design →</div>
+      </a>
+
+      <!-- Design 7 -->
+      <a href="popup-design-07-bright-cyberpunk.html" class="design-card" target="_blank">
+        <span class="design-number">Design 07</span>
+        <h2>Bright Cyberpunk</h2>
+        <p class="description">Bright neon colors (cyan, magenta, yellow) with black borders. Bold, high-contrast design with glitch effects and tech aesthetic. Eye-catching and energetic.</p>
+        <div class="features">
+          <span class="feature-tag">Bright Colors</span>
+          <span class="feature-tag">Neon</span>
+          <span class="feature-tag">High Contrast</span>
+          <span class="feature-tag">Bold</span>
+        </div>
+        <div class="preview-btn">View Design →</div>
+      </a>
+
+      <!-- Design 8 -->
+      <a href="popup-design-08-neumorphism.html" class="design-card" target="_blank">
+        <span class="design-number">Design 08</span>
+        <h2>Neumorphism</h2>
+        <p class="description">Soft shadows creating subtle 3D depth effects. Monochromatic gray scheme with embossed and debossed elements. Calm and tactile interface design.</p>
+        <div class="features">
+          <span class="feature-tag">Soft Shadows</span>
+          <span class="feature-tag">3D Effect</span>
+          <span class="feature-tag">Tactile</span>
+          <span class="feature-tag">Calm</span>
+        </div>
+        <div class="preview-btn">View Design →</div>
+      </a>
+
+      <!-- Design 9 -->
+      <a href="popup-design-09-material.html" class="design-card" target="_blank">
+        <span class="design-number">Design 09</span>
+        <h2>Material Design</h2>
+        <p class="description">Google Material Design principles with elevation, cards, and precise spacing. Blue accent colors with paper-like layers. Clean and familiar interface.</p>
+        <div class="features">
+          <span class="feature-tag">Material</span>
+          <span class="feature-tag">Google</span>
+          <span class="feature-tag">Cards</span>
+          <span class="feature-tag">Elevation</span>
+        </div>
+        <div class="preview-btn">View Design →</div>
+      </a>
+
+      <!-- Design 10 -->
+      <a href="popup-design-10-retro.html" class="design-card" target="_blank">
+        <span class="design-number">Design 10</span>
+        <h2>Retro/Vintage</h2>
+        <p class="description">80s/90s aesthetic with warm brown/tan colors, pixel-style borders, and nostalgic design. CRT scanline effects and vintage computer terminal vibes.</p>
+        <div class="features">
+          <span class="feature-tag">Retro</span>
+          <span class="feature-tag">Vintage</span>
+          <span class="feature-tag">80s/90s</span>
+          <span class="feature-tag">Nostalgic</span>
+        </div>
+        <div class="preview-btn">View Design →</div>
+      </a>
+    </div>
+
+    <div class="footer">
+      <h3>Implementation Notes</h3>
+      <p>All designs use the same popup.js file and maintain identical functionality.</p>
+      <p>Each design preserves all features: server selection, render modes, dark mode, developer options, image size controls, 3D stereochemistry, and ChemFig options.</p>
+      <p>To use a design, simply replace the contents of popup.html with your chosen design.</p>
+    </div>
+  </div>
+</body>
+</html>

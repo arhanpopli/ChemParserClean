@@ -34,8 +34,10 @@ wheels/
 instance/
 .webassets-cache
 
-# Cache
+# Cache - separate folders for each system
+cache/
 svg-cache/
+mol2chemfig_storage/
 *.cache
 
 # IDE

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python generate_svg.py:*)",
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(dir:*)",
+      "Bash(nul)",
+      "Bash(docker-compose restart:*)",
+      "Bash(\"C:\\Users\\Kapil\\Personal\\PROJECTS\\Chemparser\\UI_DESIGNS_SUMMARY.md\")",
+      "Bash(\"C:\\Users\\Kapil\\Personal\\PROJECTS\\Chemparser\\chem-extension\\popup-designs\\QUICK_START.md\")",
+      "Bash(findstr:*)",
+      "Bash(node launcher-server.js:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

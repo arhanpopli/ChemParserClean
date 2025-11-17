@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test 3D Extension</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1a1a; color: white; }
+        .box { background: #2a2a2a; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        code { background: #333; padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Chemistry Extension</h1>
+    
+    <div class="box">
+        <h2>Step 1: Make sure server is running</h2>
+        <p>Open your terminal and run:</p>
+        <code>cd C:\Users\Kapil\Personal\PROJECTS\Chemparser\MoleculeViewer\pubchem && node server.js</code>
+    </div>
+
+    <div class="box">
+        <h2>Step 2: Reload the extension</h2>
+        <p>Go to <strong>chrome://extensions</strong> and click the reload button</p>
+    </div>
+
+    <div class="box">
+        <h2>Step 3: Enable 3D Viewer</h2>
+        <p>Click extension icon → Developer Options → Turn ON "Enable 3D Viewer"</p>
+    </div>
+
+    <div class="box">
+        <h2>Step 4: Type chemistry formulas below</h2>
+        <p>Each formula should be replaced with a viewer:</p>
+        
+        <p><strong>Test 1:</strong> <code>chem:histamine:</code></p>
+        <p><strong>Test 2:</strong> <code>chem:aspirin:</code></p>
+        <p><strong>Test 3:</strong> <code>chem:caffeine:</code></p>
+        <p><strong>Test 4:</strong> <code>chem:glucose:</code></p>
+    </div>
+
+    <div class="box">
+        <h2>Expected Result</h2>
+        <p>Each formula should show a <strong>3D rotating molecular model</strong> inline in the page.</p>
+        <p>You should see a purple-bordered box with the molecule inside.</p>
+    </div>
+
+    <div class="box">
+        <h2>Check Server</h2>
+        <a href="http://localhost:5002/health" target="_blank">Test Server Health</a>
+        <br><br>
+        <a href="http://localhost:5002/info/histamine" target="_blank">Test Histamine Lookup</a>
+        <br><br>
+        <a href="http://localhost:5002/static/viewer-3d.html?name=glucose" target="_blank">Test 3D Viewer (Glucose)</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChemFig Options Persistence - Full Integration Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-bar {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .status-badge.online {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-badge.offline {
+            background: #ef4444;
+            color: white;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .panel h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: #f3f4f6;
+            border-color: #667eea;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .output-box {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            min-height: 150px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .preview-area {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview-area img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 2px solid #3b82f6;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .quick-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .example-chip {
+            padding: 6px 12px;
+            background: #f3f4f6;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .example-chip:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h3 {
+            color: #1e40af;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #1e3a8a;
+            font-size: 13px;
+        }
+
+        .info-box li {
+            margin-bottom: 5px;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .loading {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        .cache-links {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+
+        .cache-links h4 {
+            color: #92400e;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .cache-links a {
+            color: #b45309;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .cache-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ChemFig Options Persistence - Full Integration Test</h1>
+            <p>Test page demonstrating server-side persistent chemfig options across multiple searches</p>
+        </div>
+
+        <div class="status-bar">
+            <div>
+                <span class="status-badge" id="serverStatus">Checking...</span>
+            </div>
+            <div style="color: #666; font-size: 14px;">
+                Server: <code>http://localhost:5001</code>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3>How Options Persistence Works:</h3>
+            <ul>
+                <li>Select chemfig options below (aromatic, show carbon, etc.)</li>
+                <li>Click "Save as Default Options" to persist your preferences on the server</li>
+                <li>Search for ANY chemical - your saved options will be automatically applied</li>
+                <li>Cache links will be displayed properly after applying options</li>
+                <li>Options remain active across page reloads (stored in Flask session)</li>
+                <li>Each unique SMILES + options combination gets its own cache entry</li>
+            </ul>
+        </div>
+
+        <div class="main-grid">
+            <!-- Left Panel: Search and Options -->
+            <div class="panel">
+                <h2>Search & Options</h2>
+
+                <div class="form-group">
+                    <label>Search Chemical Name</label>
+                    <input type="text" id="searchInput" placeholder="e.g., aspirin, caffeine, glucose">
+                </div>
+
+                <div class="quick-examples">
+                    <div class="example-chip" onclick="quickSearch('aspirin')">Aspirin</div>
+                    <div class="example-chip" onclick="quickSearch('caffeine')">Caffeine</div>
+                    <div class="example-chip" onclick="quickSearch('glucose')">Glucose</div>
+                    <div class="example-chip" onclick="quickSearch('benzene')">Benzene</div>
+                    <div class="example-chip" onclick="quickSearch('ethanol')">Ethanol</div>
+                </div>
+
+                <button class="btn btn-primary" id="searchBtn" onclick="searchAndConvert()">
+                    Search and Convert
+                </button>
+
+                <hr style="margin: 25px 0; border: none; border-top: 2px solid #f0f0f0;">
+
+                <h3 style="color: #667eea; margin-bottom: 15px;">
+                    ChemFig Options
+                    <span class="badge" id="activeCount">0 active</span>
+                </h3>
+
+                <div class="checkbox-grid" id="optionsGrid">
+                    <!-- Options will be populated by JavaScript -->
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-success" onclick="saveDefaultOptions()">
+                        Save as Default Options
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadDefaultOptions()">
+                        Load Saved Options
+                    </button>
+                    <button class="btn btn-danger" onclick="clearDefaultOptions()">
+                        Clear Options
+                    </button>
+                </div>
+
+                <div id="alertContainer" style="margin-top: 20px;"></div>
+            </div>
+
+            <!-- Right Panel: Results -->
+            <div class="panel">
+                <h2>Results</h2>
+
+                <div class="form-group">
+                    <label>ChemFig Output</label>
+                    <div class="output-box" id="chemfigOutput">
+                        <em style="color: #999;">ChemFig code will appear here...</em>
+                    </div>
+                </div>
+
+                <div id="cacheLinksContainer"></div>
+
+                <div class="form-group">
+                    <label>Preview</label>
+                    <div class="preview-area" id="previewArea">
+                        <em style="color: #999;">Structure preview will appear here...</em>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full-width test log -->
+        <div class="panel">
+            <h2>Test Log</h2>
+            <div class="output-box" id="testLog" style="max-height: 200px;">
+                <em style="color: #999;">Test actions will be logged here...</em>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://localhost:5001';
+        const BACKEND_URL = 'http://localhost:8000/m2cf';
+
+        // ChemFig options configuration
+        const OPTIONS = [
+            { label: 'Aromatic circles', value: '-o', tooltip: 'Show circles in aromatic rings' },
+            { label: 'Show carbon', value: '-c', tooltip: 'Display carbon atoms' },
+            { label: 'Show methyl', value: '-m', tooltip: 'Display methyl groups' },
+            { label: 'Fancy bonds', value: '-f', tooltip: 'Enhanced bond rendering' },
+            { label: 'Compact view', value: '-z', tooltip: 'Compact structure layout' },
+            { label: 'Atom numbers', value: '-n', tooltip: 'Number the atoms' },
+            { label: 'Flip horizontal', value: '-p', tooltip: 'Mirror horizontally' },
+            { label: 'Flip vertical', value: '-q', tooltip: 'Mirror vertically' }
+        ];
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            checkServerStatus();
+            populateOptions();
+            loadDefaultOptions();
+            log('Page loaded. Ready to test options persistence.');
+        });
+
+        // Check server status
+        async function checkServerStatus() {
+            const statusBadge = document.getElementById('serverStatus');
+            try {
+                const response = await fetch(`${SERVER_URL}/health`);
+                const data = await response.json();
+                if (data.status === 'running') {
+                    statusBadge.textContent = 'Server Online';
+                    statusBadge.className = 'status-badge online';
+                    log('Server is online and ready.');
+                } else {
+                    statusBadge.textContent = 'Server Error';
+                    statusBadge.className = 'status-badge offline';
+                }
+            } catch (error) {
+                statusBadge.textContent = 'Server Offline';
+                statusBadge.className = 'status-badge offline';
+                log('ERROR: Cannot connect to server. Make sure mol2chemfig_server.py is running on port 5001.');
+            }
+        }
+
+        // Populate options checkboxes
+        function populateOptions() {
+            const grid = document.getElementById('optionsGrid');
+            grid.innerHTML = '';
+
+            OPTIONS.forEach((opt, index) => {
+                const item = document.createElement('div');
+                item.className = 'checkbox-item';
+                item.innerHTML = `
+                    <input type="checkbox" id="opt_${index}" value="${opt.value}" onchange="updateActiveCount()">
+                    <label for="opt_${index}" title="${opt.tooltip}">${opt.label}</label>
+                `;
+                grid.appendChild(item);
+            });
+
+            updateActiveCount();
+        }
+
+        // Update active options count
+        function updateActiveCount() {
+            const checked = OPTIONS.filter((opt, idx) =>
+                document.getElementById(`opt_${idx}`).checked
+            );
+            document.getElementById('activeCount').textContent = `${checked.length} active`;
+        }
+
+        // Get selected options
+        function getSelectedOptions() {
+            const selected = [];
+            OPTIONS.forEach((opt, index) => {
+                if (document.getElementById(`opt_${index}`).checked) {
+                    selected.push(opt.value);
+                }
+            });
+            return selected;
+        }
+
+        // Set selected options
+        function setSelectedOptions(selections) {
+            OPTIONS.forEach((opt, index) => {
+                const checkbox = document.getElementById(`opt_${index}`);
+                checkbox.checked = selections.includes(opt.value);
+            });
+            updateActiveCount();
+        }
+
+        // Save default options to server
+        async function saveDefaultOptions() {
+            const selections = getSelectedOptions();
+
+            try {
+                const response = await fetch(`${SERVER_URL}/api/options/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        selections: selections,
+                        angle: 0,
+                        indentation: 4,
+                        h2: 'keep'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('success', `Default options saved! (${selections.length} options active)`);
+                    log(`Saved default options: ${selections.join(', ') || 'none'}`);
+                } else {
+                    showAlert('error', `Failed to save options: ${data.error}`);
+                }
+            } catch (error) {
+                showAlert('error', `Network error: ${error.message}`);
+                log(`ERROR: ${error.message}`);
+            }
+        }
+
+        // Load default options from server
+        async function loadDefaultOptions() {
+            try {
+                const response = await fetch(`${SERVER_URL}/api/options/get`, {
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.options) {
+                    setSelectedOptions(data.options.selections || []);
+                    log(`Loaded saved options: ${data.options.selections.join(', ') || 'none'}`);
+                    if (data.options.selections.length > 0) {
+                        showAlert('info', `Loaded ${data.options.selections.length} saved options`);
+                    }
+                }
+            } catch (error) {
+                log(`Could not load saved options: ${error.message}`);
+            }
+        }
+
+        // Clear default options on server
+        async function clearDefaultOptions() {
+            try {
+                const response = await fetch(`${SERVER_URL}/api/options/clear`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    setSelectedOptions([]);
+                    showAlert('success', 'Default options cleared');
+                    log('Cleared all saved default options');
+                }
+            } catch (error) {
+                showAlert('error', `Failed to clear options: ${error.message}`);
+            }
+        }
+
+        // Quick search
+        function quickSearch(name) {
+            document.getElementById('searchInput').value = name;
+            searchAndConvert();
+        }
+
+        // Main search and convert function
+        async function searchAndConvert() {
+            const searchInput = document.getElementById('searchInput');
+            const searchBtn = document.getElementById('searchBtn');
+            const searchTerm = searchInput.value.trim();
+
+            if (!searchTerm) {
+                showAlert('error', 'Please enter a chemical name');
+                return;
+            }
+
+            searchBtn.disabled = true;
+            searchBtn.innerHTML = '<span class="loading">⏳</span> Searching...';
+
+            log(`Searching for: "${searchTerm}"`);
+
+            try {
+                // Step 1: Search for SMILES via backend
+                const searchResponse = await fetch(`${BACKEND_URL}/search?searchTerm=${encodeURIComponent(searchTerm)}`);
+                const searchData = await searchResponse.json();
+
+                if (searchData.error || !searchData.smiles) {
+                    showAlert('error', searchData.error || 'Chemical not found');
+                    log(`ERROR: ${searchData.error}`);
+                    searchBtn.disabled = false;
+                    searchBtn.textContent = 'Search and Convert';
+                    return;
+                }
+
+                const smiles = searchData.smiles;
+                log(`Found SMILES: ${smiles}`);
+
+                // Step 2: Generate with saved default options (server will auto-apply them)
+                searchBtn.innerHTML = '<span class="loading">⏳</span> Generating with saved options...';
+
+                const generateResponse = await fetch(`${SERVER_URL}/api/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        smiles: smiles,
+                        format: 'smiles',
+                        use_default_options: true,  // This tells server to use saved defaults
+                        return_format: 'both'
+                    })
+                });
+
+                const genData = await generateResponse.json();
+
+                if (genData.success) {
+                    // Display chemfig output
+                    document.getElementById('chemfigOutput').textContent = genData.chemfig || 'No chemfig generated';
+
+                    // Display cache links
+                    displayCacheLinks(genData);
+
+                    // Display preview
+                    if (genData.svg_url) {
+                        const fullUrl = `${SERVER_URL}${genData.svg_url}`;
+                        document.getElementById('previewArea').innerHTML = `<img src="${fullUrl}" alt="Structure">`;
+                        log(`Preview loaded from: ${genData.svg_url}`);
+                    }
+
+                    const optionsUsed = genData.applied_options || [];
+                    log(`SUCCESS! Generated with options: ${optionsUsed.join(', ') || 'none'}`);
+                    log(`Cache hash: ${genData.hash}`);
+                    log(`Cached: ${genData.cached ? 'YES (loaded from cache)' : 'NO (newly generated)'}`);
+
+                    showAlert('success', `Generated successfully with ${optionsUsed.length} options applied!`);
+                } else {
+                    showAlert('error', genData.error || 'Generation failed');
+                    log(`ERROR: ${genData.error}`);
+                }
+
+            } catch (error) {
+                showAlert('error', `Network error: ${error.message}`);
+                log(`ERROR: ${error.message}`);
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search and Convert';
+            }
+        }
+
+        // Display cache links
+        function displayCacheLinks(data) {
+            const container = document.getElementById('cacheLinksContainer');
+
+            if (data.svg_url || data.pdf_url) {
+                const svgUrl = data.svg_url ? `${SERVER_URL}${data.svg_url}` : null;
+                const pdfUrl = data.pdf_url ? `${SERVER_URL}${data.pdf_url}` : null;
+
+                container.innerHTML = `
+                    <div class="cache-links">
+                        <h4>Cache Links (Persistent):</h4>
+                        ${svgUrl ? `<a href="${svgUrl}" target="_blank">SVG: ${svgUrl}</a>` : ''}
+                        ${pdfUrl ? `<a href="${pdfUrl}" target="_blank">PDF: ${pdfUrl}</a>` : ''}
+                        <p style="margin-top: 10px; font-size: 12px; color: #92400e;">
+                            Cache hash: ${data.hash || 'N/A'} | Status: ${data.cached ? 'Loaded from cache' : 'Newly generated'}
+                        </p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = '';
+            }
+        }
+
+        // Show alert message
+        function showAlert(type, message) {
+            const container = document.getElementById('alertContainer');
+            const alertClass = type === 'success' ? 'alert-success' :
+                              type === 'error' ? 'alert-error' : 'alert-info';
+
+            container.innerHTML = `
+                <div class="alert ${alertClass}">
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.remove()"
+                            style="background:none;border:none;font-size:20px;cursor:pointer;">×</button>
+                </div>
+            `;
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                const alert = container.querySelector('.alert');
+                if (alert) alert.remove();
+            }, 5000);
+        }
+
+        // Log to test log
+        function log(message) {
+            const logBox = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const currentLog = logBox.textContent.includes('Test actions will be logged') ? '' : logBox.textContent;
+            logBox.textContent = `[${timestamp}] ${message}\n${currentLog}`;
+        }
+    </script>
+</body>
+</html>

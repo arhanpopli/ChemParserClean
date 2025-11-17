@@ -19,8 +19,12 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb' }));
 
-// Cache directory for generated SVGs
-const CACHE_DIR = path.join(__dirname, 'svg-cache');
+// Serve static files from root directory
+app.use(express.static(path.join(__dirname, '..')));
+app.use(express.static(path.join(__dirname)));
+
+// Cache directory for generated SVGs - MoleculeViewer specific
+const CACHE_DIR = path.join(__dirname, 'cache', 'moleculeviewer');
 if (!fs.existsSync(CACHE_DIR)) {
   fs.mkdirSync(CACHE_DIR, { recursive: true });
 }
@@ -122,11 +126,64 @@ async function convertNomenclatureToSmiles(nomenclature) {
 }
 
 /**
+ * Canonicalize SMILES using Python/RDKit
+ */
+async function canonicalizeSmiles(smiles) {
+  return new Promise((resolve, reject) => {
+    const pythonProcess = spawn('python', [
+      path.join(__dirname, 'canonicalize_smiles.py'),
+      smiles
+    ]);
+
+    let stdout = '';
+    let stderr = '';
+
+    pythonProcess.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`❌ SMILES canonicalization error: ${stderr}`);
+        reject(new Error(stderr || 'SMILES canonicalization failed'));
+        return;
+      }
+
+      try {
+        const result = JSON.parse(stdout);
+        if (result.error) {
+          reject(new Error(result.error));
+        } else {
+          resolve(result.canonical_smiles);
+        }
+      } catch (e) {
+        reject(new Error(`Failed to parse canonicalization output: ${e.message}`));
+      }
+    });
+  });
+}
+
+/**
  * Generate cache key for SVG
+ * NOTE: For SMILES-based keys, use generateCacheKeyFromSmiles instead
  */
 function generateCacheKey(type, value, width, height) {
   const crypto = require('crypto');
   const key = `${type}:${value}:${width}x${height}`;
+  return crypto.createHash('md5').update(key).digest('hex') + '.svg';
+}
+
+/**
+ * Generate cache key from canonical SMILES
+ * This ensures the same molecule always gets the same cache key
+ */
+function generateCacheKeyFromSmiles(canonicalSmiles, width, height) {
+  const crypto = require('crypto');
+  const key = `smiles:${canonicalSmiles}:${width}x${height}`;
   return crypto.createHash('md5').update(key).digest('hex') + '.svg';
 }
 
@@ -172,8 +229,18 @@ app.get('/img/smiles', async (req, res) => {
     console.log(`   SMILES: ${smiles}`);
     console.log(`   Size: ${width}x${height}px`);
 
-    // Check cache
-    const cacheKey = generateCacheKey('smiles', smiles, width, height);
+    // Canonicalize SMILES to prevent duplicate cache entries
+    let canonicalSmiles;
+    try {
+      canonicalSmiles = await canonicalizeSmiles(smiles);
+      console.log(`   Canonical SMILES: ${canonicalSmiles}`);
+    } catch (e) {
+      console.log(`   Warning: Could not canonicalize SMILES, using original: ${e.message}`);
+      canonicalSmiles = smiles;
+    }
+
+    // Check cache using canonical SMILES
+    const cacheKey = generateCacheKeyFromSmiles(canonicalSmiles, width, height);
     let svg = getCachedSvg(cacheKey);
 
     if (svg) {
@@ -184,8 +251,8 @@ app.get('/img/smiles', async (req, res) => {
       return res.send(svg);
     }
 
-    // Generate SVG
-    svg = await generateSvgViaPython(smiles, width, height, {
+    // Generate SVG using canonical SMILES
+    svg = await generateSvgViaPython(canonicalSmiles, width, height, {
       aromaticCircles: true,
       fancyBonds: true
     });
@@ -226,8 +293,23 @@ app.get('/img/nomenclature', async (req, res) => {
     console.log(`   Nomenclature: ${nomenclature}`);
     console.log(`   Size: ${width}x${height}px`);
 
-    // Check cache
-    const cacheKey = generateCacheKey('nomenclature', nomenclature, width, height);
+    // Step 1: Convert nomenclature to SMILES
+    console.log(`   Converting to SMILES...`);
+    const smiles = await convertNomenclatureToSmiles(nomenclature);
+    console.log(`   ✓ SMILES: ${smiles}`);
+
+    // Step 2: Canonicalize SMILES to prevent duplicate cache entries
+    let canonicalSmiles;
+    try {
+      canonicalSmiles = await canonicalizeSmiles(smiles);
+      console.log(`   ✓ Canonical SMILES: ${canonicalSmiles}`);
+    } catch (e) {
+      console.log(`   Warning: Could not canonicalize SMILES, using original: ${e.message}`);
+      canonicalSmiles = smiles;
+    }
+
+    // Step 3: Check cache using canonical SMILES
+    const cacheKey = generateCacheKeyFromSmiles(canonicalSmiles, width, height);
     let svg = getCachedSvg(cacheKey);
 
     if (svg) {
@@ -238,13 +320,8 @@ app.get('/img/nomenclature', async (req, res) => {
       return res.send(svg);
     }
 
-    // Step 1: Convert nomenclature to SMILES
-    console.log(`   Converting to SMILES...`);
-    const smiles = await convertNomenclatureToSmiles(nomenclature);
-    console.log(`   ✓ SMILES: ${smiles}`);
-
-    // Step 2: Generate SVG from SMILES
-    svg = await generateSvgViaPython(smiles, width, height, {
+    // Step 4: Generate SVG from canonical SMILES
+    svg = await generateSvgViaPython(canonicalSmiles, width, height, {
       aromaticCircles: true,
       fancyBonds: true
     });

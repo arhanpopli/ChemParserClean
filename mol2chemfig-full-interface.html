@@ -1,885 +1,444 @@
-<!DOCTYPE html><!DOCTYPE html>
-
-<html lang="en"><html lang="en">
-
-<head><head>
-
-    <meta charset="UTF-8">    <meta charset="UTF-8">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>ChemParser - Unified Interface</title>    <title>Mol2chemfig - Complete Interface</title>
-
-    <style>    
-
-        * {    <!-- Kekule.js for chemical drawing -->
-
-            margin: 0;    <link rel="stylesheet" type="text/css" href="https://partridgejiang.github.io/Kekule.js/dist/themes/default/kekule.css" />
-
-            padding: 0;    <script src="https://partridgejiang.github.io/Kekule.js/dist/kekule.min.js"></script>
-
-            box-sizing: border-box;    
-
-        }    <style>
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mol2chemfig - Complete Interface</title>
+    
+    <!-- Kekule.js for chemical drawing -->
+    <link rel="stylesheet" type="text/css" href="https://partridgejiang.github.io/Kekule.js/dist/themes/default/kekule.css" />
+    <script src="https://partridgejiang.github.io/Kekule.js/dist/kekule.min.js"></script>
+    
+    <style>
         * {
-
-        body {            margin: 0;
-
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;            padding: 0;
-
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);            box-sizing: border-box;
-
-            min-height: 100vh;        }
-
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
-
-        .header {            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-
-            background: rgba(255, 255, 255, 0.95);            background: #0d1117;
-
-            padding: 20px 40px;            color: #c9d1d9;
-
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);            overflow-x: hidden;
-
-        }        }
-
-
-
-        .header h1 {        .header {
-
-            color: #667eea;            background: linear-gradient(135deg, #1f6feb 0%, #0d419d 100%);
-
-            font-size: 32px;            padding: 20px;
-
-            margin-bottom: 5px;            text-align: center;
-
-        }            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            overflow-x: hidden;
         }
 
-        .header p {
+        .header {
+            background: linear-gradient(135deg, #1f6feb 0%, #0d419d 100%);
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
 
-            color: #666;        .header h1 {
-
-            font-size: 14px;            color: white;
-
-        }            margin: 0;
-
+        .header h1 {
+            color: white;
+            margin: 0;
             font-size: 2.2em;
+        }
 
-        .tabs {        }
-
-            background: rgba(255, 255, 255, 0.95);
-
-            display: flex;        .status-bar {
-
-            gap: 5px;            background: #161b22;
-
-            padding: 10px 40px 0;            padding: 12px 20px;
-
-            overflow-x: auto;            border-bottom: 1px solid #30363d;
-
-        }            display: flex;
-
+        .status-bar {
+            background: #161b22;
+            padding: 12px 20px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
             justify-content: space-between;
+            align-items: center;
+        }
 
-        .tab-button {            align-items: center;
+        .status {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+        }
 
-            background: transparent;        }
-
-            border: none;
-
-            padding: 12px 24px;        .status {
-
-            font-size: 14px;            padding: 6px 12px;
-
-            font-weight: 600;            border-radius: 6px;
-
-            color: #666;            font-weight: 600;
-
-            cursor: pointer;            font-size: 14px;
-
-            border-bottom: 3px solid transparent;        }
-
-            transition: all 0.3s;
-
-            white-space: nowrap;        .status.online {
-
-        }            background: #238636;
-
+        .status.online {
+            background: #238636;
             color: #fff;
+        }
 
-        .tab-button:hover {        }
-
-            color: #667eea;
-
-        }        .status.offline {
-
+        .status.offline {
             background: #da3633;
+            color: #fff;
+        }
 
-        .tab-button.active {            color: #fff;
-
-            color: #667eea;        }
-
-            border-bottom-color: #667eea;
-
-        }        .container {
-
+        .container {
             max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
 
-        .tab-content {            margin: 0 auto;
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #21262d;
+        }
 
-            display: none;            padding: 20px;
+        .tab {
+            padding: 12px 24px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+            font-weight: 600;
+        }
 
-            padding: 30px 40px;        }
+        .tab:hover {
+            background: #21262d;
+        }
 
-            background: white;
+        .tab.active {
+            background: #1f6feb;
+            color: white;
+            border-color: #1f6feb;
+        }
 
-            margin: 0 40px 40px;        .tabs {
-
-            border-radius: 12px;            display: flex;
-
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);            gap: 10px;
-
-            min-height: 600px;            margin-bottom: 20px;
-
-        }            border-bottom: 2px solid #21262d;
-
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
         }
 
         .tab-content.active {
-
-            display: block;        .tab {
-
-        }            padding: 12px 24px;
-
-            background: #161b22;
-
-        .iframe-container {            border: 1px solid #30363d;
-
-            width: 100%;            border-bottom: none;
-
-            height: 800px;            border-radius: 6px 6px 0 0;
-
-            border: 2px solid #e0e0e0;            cursor: pointer;
-
-            border-radius: 8px;            transition: all 0.3s;
-
-            overflow: hidden;            font-size: 16px;
-
-            background: white;            font-weight: 600;
-
-        }        }
-
-
-
-        .iframe-container iframe {        .tab:hover {
-
-            width: 100%;            background: #21262d;
-
-            height: 100%;        }
-
-            border: none;
-
-        }        .tab.active {
-
-            background: #1f6feb;
-
-        h2 {            color: white;
-
-            color: #333;            border-color: #1f6feb;
-
-            margin-bottom: 20px;        }
-
-            font-size: 24px;
-
-        }        .tab-content {
-
-            display: none;
-
-        .info-box {            animation: fadeIn 0.3s;
-
-            background: #f0f7ff;        }
-
-            border-left: 4px solid #667eea;
-
-            padding: 15px;        .tab-content.active {
-
-            margin-bottom: 20px;            display: block;
-
-            border-radius: 4px;        }
-
+            display: block;
         }
 
         @keyframes fadeIn {
-
-        .info-box h3 {            from { opacity: 0; transform: translateY(10px); }
-
-            color: #667eea;            to { opacity: 1; transform: translateY(0); }
-
-            margin-bottom: 10px;        }
-
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .section {
-
-        .info-box ul {            background: #161b22;
-
-            margin-left: 20px;            border: 1px solid #30363d;
-
-            color: #555;            border-radius: 8px;
-
-        }            padding: 20px;
-
-            margin-bottom: 20px;
-
-        .info-box li {        }
-
-            margin: 5px 0;
-
-        }        .section-title {
-
-            font-size: 1.3em;
-
-        .test-list {            color: #58a6ff;
-
-            display: grid;            margin-bottom: 15px;
-
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));            padding-bottom: 10px;
-
-            gap: 15px;            border-bottom: 2px solid #21262d;
-
-        }        }
-
-
-
-        .test-card {        .input-group {
-
-            background: #f8f9fa;            margin-bottom: 15px;
-
-            padding: 15px;        }
-
-            border-radius: 8px;
-
-            border: 2px solid #e0e0e0;        label {
-
-            transition: all 0.3s;            display: block;
-
-        }            margin-bottom: 6px;
-
-            color: #8b949e;
-
-        .test-card:hover {            font-weight: 500;
-
-            border-color: #667eea;            font-size: 14px;
-
-            transform: translateY(-2px);        }
-
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-
-        }        input[type="text"],
-
-        input[type="number"],
-
-        .test-card h3 {        select,
-
-            color: #333;        textarea {
-
-            font-size: 16px;            width: 100%;
-
-            margin-bottom: 8px;            padding: 10px 12px;
-
-        }            background: #0d1117;
-
+            background: #161b22;
             border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
 
-        .test-card p {            border-radius: 6px;
+        .section-title {
+            font-size: 1.3em;
+            color: #58a6ff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #21262d;
+        }
 
-            color: #666;            color: #c9d1d9;
+        .input-group {
+            margin-bottom: 15px;
+        }
 
-            font-size: 13px;            font-size: 14px;
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #8b949e;
+            font-weight: 500;
+            font-size: 14px;
+        }
 
-            margin-bottom: 12px;            transition: border-color 0.2s;
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
 
-        }        }
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #1f6feb;
+            box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.1);
+        }
 
+        textarea {
+            min-height: 150px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
 
-
-        .btn {        input:focus,
-
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);        select:focus,
-
-            color: white;        textarea:focus {
-
-            border: none;            outline: none;
-
-            padding: 10px 20px;            border-color: #1f6feb;
-
-            border-radius: 6px;            box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.1);
-
-            font-size: 14px;        }
-
+        .btn {
+            padding: 10px 20px;
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
             font-weight: 600;
-
-            cursor: pointer;        textarea {
-
-            transition: all 0.3s;            min-height: 150px;
-
-            width: 100%;            font-family: 'Courier New', monospace;
-
-        }            resize: vertical;
-
+            transition: all 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
         }
 
         .btn:hover {
-
-            transform: translateY(-2px);        .btn {
-
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);            padding: 10px 20px;
-
-        }            background: #238636;
-
-            color: white;
-
-        .warning-box {            border: none;
-
-            background: #fff3cd;            border-radius: 6px;
-
-            border-left: 4px solid #ffc107;            cursor: pointer;
-
-            padding: 15px;            font-size: 14px;
-
-            margin: 20px 0;            font-weight: 600;
-
-            border-radius: 4px;            transition: all 0.2s;
-
-        }            margin-right: 10px;
-
-            margin-bottom: 10px;
-
-        .warning-box strong {        }
-
-            color: #856404;
-
-        }        .btn:hover {
-
             background: #2ea043;
+            transform: translateY(-1px);
+        }
 
-        .success-box {            transform: translateY(-1px);
-
-            background: #d4edda;        }
-
-            border-left: 4px solid #28a745;
-
-            padding: 15px;        .btn:active {
-
-            margin: 20px 0;            transform: translateY(0);
-
-            border-radius: 4px;        }
-
+        .btn:active {
+            transform: translateY(0);
         }
 
         .btn:disabled {
+            background: #21262d;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
 
-        .success-box strong {            background: #21262d;
+        .btn-primary {
+            background: #1f6feb;
+        }
 
-            color: #155724;            cursor: not-allowed;
-
-        }            opacity: 0.5;
-
-    </style>        }
-
-</head>
-
-<body>        .btn-primary {
-
-    <div class="header">            background: #1f6feb;
-
-        <h1>🧪 ChemParser - Unified Interface</h1>        }
-
-        <p>Complete chemistry rendering and visualization platform with all tools in one place</p>
-
-    </div>        .btn-primary:hover {
-
+        .btn-primary:hover {
             background: #388bfd;
+        }
 
-    <div class="tabs">        }
-
-        <button class="tab-button active" onclick="switchTab('moleculeviewer')">🧬 MoleculeViewer</button>
-
-        <button class="tab-button" onclick="switchTab('mol2chemfig')">📐 Mol2ChemFig</button>        .btn-secondary {
-
-        <button class="tab-button" onclick="switchTab('pubchem')">🌐 PubChem</button>            background: #21262d;
-
-        <button class="tab-button" onclick="switchTab('tests')">🧪 All Tests</button>        }
-
-    </div>
+        .btn-secondary {
+            background: #21262d;
+        }
 
         .btn-secondary:hover {
+            background: #30363d;
+        }
 
-    <!-- MoleculeViewer Tab -->            background: #30363d;
-
-    <div id="moleculeviewer" class="tab-content active">        }
-
-        <h2>🧬 MoleculeViewer - Fast SVG Rendering</h2>
-
-                .btn-danger {
-
-        <div class="success-box">            background: #da3633;
-
-            <strong>✅ Works Without Docker</strong> - Full functionality available right now!        }
-
-        </div>
+        .btn-danger {
+            background: #da3633;
+        }
 
         .btn-danger:hover {
+            background: #e5534b;
+        }
 
-        <div class="info-box">            background: #e5534b;
-
-            <h3>Features:</h3>        }
-
-            <ul>
-
-                <li>Convert SMILES to SVG images</li>        .checkbox-group {
-
-                <li>Convert chemical nomenclature to structures</li>            display: grid;
-
-                <li>Customize image size (width × height)</li>            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-
-                <li>Fast rendering with caching</li>            gap: 10px;
-
-                <li>No Docker required</li>            margin: 15px 0;
-
-            </ul>        }
-
-        </div>
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
 
         .checkbox-item {
-
-        <div class="iframe-container">            display: flex;
-
-            <iframe src="http://localhost:5000/test_frontend.html"></iframe>            align-items: center;
-
-        </div>            padding: 8px;
-
-    </div>            background: #0d1117;
-
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: #0d1117;
             border: 1px solid #30363d;
-
-    <!-- Mol2ChemFig Tab -->            border-radius: 6px;
-
-    <div id="mol2chemfig" class="tab-content">            cursor: pointer;
-
-        <h2>📐 Mol2ChemFig - Advanced ChemFig Generation</h2>            transition: all 0.2s;
-
-                }
-
-        <div class="warning-box">
-
-            <strong>⚠️ Docker Required:</strong> This interface needs the Docker backend running on port 8000.        .checkbox-item:hover {
-
-            If you see connection errors, the basic rendering still works via MoleculeViewer tab.            background: #161b22;
-
-        </div>            border-color: #1f6feb;
-
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        <div class="info-box">
+        .checkbox-item:hover {
+            background: #161b22;
+            border-color: #1f6feb;
+        }
 
-            <h3>All 8 ChemFig Options Available:</h3>        .checkbox-item input[type="checkbox"] {
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
 
-            <ul>            margin-right: 8px;
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            flex: 1;
+        }
 
-                <li><strong>Aromatic</strong> - Show circles in benzene rings instead of double bonds</li>            cursor: pointer;
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 4px;
+            color: #8b949e;
+            cursor: help;
+        }
 
-                <li><strong>Fancy Bonds</strong> - Nicer looking double and triple bonds</li>        }
-
-                <li><strong>Compact View</strong> - More compact chemfig format</li>
-
-                <li><strong>Show Carbon</strong> - Display carbon atoms as elements</li>        .checkbox-item label {
-
-                <li><strong>Show Methyl</strong> - Display methyl groups as elements</li>            margin: 0;
-
-                <li><strong>Flip</strong> - Mirror structure horizontally</li>            cursor: pointer;
-
-                <li><strong>Flop</strong> - Mirror structure vertically</li>            flex: 1;
-
-                <li><strong>Atom Numbers</strong> - Number all atoms except hydrogens</li>        }
-
-            </ul>
-
-            <h3>Plus:</h3>        .tooltip {
-
-            <ul>            position: relative;
-
-                <li>Rotation angle control (-360° to +360°)</li>            display: inline-block;
-
-                <li>Indentation settings (0-20 spaces)</li>            margin-left: 4px;
-
-                <li>H₂ treatment options (Keep/Add/Delete)</li>            color: #8b949e;
-
-                <li>Kekule.js chemical drawing</li>            cursor: help;
-
-                <li>PubChem compound search</li>        }
-
-                <li>Reaction scheme support</li>
-
-                <li>Multiple export formats (SVG, Layered SVG, PDF)</li>        .tooltip:hover::after {
-
-            </ul>            content: attr(data-tooltip);
-
-        </div>            position: absolute;
-
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
             bottom: 125%;
-
-        <div class="iframe-container">            left: 50%;
-
-            <iframe src="http://localhost:5000/mol2chemfig-full-interface.html"></iframe>            transform: translateX(-50%);
-
-        </div>            padding: 8px 12px;
-
-    </div>            background: #21262d;
-
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 12px;
+            background: #21262d;
             color: #c9d1d9;
-
-    <!-- PubChem Tab -->            border: 1px solid #30363d;
-
-    <div id="pubchem" class="tab-content">            border-radius: 6px;
-
-        <h2>🌐 PubChem - 3D Molecular Viewer</h2>            white-space: nowrap;
-
-                    z-index: 1000;
-
-        <div class="success-box">            font-size: 12px;
-
-            <strong>✅ Works Without Docker</strong> - 3D visualization available now!            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-
-        </div>        }
-
-
-
-        <div class="info-box">        .controls-grid {
-
-            <h3>Features:</h3>            display: grid;
-
-            <ul>            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-
-                <li>Search compounds by name</li>            gap: 15px;
-
-                <li>Interactive 3D molecule viewer</li>            margin: 15px 0;
-
-                <li>Fetch 2D structure images</li>        }
-
-                <li>MolView integration for visualization</li>
-
-                <li>Direct PubChem database access</li>        .output-area {
-
-            </ul>            background: #0d1117;
-
-        </div>            border: 1px solid #30363d;
-
-            border-radius: 6px;
-
-        <div class="iframe-container">            padding: 15px;
-
-            <iframe src="http://localhost:5002/static/viewer-3d.html"></iframe>            min-height: 200px;
-
-        </div>            font-family: 'Courier New', monospace;
-
-    </div>            font-size: 13px;
-
-            white-space: pre-wrap;
-
-    <!-- Tests Tab -->            overflow-x: auto;
-
-    <div id="tests" class="tab-content">        }
-
-        <h2>🧪 All Test Interfaces</h2>
-
-                .error-banner {
-
-        <div class="info-box">            background: #da3633;
-
-            <h3>Comprehensive Testing Suite</h3>            color: white;
-
-            <p>Access all individual test files for specific features and debugging</p>            padding: 12px 20px;
-
-        </div>            border-radius: 6px;
-
-            margin-bottom: 15px;
-
-        <div class="test-list">            display: flex;
-
-            <div class="test-card">            justify-content: space-between;
-
-                <h3>MoleculeViewer Frontend</h3>            align-items: center;
-
-                <p>Test basic SMILES/nomenclature rendering</p>        }
-
-                <button class="btn" onclick="openTest('test_frontend.html')">Open Test</button>
-
-            </div>        .success-banner {
-
-            background: #238636;
-
-            <div class="test-card">            color: white;
-
-                <h3>Mol2ChemFig Complete</h3>            padding: 12px 20px;
-
-                <p>Full ChemFig interface with all 8 options</p>            border-radius: 6px;
-
-                <button class="btn" onclick="openTest('mol2chemfig-full-interface.html')">Open Test</button>            margin-bottom: 15px;
-
-            </div>        }
-
-
-
-            <div class="test-card">        .pdf-viewer {
-
-                <h3>OPSIN 3D SMILES</h3>            width: 100%;
-
-                <p>Test 3D SMILES generation from names</p>            height: 600px;
-
-                <button class="btn" onclick="openTest('test_opsin_3d.html')">Open Test</button>            border: 1px solid #30363d;
-
-            </div>            border-radius: 6px;
-
-            background: white;
-
-            <div class="test-card">        }
-
-                <h3>3D SMILES Viewer</h3>
-
-                <p>Alternative 3D SMILES interface</p>        .svg-viewer {
-
-                <button class="btn" onclick="openTest('test_3d_smiles.html')">Open Test</button>            width: 100%;
-
-            </div>            min-height: 400px;
-
             border: 1px solid #30363d;
+            border-radius: 6px;
+            white-space: nowrap;
+            z-index: 1000;
+            font-size: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
 
-            <div class="test-card">            border-radius: 6px;
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
 
-                <h3>PubChem 3D Viewer</h3>            background: white;
+        .output-area {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 15px;
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
 
-                <p>Test PubChem 3D visualization</p>            padding: 20px;
+        .error-banner {
+            background: #da3633;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-                <button class="btn" onclick="openTest('test_pubchem_3d.html')">Open Test</button>            display: flex;
+        .success-banner {
+            background: #238636;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
 
-            </div>            align-items: center;
+        .pdf-viewer {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            background: white;
+        }
 
+        .svg-viewer {
+            width: 100%;
+            min-height: 400px;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            background: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
             justify-content: center;
+            overflow: auto;
+        }
 
-            <div class="test-card">            overflow: auto;
-
-                <h3>PubChem Basic</h3>        }
-
-                <p>Test PubChem API integration</p>
-
-                <button class="btn" onclick="openTest('test_pubchem.html')">Open Test</button>        .svg-viewer svg {
-
-            </div>            max-width: 100%;
-
+        .svg-viewer svg {
+            max-width: 100%;
             height: auto;
-
-            <div class="test-card">            /* Ensure crisp rendering */
-
-                <h3>3D Viewer</h3>            shape-rendering: geometricPrecision;
-
-                <p>Test 3D molecular viewer</p>            text-rendering: geometricPrecision;
-
-                <button class="btn" onclick="openTest('test_3d_viewer.html')">Open Test</button>        }
-
-            </div>
+            /* Ensure crisp rendering */
+            shape-rendering: geometricPrecision;
+            text-rendering: geometricPrecision;
+        }
 
         /* Ensure embedded fonts render correctly */
-
-            <div class="test-card">        @font-face {
-
-                <h3>Dark Mode Interface</h3>            font-family: 'Computer Modern';
-
-                <p>Test dark theme rendering</p>            font-display: swap;
-
-                <button class="btn" onclick="openTest('test_dark_mode.html')">Open Test</button>        }
-
-            </div>
+        @font-face {
+            font-family: 'Computer Modern';
+            font-display: swap;
+        }
 
         .composer-container {
-
-            <div class="test-card">            bit for 2order: 1px solid #30363d;
-
-                <h3>Options Persistence</h3>            border-radius: 6px;
-
-                <p>Test settings save/load</p>            overflow: hidden;
-
-                <button class="btn" onclick="openTest('test_options_persistence.html')">Open Test</button>            background: white;
-
-            </div>            min-height: 400px;
-
-        }
-
-            <div class="test-card">
-
-                <h3>All Features Demo</h3>        .button-group {
-
-                <p>Complete feature showcase</p>            display: flex;
-
-                <button class="btn" onclick="openTest('test_all_features_demo.html')">Open Test</button>            flex-wrap: wrap;
-
-            </div>            gap: 10px;
-
-            margin: 15px 0;
-
-            <div class="test-card">        }
-
-                <h3>Mol2ChemFig Fixes</h3>
-
-                <p>Test mol2chemfig bug fixes</p>        .examples {
-
-                <button class="btn" onclick="openTest('test_mol2chemfig_fixes.html')">Open Test</button>            display: flex;
-
-            </div>            flex-wrap: wrap;
-
-            gap: 8px;
-
-            <div class="test-card">            margin: 10px 0;
-
-                <h3>Features & Fixes</h3>        }
-
-                <p>Combined features testing</p>
-
-                <button class="btn" onclick="openTest('test_features_fixes.html')">Open Test</button>        .example-btn {
-
-            </div>            padding: 6px 12px;
-
-        </div>            background: #21262d;
-
-    </div>            border: 1px solid #30363d;
-
+            bit for 2order: 1px solid #30363d;
             border-radius: 6px;
-
-    <script>            color: #58a6ff;
-
-        // Tab switching            cursor: pointer;
-
-        function switchTab(tabName) {            font-size: 13px;
-
-            // Hide all tabs            transition: all 0.2s;
-
-            document.querySelectorAll('.tab-content').forEach(tab => {        }
-
-                tab.classList.remove('active');
-
-            });        .example-btn:hover {
-
-                        background: #30363d;
-
-            // Remove active from all buttons            border-color: #58a6ff;
-
-            document.querySelectorAll('.tab-button').forEach(btn => {        }
-
-                btn.classList.remove('active');
-
-            });        .split-view {
-
-                        display: grid;
-
-            // Show selected tab            grid-template-columns: 1fr 1fr;
-
-            document.getElementById(tabName).classList.add('active');            gap: 20px;
-
-                    }
-
-            // Find and activate the button that was clicked
-
-            const buttons = document.querySelectorAll('.tab-button');        @media (max-width: 1200px) {
-
-            buttons.forEach((btn, index) => {            .split-view {
-
-                if ((tabName === 'moleculeviewer' && index === 0) ||                grid-template-columns: 1fr;
-
-                    (tabName === 'mol2chemfig' && index === 1) ||            }
-
-                    (tabName === 'pubchem' && index === 2) ||        }
-
-                    (tabName === 'tests' && index === 3)) {
-
-                    btn.classList.add('active');        .loading {
-
-                }            display: inline-block;
-
-            });            animation: spin 1s linear infinite;
-
-        }        }
-
-
-
-        // Open test in new tab        @keyframes spin {
-
-        function openTest(filename) {            from { transform: rotate(0deg); }
-
-            window.open(filename, '_blank');            to { transform: rotate(360deg); }
-
-        }        }
-
-
-
-        // Check if servers are running        .badge {
-
-        async function checkServers() {            display: inline-block;
-
-            const servers = [            padding: 4px 8px;
-
-                { name: 'MoleculeViewer', port: 5000, url: 'http://localhost:5000/' },            background: #1f6feb;
-
-                { name: 'Mol2ChemFig', port: 5001, url: 'http://localhost:5001/' },            color: white;
-
-                { name: 'PubChem', port: 5002, url: 'http://localhost:5002/' }            border-radius: 12px;
-
-            ];            font-size: 11px;
-
-            font-weight: 600;
-
-            for (const server of servers) {            margin-left: 8px;
-
-                try {        }
-
-                    const response = await fetch(server.url, { method: 'HEAD', mode: 'no-cors' });    </style>
-
-                    console.log(`✓ ${server.name} (${server.port}): Online`);</head>
-
-                } catch (error) {<body>
-
-                    console.warn(`✗ ${server.name} (${server.port}): Offline`);    <div class="header">
-
-                }        <h1>🧪 Mol2chemfig - Complete Interface</h1>
-
-            }    </div>
-
+            overflow: hidden;
+            background: white;
+            min-height: 400px;
         }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .example-btn {
+            padding: 6px 12px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #58a6ff;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .example-btn:hover {
+            background: #30363d;
+            border-color: #58a6ff;
+        }
+
+        .split-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .split-view {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #1f6feb;
+            color: white;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧪 Mol2chemfig - Complete Interface</h1>
+    </div>
 
     <div class="status-bar">
+        <div id="statusIndicator" class="status">Checking backend...</div>
+        <div style="color: #8b949e; font-size: 14px;">
+            Backend: <code>http://localhost:8000</code>
+        </div>
+    </div>
 
-        // Initialize        <div id="statusIndicator" class="status">Checking backend...</div>
-
-        window.addEventListener('load', () => {        <div style="color: #8b949e; font-size: 14px;">
-
-            checkServers();            Backend: <code>http://localhost:8000</code>
-
-            console.log('ChemParser Unified Interface loaded');        </div>
-
-            console.log('Tabs: MoleculeViewer (no Docker) | Mol2ChemFig (needs Docker) | PubChem (no Docker) | Tests');    </div>
-
-        });
-
-    </script>    <div class="container">
-
-</body>        <!-- Tabs -->
-
-</html>        <div class="tabs">
-
+    <div class="container">
+        <!-- Tabs -->
+        <div class="tabs">
             <div class="tab active" onclick="switchTab('molecule')">
                 💊 Molecule
             </div>

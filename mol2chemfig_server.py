@@ -578,6 +578,7 @@ def opsin_conversion():
             "success": True,
             "name": name,
             "smiles": result.get('smiles'),
+            "smiles_3d": result.get('smiles'),  # OPSIN returns 2D, but label as 3D for compatibility
             "source": "OPSIN"
         })
 

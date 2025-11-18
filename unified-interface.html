@@ -1,2170 +1,628 @@
-<!DOCTYPE html><!DOCTYPE html>
-
-<html lang="en"><html lang="en">
-
-<head><head>
-
-    <meta charset="UTF-8">    <meta charset="UTF-8">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>ChemParser - Unified Interface</title>    <title>Mol2chemfig - Complete Interface</title>
-
-    <style>    
-
-        * {    <!-- Kekule.js for chemical drawing -->
-
-            margin: 0;    <link rel="stylesheet" type="text/css" href="https://partridgejiang.github.io/Kekule.js/dist/themes/default/kekule.css" />
-
-            padding: 0;    <script src="https://partridgejiang.github.io/Kekule.js/dist/kekule.min.js"></script>
-
-            box-sizing: border-box;    
-
-        }    <style>
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChemParser - Unified Interface</title>
+    <style>
         * {
-
-        body {            margin: 0;
-
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;            padding: 0;
-
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);            box-sizing: border-box;
-
-            min-height: 100vh;        }
-
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
 
-        .header {            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
 
-            background: rgba(255, 255, 255, 0.95);            background: #0d1117;
-
-            padding: 20px 40px;            color: #c9d1d9;
-
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);            overflow-x: hidden;
-
-        }        }
-
-
-
-        .header h1 {        .header {
-
-            color: #667eea;            background: linear-gradient(135deg, #1f6feb 0%, #0d419d 100%);
-
-            font-size: 32px;            padding: 20px;
-
-            margin-bottom: 5px;            text-align: center;
-
-        }            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 5px;
         }
 
         .header p {
+            color: #666;
+            font-size: 14px;
+        }
 
-            color: #666;        .header h1 {
-
-            font-size: 14px;            color: white;
-
-        }            margin: 0;
-
-            font-size: 2.2em;
-
-        .tabs {        }
-
+        .tabs {
             background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            gap: 5px;
+            padding: 10px 40px 0;
+            overflow-x: auto;
+        }
 
-            display: flex;        .status-bar {
-
-            gap: 5px;            background: #161b22;
-
-            padding: 10px 40px 0;            padding: 12px 20px;
-
-            overflow-x: auto;            border-bottom: 1px solid #30363d;
-
-        }            display: flex;
-
-            justify-content: space-between;
-
-        .tab-button {            align-items: center;
-
-            background: transparent;        }
-
+        .tab-button {
+            background: transparent;
             border: none;
-
-            padding: 12px 24px;        .status {
-
-            font-size: 14px;            padding: 6px 12px;
-
-            font-weight: 600;            border-radius: 6px;
-
-            color: #666;            font-weight: 600;
-
-            cursor: pointer;            font-size: 14px;
-
-            border-bottom: 3px solid transparent;        }
-
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
             transition: all 0.3s;
+            white-space: nowrap;
+        }
 
-            white-space: nowrap;        .status.online {
-
-        }            background: #238636;
-
-            color: #fff;
-
-        .tab-button:hover {        }
-
+        .tab-button:hover {
             color: #667eea;
+        }
 
-        }        .status.offline {
-
-            background: #da3633;
-
-        .tab-button.active {            color: #fff;
-
-            color: #667eea;        }
-
+        .tab-button.active {
+            color: #667eea;
             border-bottom-color: #667eea;
+        }
 
-        }        .container {
-
-            max-width: 1600px;
-
-        .tab-content {            margin: 0 auto;
-
-            display: none;            padding: 20px;
-
-            padding: 30px 40px;        }
-
+        .tab-content {
+            display: none;
+            padding: 30px 40px;
             background: white;
-
-            margin: 0 40px 40px;        .tabs {
-
-            border-radius: 12px;            display: flex;
-
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);            gap: 10px;
-
-            min-height: 600px;            margin-bottom: 20px;
-
-        }            border-bottom: 2px solid #21262d;
-
+            margin: 0 40px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            min-height: 600px;
         }
 
         .tab-content.active {
-
-            display: block;        .tab {
-
-        }            padding: 12px 24px;
-
-            background: #161b22;
-
-        .iframe-container {            border: 1px solid #30363d;
-
-            width: 100%;            border-bottom: none;
-
-            height: 800px;            border-radius: 6px 6px 0 0;
-
-            border: 2px solid #e0e0e0;            cursor: pointer;
-
-            border-radius: 8px;            transition: all 0.3s;
-
-            overflow: hidden;            font-size: 16px;
-
-            background: white;            font-weight: 600;
-
-        }        }
-
-
-
-        .iframe-container iframe {        .tab:hover {
-
-            width: 100%;            background: #21262d;
-
-            height: 100%;        }
-
-            border: none;
-
-        }        .tab.active {
-
-            background: #1f6feb;
-
-        h2 {            color: white;
-
-            color: #333;            border-color: #1f6feb;
-
-            margin-bottom: 20px;        }
-
-            font-size: 24px;
-
-        }        .tab-content {
-
-            display: none;
-
-        .info-box {            animation: fadeIn 0.3s;
-
-            background: #f0f7ff;        }
-
-            border-left: 4px solid #667eea;
-
-            padding: 15px;        .tab-content.active {
-
-            margin-bottom: 20px;            display: block;
-
-            border-radius: 4px;        }
-
+            display: block;
         }
 
-        @keyframes fadeIn {
-
-        .info-box h3 {            from { opacity: 0; transform: translateY(10px); }
-
-            color: #667eea;            to { opacity: 1; transform: translateY(0); }
-
-            margin-bottom: 10px;        }
-
-        }
-
-        .section {
-
-        .info-box ul {            background: #161b22;
-
-            margin-left: 20px;            border: 1px solid #30363d;
-
-            color: #555;            border-radius: 8px;
-
-        }            padding: 20px;
-
-            margin-bottom: 20px;
-
-        .info-box li {        }
-
-            margin: 5px 0;
-
-        }        .section-title {
-
-            font-size: 1.3em;
-
-        .test-list {            color: #58a6ff;
-
-            display: grid;            margin-bottom: 15px;
-
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));            padding-bottom: 10px;
-
-            gap: 15px;            border-bottom: 2px solid #21262d;
-
-        }        }
-
-
-
-        .test-card {        .input-group {
-
-            background: #f8f9fa;            margin-bottom: 15px;
-
-            padding: 15px;        }
-
+        .iframe-container {
+            width: 100%;
+            height: 800px;
+            border: 2px solid #e0e0e0;
             border-radius: 8px;
+            overflow: hidden;
+        }
 
-            border: 2px solid #e0e0e0;        label {
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
 
-            transition: all 0.3s;            display: block;
+        .control-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
 
-        }            margin-bottom: 6px;
+        .control-group {
+            margin-bottom: 15px;
+        }
 
-            color: #8b949e;
-
-        .test-card:hover {            font-weight: 500;
-
-            border-color: #667eea;            font-size: 14px;
-
-            transform: translateY(-2px);        }
-
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-
-        }        input[type="text"],
-
-        input[type="number"],
-
-        .test-card h3 {        select,
-
-            color: #333;        textarea {
-
-            font-size: 16px;            width: 100%;
-
-            margin-bottom: 8px;            padding: 10px 12px;
-
-        }            background: #0d1117;
-
-            border: 1px solid #30363d;
-
-        .test-card p {            border-radius: 6px;
-
-            color: #666;            color: #c9d1d9;
-
-            font-size: 13px;            font-size: 14px;
-
-            margin-bottom: 12px;            transition: border-color 0.2s;
-
-        }        }
-
-
-
-        .btn {        input:focus,
-
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);        select:focus,
-
-            color: white;        textarea:focus {
-
-            border: none;            outline: none;
-
-            padding: 10px 20px;            border-color: #1f6feb;
-
-            border-radius: 6px;            box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.1);
-
-            font-size: 14px;        }
-
+        .control-group label {
+            display: block;
             font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
 
-            cursor: pointer;        textarea {
+        .control-group input[type="text"],
+        .control-group input[type="number"],
+        .control-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
 
-            transition: all 0.3s;            min-height: 150px;
+        .control-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            cursor: pointer;
+        }
 
-            width: 100%;            font-family: 'Courier New', monospace;
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
 
-        }            resize: vertical;
-
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
         }
 
         .btn:hover {
-
-            transform: translateY(-2px);        .btn {
-
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);            padding: 10px 20px;
-
-        }            background: #238636;
-
-            color: white;
-
-        .warning-box {            border: none;
-
-            background: #fff3cd;            border-radius: 6px;
-
-            border-left: 4px solid #ffc107;            cursor: pointer;
-
-            padding: 15px;            font-size: 14px;
-
-            margin: 20px 0;            font-weight: 600;
-
-            border-radius: 4px;            transition: all 0.2s;
-
-        }            margin-right: 10px;
-
-            margin-bottom: 10px;
-
-        .warning-box strong {        }
-
-            color: #856404;
-
-        }        .btn:hover {
-
-            background: #2ea043;
-
-        .success-box {            transform: translateY(-1px);
-
-            background: #d4edda;        }
-
-            border-left: 4px solid #28a745;
-
-            padding: 15px;        .btn:active {
-
-            margin: 20px 0;            transform: translateY(0);
-
-            border-radius: 4px;        }
-
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
 
-        .btn:disabled {
+        .btn-secondary {
+            background: #6c757d;
+        }
 
-        .success-box strong {            background: #21262d;
+        .result-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            min-height: 200px;
+        }
 
-            color: #155724;            cursor: not-allowed;
+        .result-container img {
+            max-width: 100%;
+            height: auto;
+        }
 
-        }            opacity: 0.5;
+        .test-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
 
-    </style>        }
+        .test-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+        }
 
+        .test-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .test-card h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .test-card p {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .test-card button {
+            width: 100%;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+        }
+
+        .status-offline {
+            background: #ef4444;
+        }
+    </style>
 </head>
-
-<body>        .btn-primary {
-
-    <div class="header">            background: #1f6feb;
-
-        <h1>🧪 ChemParser - Unified Interface</h1>        }
-
-        <p>Complete chemistry rendering and visualization platform with all tools in one place</p>
-
-    </div>        .btn-primary:hover {
-
-            background: #388bfd;
-
-    <div class="tabs">        }
-
-        <button class="tab-button active" onclick="switchTab('moleculeviewer')">🧬 MoleculeViewer</button>
-
-        <button class="tab-button" onclick="switchTab('mol2chemfig')">📐 Mol2ChemFig</button>        .btn-secondary {
-
-        <button class="tab-button" onclick="switchTab('pubchem')">🌐 PubChem</button>            background: #21262d;
-
-        <button class="tab-button" onclick="switchTab('tests')">🧪 All Tests</button>        }
-
+<body>
+    <div class="header">
+        <h1>🧪 ChemParser - Unified Interface</h1>
+        <p>Complete chemistry rendering and visualization platform</p>
     </div>
 
-        .btn-secondary:hover {
-
-    <!-- MoleculeViewer Tab -->            background: #30363d;
-
-    <div id="moleculeviewer" class="tab-content active">        }
-
-        <h2>🧬 MoleculeViewer - Fast SVG Rendering</h2>
-
-                .btn-danger {
-
-        <div class="success-box">            background: #da3633;
-
-            <strong>✅ Works Without Docker</strong> - Full functionality available right now!        }
-
-        </div>
-
-        .btn-danger:hover {
-
-        <div class="info-box">            background: #e5534b;
-
-            <h3>Features:</h3>        }
-
-            <ul>
-
-                <li>Convert SMILES to SVG images</li>        .checkbox-group {
-
-                <li>Convert chemical nomenclature to structures</li>            display: grid;
-
-                <li>Customize image size (width × height)</li>            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-
-                <li>Fast rendering with caching</li>            gap: 10px;
-
-                <li>No Docker required</li>            margin: 15px 0;
-
-            </ul>        }
-
-        </div>
-
-        .checkbox-item {
-
-        <div class="iframe-container">            display: flex;
-
-            <iframe src="http://localhost:5000/test_frontend.html"></iframe>            align-items: center;
-
-        </div>            padding: 8px;
-
-    </div>            background: #0d1117;
-
-            border: 1px solid #30363d;
-
-    <!-- Mol2ChemFig Tab -->            border-radius: 6px;
-
-    <div id="mol2chemfig" class="tab-content">            cursor: pointer;
-
-        <h2>📐 Mol2ChemFig - Advanced ChemFig Generation</h2>            transition: all 0.2s;
-
-                }
-
-        <div class="warning-box">
-
-            <strong>⚠️ Docker Required:</strong> This interface needs the Docker backend running on port 8000.        .checkbox-item:hover {
-
-            If you see connection errors, the basic rendering still works via MoleculeViewer tab.            background: #161b22;
-
-        </div>            border-color: #1f6feb;
-
-        }
-
-        <div class="info-box">
-
-            <h3>All 8 ChemFig Options Available:</h3>        .checkbox-item input[type="checkbox"] {
-
-            <ul>            margin-right: 8px;
-
-                <li><strong>Aromatic</strong> - Show circles in benzene rings instead of double bonds</li>            cursor: pointer;
-
-                <li><strong>Fancy Bonds</strong> - Nicer looking double and triple bonds</li>        }
-
-                <li><strong>Compact View</strong> - More compact chemfig format</li>
-
-                <li><strong>Show Carbon</strong> - Display carbon atoms as elements</li>        .checkbox-item label {
-
-                <li><strong>Show Methyl</strong> - Display methyl groups as elements</li>            margin: 0;
-
-                <li><strong>Flip</strong> - Mirror structure horizontally</li>            cursor: pointer;
-
-                <li><strong>Flop</strong> - Mirror structure vertically</li>            flex: 1;
-
-                <li><strong>Atom Numbers</strong> - Number all atoms except hydrogens</li>        }
-
-            </ul>
-
-            <h3>Plus:</h3>        .tooltip {
-
-            <ul>            position: relative;
-
-                <li>Rotation angle control (-360° to +360°)</li>            display: inline-block;
-
-                <li>Indentation settings (0-20 spaces)</li>            margin-left: 4px;
-
-                <li>H₂ treatment options (Keep/Add/Delete)</li>            color: #8b949e;
-
-                <li>Kekule.js chemical drawing</li>            cursor: help;
-
-                <li>PubChem compound search</li>        }
-
-                <li>Reaction scheme support</li>
-
-                <li>Multiple export formats (SVG, Layered SVG, PDF)</li>        .tooltip:hover::after {
-
-            </ul>            content: attr(data-tooltip);
-
-        </div>            position: absolute;
-
-            bottom: 125%;
-
-        <div class="iframe-container">            left: 50%;
-
-            <iframe src="http://localhost:5000/mol2chemfig-full-interface.html"></iframe>            transform: translateX(-50%);
-
-        </div>            padding: 8px 12px;
-
-    </div>            background: #21262d;
-
-            color: #c9d1d9;
-
-    <!-- PubChem Tab -->            border: 1px solid #30363d;
-
-    <div id="pubchem" class="tab-content">            border-radius: 6px;
-
-        <h2>🌐 PubChem - 3D Molecular Viewer</h2>            white-space: nowrap;
-
-                    z-index: 1000;
-
-        <div class="success-box">            font-size: 12px;
-
-            <strong>✅ Works Without Docker</strong> - 3D visualization available now!            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-
-        </div>        }
-
-
-
-        <div class="info-box">        .controls-grid {
-
-            <h3>Features:</h3>            display: grid;
-
-            <ul>            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-
-                <li>Search compounds by name</li>            gap: 15px;
-
-                <li>Interactive 3D molecule viewer</li>            margin: 15px 0;
-
-                <li>Fetch 2D structure images</li>        }
-
-                <li>MolView integration for visualization</li>
-
-                <li>Direct PubChem database access</li>        .output-area {
-
-            </ul>            background: #0d1117;
-
-        </div>            border: 1px solid #30363d;
-
-            border-radius: 6px;
-
-        <div class="iframe-container">            padding: 15px;
-
-            <iframe src="http://localhost:5002/static/viewer-3d.html"></iframe>            min-height: 200px;
-
-        </div>            font-family: 'Courier New', monospace;
-
-    </div>            font-size: 13px;
-
-            white-space: pre-wrap;
-
-    <!-- Tests Tab -->            overflow-x: auto;
-
-    <div id="tests" class="tab-content">        }
-
-        <h2>🧪 All Test Interfaces</h2>
-
-                .error-banner {
-
-        <div class="info-box">            background: #da3633;
-
-            <h3>Comprehensive Testing Suite</h3>            color: white;
-
-            <p>Access all individual test files for specific features and debugging</p>            padding: 12px 20px;
-
-        </div>            border-radius: 6px;
-
-            margin-bottom: 15px;
-
-        <div class="test-list">            display: flex;
-
-            <div class="test-card">            justify-content: space-between;
-
-                <h3>MoleculeViewer Frontend</h3>            align-items: center;
-
-                <p>Test basic SMILES/nomenclature rendering</p>        }
-
-                <button class="btn" onclick="openTest('test_frontend.html')">Open Test</button>
-
-            </div>        .success-banner {
-
-            background: #238636;
-
-            <div class="test-card">            color: white;
-
-                <h3>Mol2ChemFig Complete</h3>            padding: 12px 20px;
-
-                <p>Full ChemFig interface with all 8 options</p>            border-radius: 6px;
-
-                <button class="btn" onclick="openTest('mol2chemfig-full-interface.html')">Open Test</button>            margin-bottom: 15px;
-
-            </div>        }
-
-
-
-            <div class="test-card">        .pdf-viewer {
-
-                <h3>OPSIN 3D SMILES</h3>            width: 100%;
-
-                <p>Test 3D SMILES generation from names</p>            height: 600px;
-
-                <button class="btn" onclick="openTest('test_opsin_3d.html')">Open Test</button>            border: 1px solid #30363d;
-
-            </div>            border-radius: 6px;
-
-            background: white;
-
-            <div class="test-card">        }
-
-                <h3>3D SMILES Viewer</h3>
-
-                <p>Alternative 3D SMILES interface</p>        .svg-viewer {
-
-                <button class="btn" onclick="openTest('test_3d_smiles.html')">Open Test</button>            width: 100%;
-
-            </div>            min-height: 400px;
-
-            border: 1px solid #30363d;
-
-            <div class="test-card">            border-radius: 6px;
-
-                <h3>PubChem 3D Viewer</h3>            background: white;
-
-                <p>Test PubChem 3D visualization</p>            padding: 20px;
-
-                <button class="btn" onclick="openTest('test_pubchem_3d.html')">Open Test</button>            display: flex;
-
-            </div>            align-items: center;
-
-            justify-content: center;
-
-            <div class="test-card">            overflow: auto;
-
-                <h3>PubChem Basic</h3>        }
-
-                <p>Test PubChem API integration</p>
-
-                <button class="btn" onclick="openTest('test_pubchem.html')">Open Test</button>        .svg-viewer svg {
-
-            </div>            max-width: 100%;
-
-            height: auto;
-
-            <div class="test-card">            /* Ensure crisp rendering */
-
-                <h3>3D Viewer</h3>            shape-rendering: geometricPrecision;
-
-                <p>Test 3D molecular viewer</p>            text-rendering: geometricPrecision;
-
-                <button class="btn" onclick="openTest('test_3d_viewer.html')">Open Test</button>        }
-
+    <div class="tabs">
+        <button class="tab-button active" onclick="switchTab('mol2chemfig')">📐 Mol2ChemFig</button>
+        <button class="tab-button" onclick="switchTab('moleculeviewer')">🧬 MoleculeViewer</button>
+        <button class="tab-button" onclick="switchTab('pubchem')">🌐 PubChem</button>
+        <button class="tab-button" onclick="switchTab('3d-smiles')">🔬 3D SMILES</button>
+        <button class="tab-button" onclick="switchTab('tests')">🧪 Tests</button>
+        <button class="tab-button" onclick="switchTab('designs')">🎨 Designs</button>
+        <button class="tab-button" onclick="switchTab('control')">🎮 Control Panel</button>
+    </div>
+
+    <!-- Mol2ChemFig Tab -->
+    <div id="mol2chemfig" class="tab-content active">
+        <h2>Mol2ChemFig Generator</h2>
+        <div class="control-panel">
+            <div class="control-group">
+                <label>Enter Chemical Name or SMILES:</label>
+                <input type="text" id="m2cf-input" placeholder="e.g., aspirin or CCO" value="aspirin">
             </div>
-
-        /* Ensure embedded fonts render correctly */
-
-            <div class="test-card">        @font-face {
-
-                <h3>Dark Mode Interface</h3>            font-family: 'Computer Modern';
-
-                <p>Test dark theme rendering</p>            font-display: swap;
-
-                <button class="btn" onclick="openTest('test_dark_mode.html')">Open Test</button>        }
-
+            <div class="control-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="m2cf-3d-toggle">
+                    <span>Generate 3D SMILES (using OPSIN)</span>
+                </label>
             </div>
+            <button class="btn" onclick="generateMol2ChemFig()">🚀 Generate</button>
+            <button class="btn btn-secondary" onclick="clearMol2ChemFig()">Clear</button>
+        </div>
+        <div id="m2cf-result" class="result-container">
+            Results will appear here...
+        </div>
+    </div>
 
-        .composer-container {
+    <!-- MoleculeViewer Tab -->
+    <div id="moleculeviewer" class="tab-content">
+        <h2>MoleculeViewer</h2>
+        <div class="control-panel">
+            <div class="control-group">
+                <label>Enter SMILES:</label>
+                <input type="text" id="mv-smiles" placeholder="e.g., CCO or c1ccccc1" value="CCO">
+            </div>
+            <div class="control-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="mv-3d-toggle">
+                    <span>Generate 3D SMILES (using OPSIN)</span>
+                </label>
+            </div>
+            <div class="control-group">
+                <label>Size:</label>
+                <input type="number" id="mv-width" placeholder="Width" value="400" style="width: 48%; display: inline-block;">
+                <input type="number" id="mv-height" placeholder="Height" value="300" style="width: 48%; display: inline-block; margin-left: 4%;">
+            </div>
+            <button class="btn" onclick="generateMoleculeViewer()">🚀 Generate</button>
+            <button class="btn btn-secondary" onclick="clearMoleculeViewer()">Clear</button>
+        </div>
+        <div id="mv-result" class="result-container">
+            Results will appear here...
+        </div>
+    </div>
 
-            <div class="test-card">            bit for 2order: 1px solid #30363d;
+    <!-- PubChem Tab -->
+    <div id="pubchem" class="tab-content">
+        <h2>PubChem Image Fetcher</h2>
+        <div class="control-panel">
+            <div class="control-group">
+                <label>Enter Compound Name:</label>
+                <input type="text" id="pubchem-name" placeholder="e.g., histamine, aspirin, caffeine" value="histamine">
+            </div>
+            <div class="control-group">
+                <label>Image Type:</label>
+                <select id="pubchem-type">
+                    <option value="2d">2D Structure</option>
+                    <option value="3d">3D Structure</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Image Size:</label>
+                <select id="pubchem-size">
+                    <option value="small">Small</option>
+                    <option value="large" selected>Large</option>
+                </select>
+            </div>
+            <button class="btn" onclick="fetchPubChem()">🚀 Fetch Image</button>
+            <button class="btn" onclick="open3DViewer()">🔮 Open 3D Viewer</button>
+            <button class="btn btn-secondary" onclick="clearPubChem()">Clear</button>
+        </div>
+        <div id="pubchem-result" class="result-container">
+            <p>Status: <span class="status-indicator status-offline" id="pubchem-status"></span><span id="pubchem-status-text">Checking server...</span></p>
+            <div id="pubchem-image"></div>
+        </div>
+    </div>
 
-                <h3>Options Persistence</h3>            border-radius: 6px;
+    <!-- 3D SMILES Tab -->
+    <div id="3d-smiles" class="tab-content">
+        <h2>3D SMILES Generator (OPSIN)</h2>
+        <div class="control-panel">
+            <div class="control-group">
+                <label>Enter Chemical Name:</label>
+                <input type="text" id="opsin-name" placeholder="e.g., glucose, benzene, ethanol" value="glucose">
+            </div>
+            <button class="btn" onclick="generate3DSMILES()">🚀 Generate 3D SMILES</button>
+            <button class="btn btn-secondary" onclick="clear3DSMILES()">Clear</button>
+        </div>
+        <div id="opsin-result" class="result-container">
+            Results will appear here...
+        </div>
+    </div>
 
-                <p>Test settings save/load</p>            overflow: hidden;
-
-                <button class="btn" onclick="openTest('test_options_persistence.html')">Open Test</button>            background: white;
-
-            </div>            min-height: 400px;
-
-        }
-
+    <!-- Tests Tab -->
+    <div id="tests" class="tab-content">
+        <h2>Test Files</h2>
+        <div class="test-list">
             <div class="test-card">
-
-                <h3>All Features Demo</h3>        .button-group {
-
-                <p>Complete feature showcase</p>            display: flex;
-
-                <button class="btn" onclick="openTest('test_all_features_demo.html')">Open Test</button>            flex-wrap: wrap;
-
-            </div>            gap: 10px;
-
-            margin: 15px 0;
-
-            <div class="test-card">        }
-
-                <h3>Mol2ChemFig Fixes</h3>
-
-                <p>Test mol2chemfig bug fixes</p>        .examples {
-
-                <button class="btn" onclick="openTest('test_mol2chemfig_fixes.html')">Open Test</button>            display: flex;
-
-            </div>            flex-wrap: wrap;
-
-            gap: 8px;
-
-            <div class="test-card">            margin: 10px 0;
-
-                <h3>Features & Fixes</h3>        }
-
-                <p>Combined features testing</p>
-
-                <button class="btn" onclick="openTest('test_features_fixes.html')">Open Test</button>        .example-btn {
-
-            </div>            padding: 6px 12px;
-
-        </div>            background: #21262d;
-
-    </div>            border: 1px solid #30363d;
-
-            border-radius: 6px;
-
-    <script>            color: #58a6ff;
-
-        // Tab switching            cursor: pointer;
-
-        function switchTab(tabName) {            font-size: 13px;
-
-            // Hide all tabs            transition: all 0.2s;
-
-            document.querySelectorAll('.tab-content').forEach(tab => {        }
-
-                tab.classList.remove('active');
-
-            });        .example-btn:hover {
-
-                        background: #30363d;
-
-            // Remove active from all buttons            border-color: #58a6ff;
-
-            document.querySelectorAll('.tab-button').forEach(btn => {        }
-
-                btn.classList.remove('active');
-
-            });        .split-view {
-
-                        display: grid;
-
-            // Show selected tab            grid-template-columns: 1fr 1fr;
-
-            document.getElementById(tabName).classList.add('active');            gap: 20px;
-
-                    }
-
-            // Find and activate the button that was clicked
-
-            const buttons = document.querySelectorAll('.tab-button');        @media (max-width: 1200px) {
-
-            buttons.forEach((btn, index) => {            .split-view {
-
-                if ((tabName === 'moleculeviewer' && index === 0) ||                grid-template-columns: 1fr;
-
-                    (tabName === 'mol2chemfig' && index === 1) ||            }
-
-                    (tabName === 'pubchem' && index === 2) ||        }
-
-                    (tabName === 'tests' && index === 3)) {
-
-                    btn.classList.add('active');        .loading {
-
-                }            display: inline-block;
-
-            });            animation: spin 1s linear infinite;
-
-        }        }
-
-
-
-        // Open test in new tab        @keyframes spin {
-
-        function openTest(filename) {            from { transform: rotate(0deg); }
-
-            window.open(filename, '_blank');            to { transform: rotate(360deg); }
-
-        }        }
-
-
-
-        // Check if servers are running        .badge {
-
-        async function checkServers() {            display: inline-block;
-
-            const servers = [            padding: 4px 8px;
-
-                { name: 'MoleculeViewer', port: 5000, url: 'http://localhost:5000/' },            background: #1f6feb;
-
-                { name: 'Mol2ChemFig', port: 5001, url: 'http://localhost:5001/' },            color: white;
-
-                { name: 'PubChem', port: 5002, url: 'http://localhost:5002/' }            border-radius: 12px;
-
-            ];            font-size: 11px;
-
-            font-weight: 600;
-
-            for (const server of servers) {            margin-left: 8px;
-
-                try {        }
-
-                    const response = await fetch(server.url, { method: 'HEAD', mode: 'no-cors' });    </style>
-
-                    console.log(`✓ ${server.name} (${server.port}): Online`);</head>
-
-                } catch (error) {<body>
-
-                    console.warn(`✗ ${server.name} (${server.port}): Offline`);    <div class="header">
-
-                }        <h1>🧪 Mol2chemfig - Complete Interface</h1>
-
-            }    </div>
-
-        }
-
-    <div class="status-bar">
-
-        // Initialize        <div id="statusIndicator" class="status">Checking backend...</div>
-
-        window.addEventListener('load', () => {        <div style="color: #8b949e; font-size: 14px;">
-
-            checkServers();            Backend: <code>http://localhost:8000</code>
-
-            console.log('ChemParser Unified Interface loaded');        </div>
-
-            console.log('Tabs: MoleculeViewer (no Docker) | Mol2ChemFig (needs Docker) | PubChem (no Docker) | Tests');    </div>
-
-        });
-
-    </script>    <div class="container">
-
-</body>        <!-- Tabs -->
-
-</html>        <div class="tabs">
-
-            <div class="tab active" onclick="switchTab('molecule')">
-                💊 Molecule
+                <h3>3D SMILES Test</h3>
+                <p>Test OPSIN 3D SMILES generation</p>
+                <button class="btn" onclick="openTest('test_3d_smiles.html')">Open Test</button>
             </div>
-            <div class="tab" onclick="switchTab('reaction')">
-                ⚗️ Reaction
+            <div class="test-card">
+                <h3>OPSIN 3D Integration</h3>
+                <p>Complete OPSIN 3D testing</p>
+                <button class="btn" onclick="openTest('test_opsin_3d.html')">Open Test</button>
             </div>
-            <div class="tab" onclick="switchTab('settings')">
-                ⚙️ Settings
+            <div class="test-card">
+                <h3>PubChem 3D</h3>
+                <p>Test PubChem 3D viewer</p>
+                <button class="btn" onclick="openTest('test_pubchem_3d.html')">Open Test</button>
+            </div>
+            <div class="test-card">
+                <h3>PubChem Basic</h3>
+                <p>Test PubChem API integration</p>
+                <button class="btn" onclick="openTest('test_pubchem.html')">Open Test</button>
+            </div>
+            <div class="test-card">
+                <h3>Mol2ChemFig Full</h3>
+                <p>Complete Mol2ChemFig testing</p>
+                <button class="btn" onclick="openTest('test_m2cf_full.html')">Open Test</button>
+            </div>
+            <div class="test-card">
+                <h3>Dark Mode</h3>
+                <p>Test dark theme interface</p>
+                <button class="btn" onclick="openTest('test_dark_mode.html')">Open Test</button>
+            </div>
+            <div class="test-card">
+                <h3>Options Persistence</h3>
+                <p>Test settings persistence</p>
+                <button class="btn" onclick="openTest('test_options_persistence.html')">Open Test</button>
+            </div>
+            <div class="test-card">
+                <h3>All Features Demo</h3>
+                <p>Complete feature showcase</p>
+                <button class="btn" onclick="openTest('test_all_features_demo.html')">Open Test</button>
+            </div>
+            <div class="test-card">
+                <h3>MoleculeViewer Frontend</h3>
+                <p>Test MoleculeViewer UI</p>
+                <button class="btn" onclick="openTest('test_frontend.html')">Open Test</button>
+            </div>
+            <div class="test-card">
+                <h3>3D Viewer</h3>
+                <p>Test 3D molecular viewer</p>
+                <button class="btn" onclick="openTest('test_3d_viewer.html')">Open Test</button>
             </div>
         </div>
+    </div>
 
-        <!-- Molecule Tab -->
-        <div id="moleculeTab" class="tab-content active">
-            <div class="split-view">
-                <div>
-                    <!-- Chemical Search -->
-                    <div class="section">
-                        <div class="section-title">🔍 Chemical Search</div>
-                        <div class="input-group">
-                            <label>Search by name (PubChem + Common Names)</label>
-                            <input type="text" id="searchTerm" placeholder="aspirin, benzene, caffeine...">
-                        </div>
-                        <button class="btn btn-primary" onclick="searchChemical()" id="searchBtn">
-                            Search & Convert
-                        </button>
-                        <div class="examples">
-                            <span style="color: #8b949e; font-size: 12px;">Quick:</span>
-                            <div class="example-btn" onclick="quickSearch('aspirin')">Aspirin</div>
-                            <div class="example-btn" onclick="quickSearch('caffeine')">Caffeine</div>
-                            <div class="example-btn" onclick="quickSearch('glucose')">Glucose</div>
-                            <div class="example-btn" onclick="quickSearch('ethanol')">Ethanol</div>
-                        </div>
-                    </div>
-
-                    <!-- SMILES/MOL Input -->
-                    <div class="section">
-                        <div class="section-title">📝 Direct Input</div>
-                        <div class="input-group">
-                            <label>SMILES, MOL format, or chemfig code</label>
-                            <textarea id="moleculeTextarea" placeholder="Examples:
-CCO (ethanol)
-c1ccccc1 (benzene)
-CC(=O)Oc1ccccc1C(=O)O (aspirin)
-
-Or paste MOL format with ...END
-Or paste existing chemfig code"></textarea>
-                        </div>
-                        <div class="button-group">
-                            <button class="btn btn-primary" onclick="submitMolecule()" id="submitBtn">
-                                Generate Chemfig
-                            </button>
-                            <button class="btn btn-secondary" onclick="copyToClipboard('moleculeTextarea')">
-                                📋 Copy
-                            </button>
-                            <button class="btn btn-danger" onclick="clearMolecule()">
-                                🗑️ Clear
-                            </button>
-                        </div>
-                        <div class="examples">
-                            <div class="example-btn" onclick="loadExample('CCO')">Ethanol</div>
-                            <div class="example-btn" onclick="loadExample('c1ccccc1')">Benzene</div>
-                            <div class="example-btn" onclick="loadExample('CC(C)C')">Isobutane</div>
-                            <div class="example-btn" onclick="loadExample('C1CCCCC1')">Cyclohexane</div>
-                        </div>
-                    </div>
-
-                    <!-- Drawing Board -->
-                    <div class="section">
-                        <div class="section-title">✏️ Draw Structure (Kekule.js)</div>
-                        <div class="composer-container">
-                            <div id="moleculeComposer" style="width:100%;height:400px;"></div>
-                        </div>
-                        <div class="button-group" style="margin-top: 10px;">
-                            <button class="btn btn-primary" onclick="convertFromDrawing()">
-                                Convert Drawing to Chemfig
-                            </button>
-                            <button class="btn btn-secondary" onclick="clearDrawing()">
-                                Clear Drawing
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Options -->
-                    <div class="section">
-                        <div class="section-title">⚙️ Chemfig Options <span class="badge" id="activeOptionsBadge" style="display:none;">0 active</span></div>
-                        <div style="background: #0d1117; border-left: 3px solid #58a6ff; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
-                            <strong style="color: #58a6ff;">💡 How to use:</strong>
-                            <ol style="margin: 8px 0 0 20px; color: #8b949e; font-size: 13px;">
-                                <li>Generate a chemfig (Search or paste SMILES)</li>
-                                <li>Check the options you want below</li>
-                                <li>Click <strong>"Apply Options"</strong> to see changes in PDF</li>
-                                <li>Adjust angle, indentation, H₂ as needed</li>
-                            </ol>
-                        </div>
-                        <div class="checkbox-group" id="moleculeOptions">
-                            <!-- Will be populated by JavaScript -->
-                        </div>
-
-                        <div class="controls-grid">
-                            <div class="input-group">
-                                <label>Rotation Angle (°)</label>
-                                <input type="number" id="moleculeAngle" value="0" min="-360" max="360" onchange="updateActiveOptions()">
-                            </div>
-                            <div class="input-group">
-                                <label>Indentation</label>
-                                <input type="number" id="moleculeIndent" value="4" min="0" max="20" onchange="updateActiveOptions()">
-                            </div>
-                            <div class="input-group">
-                                <label>H₂ Treatment</label>
-                                <select id="moleculeH2" onchange="updateActiveOptions()">
-                                    <option value="keep">Keep H₂</option>
-                                    <option value="add">Add H₂</option>
-                                    <option value="delete">Delete H₂</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="button-group">
-                            <button class="btn btn-primary" onclick="applyMoleculeOptions()" id="applyBtn">
-                                ✅ Apply Options to Current Molecule
-                            </button>
-                            <button class="btn btn-secondary" onclick="resetMoleculeOptions()">
-                                🔄 Reset to Default (no options)
-                            </button>
-                        </div>
-                        
-                        <div id="optionsPreview" style="display:none; margin-top: 15px; padding: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px;">
-                            <strong style="color: #58a6ff;">Current Options to Apply:</strong>
-                            <div id="optionsPreviewText" style="margin-top: 5px; font-family: monospace; font-size: 12px; color: #8b949e;"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <!-- Output -->
-                    <div class="section">
-                        <div class="section-title">📤 Chemfig Output</div>
-                        <div id="moleculeError" style="display:none;"></div>
-                        <div class="output-area" id="moleculeOutput">
-                            <em style="color: #8b949e;">Output will appear here...</em>
-                        </div>
-                    </div>
-
-                    <!-- SVG/PDF Preview -->
-                    <div class="section">
-                        <div class="section-title">
-                            📄 Structure Preview
-                            <select id="viewerType" onchange="switchViewer()" style="float:right; padding:4px 8px; background:#0d1117; border:1px solid #30363d; color:#c9d1d9; border-radius:4px;">
-                                <option value="svg">SVG (Vector)</option>
-                                <option value="layered">SVG (Layered) ⚡</option>
-                                <option value="pdf">PDF (Embed)</option>
-                            </select>
-                        </div>
-                        <div id="moleculeSVG" class="svg-viewer">
-                            <em style="color: #8b949e;">SVG preview will appear here...</em>
-                        </div>
-                        <div id="moleculeLayered" class="svg-viewer" style="display:none; position:relative;">
-                            <em style="color: #8b949e;">Layered SVG preview will appear here...</em>
-                        </div>
-                        <embed id="moleculePDF" class="pdf-viewer" type="application/pdf" style="display:none;">
-                    </div>
-                </div>
-            </div>
+    <!-- Designs Tab -->
+    <div id="designs" class="tab-content">
+        <h2>UI Design Gallery</h2>
+        <div class="iframe-container">
+            <iframe src="chem-extension/designs/index.html"></iframe>
         </div>
+    </div>
 
-        <!-- Reaction Tab -->
-        <div id="reactionTab" class="tab-content">
-            <div class="split-view">
-                <div>
-                    <!-- Reaction Drawing Board -->
-                    <div class="section">
-                        <div class="section-title">⚗️ Draw Reaction Scheme</div>
-                        <div class="composer-container">
-                            <div id="reactionComposer" style="width:100%;height:450px;"></div>
-                        </div>
-                        <div class="button-group" style="margin-top: 10px;">
-                            <button class="btn btn-primary" onclick="convertReaction()">
-                                Convert Reaction to Chemfig
-                            </button>
-                            <button class="btn btn-secondary" onclick="clearReactionDrawing()">
-                                Clear Drawing
-                            </button>
-                        </div>
-                        <p style="color: #8b949e; font-size: 13px; margin-top: 10px;">
-                            💡 Draw complete reaction schemes with reactants, products, and arrows
-                        </p>
-                    </div>
-
-                    <!-- Reaction Options -->
-                    <div class="section">
-                        <div class="section-title">⚙️ Reaction Options</div>
-                        <div class="checkbox-group" id="reactionOptions">
-                            <!-- Will be populated by JavaScript -->
-                        </div>
-
-                        <div class="controls-grid">
-                            <div class="input-group">
-                                <label>Rotation Angle (°)</label>
-                                <input type="number" id="reactionAngle" value="0" min="-360" max="360">
-                            </div>
-                            <div class="input-group">
-                                <label>Indentation</label>
-                                <input type="number" id="reactionIndent" value="4" min="0" max="20">
-                            </div>
-                            <div class="input-group">
-                                <label>H₂ Treatment</label>
-                                <select id="reactionH2">
-                                    <option value="keep">Keep H₂</option>
-                                    <option value="add">Add H₂</option>
-                                    <option value="delete">Delete H₂</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="button-group">
-                            <button class="btn" onclick="applyReactionOptions()">
-                                ✅ Apply Options
-                            </button>
-                            <button class="btn btn-secondary" onclick="resetReactionOptions()">
-                                🔄 Reset to Default
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Reaction Text Area -->
-                    <div class="section">
-                        <div class="section-title">📝 Manual Chemfig Edit</div>
-                        <textarea id="reactionTextarea" placeholder="Edit chemfig code directly or paste existing reaction chemfig"></textarea>
-                        <div class="button-group" style="margin-top: 10px;">
-                            <button class="btn btn-primary" onclick="updateReactionChemfig()">
-                                Update PDF
-                            </button>
-                            <button class="btn btn-secondary" onclick="copyToClipboard('reactionTextarea')">
-                                📋 Copy
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <!-- Reaction Output -->
-                    <div class="section">
-                        <div class="section-title">📤 Chemfig Output</div>
-                        <div id="reactionError" style="display:none;"></div>
-                        <div class="output-area" id="reactionOutput">
-                            <em style="color: #8b949e;">Draw a reaction and click convert...</em>
-                        </div>
-                    </div>
-
-                    <!-- Reaction PDF Preview -->
-                    <div class="section">
-                        <div class="section-title">📄 PDF Preview</div>
-                        <embed id="reactionPDF" class="pdf-viewer" type="application/pdf">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Settings Tab -->
-        <div id="settingsTab" class="tab-content">
-            <div class="section">
-                <div class="section-title">⚙️ Application Settings</div>
-                
-                <h3 style="color: #58a6ff; margin: 20px 0 10px;">Molecule Settings</h3>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="setting_intoComposer">
-                    <label for="setting_intoComposer">
-                        Insert searched chemical structure into drawing board
-                        <span class="tooltip" data-tooltip="When you search for a chemical, automatically load it into the Kekule drawing board">ℹ️</span>
-                    </label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="setting_mol_keepOnLeave">
-                    <label for="setting_mol_keepOnLeave">
-                        Preserve drawn structures when leaving page
-                        <span class="tooltip" data-tooltip="Your drawings will be saved in browser and restored when you come back">ℹ️</span>
-                    </label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="setting_mol_hideTooltips">
-                    <label for="setting_mol_hideTooltips">
-                        Hide tooltips for checkbox options
-                    </label>
-                </div>
-
-                <h3 style="color: #58a6ff; margin: 20px 0 10px;">Reaction Settings</h3>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="setting_rxn_keepOnLeave">
-                    <label for="setting_rxn_keepOnLeave">
-                        Preserve drawn reactions when leaving page
-                        <span class="tooltip" data-tooltip="Your reaction schemes will be saved and restored">ℹ️</span>
-                    </label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="setting_rxn_hideTooltips">
-                    <label for="setting_rxn_hideTooltips">
-                        Hide tooltips for checkbox options
-                    </label>
-                </div>
-
-                <div class="button-group" style="margin-top: 20px;">
-                    <button class="btn" onclick="saveSettings()">
-                        💾 Save Settings
-                    </button>
-                    <button class="btn btn-secondary" onclick="loadSettings()">
-                        🔄 Reload Settings
-                    </button>
-                    <button class="btn btn-danger" onclick="clearSettings()">
-                        🗑️ Clear All Settings
-                    </button>
-                </div>
-
-                <div class="success-banner" id="settingsSaved" style="display:none; margin-top: 15px;">
-                    ✅ Settings saved successfully!
-                </div>
-            </div>
-
-            <div class="section">
-                <div class="section-title">ℹ️ About</div>
-                <p style="line-height: 1.6; color: #8b949e;">
-                    <strong style="color: #c9d1d9;">Mol2chemfig</strong> - Complete chemical structure to LaTeX chemfig converter<br><br>
-                    <strong>Features:</strong><br>
-                    • SMILES and MOL format support<br>
-                    • Chemical name search (PubChem + common names)<br>
-                    • Interactive drawing board with Kekule.js<br>
-                    • Reaction scheme conversion<br>
-                    • 8 chemfig formatting options<br>
-                    • Real-time PDF preview<br>
-                    • Angle rotation and indentation control<br><br>
-                    <strong>Backend:</strong> http://localhost:8000<br>
-                    <strong>Version:</strong> 2.0 (Full UI)
-                </p>
-            </div>
+    <!-- Control Panel Tab -->
+    <div id="control" class="tab-content">
+        <h2>Server Control Panel</h2>
+        <div class="iframe-container">
+            <iframe src="http://localhost:3000/launcher.html"></iframe>
         </div>
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:8000/m2cf';
-        
-        // Chemfig options (same for molecule and reaction)
-        const OPTIONS = [
-            { label: 'compact view', value: '-z', tooltip: 'A more compact chemfig format' },
-            { label: 'fancy bonds', value: '-f', tooltip: 'Show nicer double and triple bonds' },
-            { label: 'aromatic', value: '-o', tooltip: 'Show circle in aromatic compounds instead of double bonds' },
-            { label: 'show carbon', value: '-c', tooltip: 'Show carbon atoms as elements' },
-            { label: 'show methyl', value: '-m', tooltip: 'Show methyl group as elements' },
-            { label: 'flip', value: '-p', tooltip: 'Flip the structure horizontally' },
-            { label: 'flop', value: '-q', tooltip: 'Flip the structure vertically' },
-            { label: 'atom-numbers', value: '-n', tooltip: 'Assign number to atoms except hydrogens' }
-        ];
-
-        // State
-        let moleculeComposer, reactionComposer;
-        let lastMoleculeData = null;
-        let lastMoleculeFormat = null;
-        let lastReactionData = null;
-        let hideTooltips = false;
-        let savedOptions = {
-            selections: [],
-            angle: 0,
-            indentation: 4,
-            h2: 'keep'
-        };
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            checkBackendStatus();
-            initializeComposers();
-            populateOptions();
-            hookOptionCheckboxes();
-            loadSettings();
-            loadSavedChemfigOptions(); // Load saved chemfig options
-        });
-
-        // Switch between SVG and PDF viewer
-        function switchViewer() {
-            const viewerType = document.getElementById('viewerType').value;
-            const svgDiv = document.getElementById('moleculeSVG');
-            const layeredDiv = document.getElementById('moleculeLayered');
-            const pdfEmbed = document.getElementById('moleculePDF');
-            
-            // Hide all viewers first
-            svgDiv.style.display = 'none';
-            layeredDiv.style.display = 'none';
-            pdfEmbed.style.display = 'none';
-            
-            // Show selected viewer
-            if (viewerType === 'svg') {
-                svgDiv.style.display = 'flex';
-            } else if (viewerType === 'layered') {
-                layeredDiv.style.display = 'flex';
-            } else {
-                pdfEmbed.style.display = 'block';
-            }
-        }
-
-        // Generate SVG from SMILES or MOL data
-        async function generateSVG(data, format) {
-            // SVG is now generated automatically by backend in submit/apply endpoints
-            // This function is deprecated but kept for compatibility
-            console.log('SVG generation handled by backend automatically');
-        }
-
-        // Display SVG from backend response
-        function displaySVG(svgContent) {
-            const svgDiv = document.getElementById('moleculeSVG');
-            if (svgContent) {
-                svgDiv.innerHTML = svgContent;
-                console.log('✅ SVG rendered from chemfig LaTeX');
-            } else {
-                svgDiv.innerHTML = `
-                    <div style="text-align:center; padding:40px; color:#8b949e;">
-                        <p style="font-size:16px; margin-bottom:15px;">📄 SVG not available</p>
-                        <p style="font-size:14px;">Switch to PDF viewer</p>
-                        <button class="btn btn-primary" onclick="document.getElementById('viewerType').value='pdf'; switchViewer();" style="margin-top:15px;">
-                            View as PDF
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        // Display layered SVG with individual option layers
-        let currentLayers = null; // Store layers globally for instant toggling
-        
-        function displayLayeredSVG(layers) {
-            const layeredDiv = document.getElementById('moleculeLayered');
-            currentLayers = layers; // Store for instant option toggling
-            
-            if (!layers || !layers.base) {
-                layeredDiv.innerHTML = `
-                    <div style="text-align:center; padding:40px; color:#8b949e;">
-                        <p style="font-size:16px; margin-bottom:15px;">⚠️ Layered SVG not available</p>
-                        <p style="font-size:14px;">Switch to normal SVG or PDF viewer</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Create container for stacked layers
-            // STRATEGY: Each layer is a FULL molecule rendering
-            // We show ONLY ONE layer at a time (the one matching current options)
-            layeredDiv.innerHTML = `
-                <div style="text-align:center; margin-bottom:10px;">
-                    <span id="layerStatus" style="display:inline-block; padding:4px 12px; background:#1f6feb; color:#fff; border-radius:12px; font-size:12px; font-weight:500;">
-                        Base Layer
-                    </span>
-                </div>
-                <div id="svgLayerStack" style="position:relative; display:inline-block; margin:auto; min-width:200px; min-height:100px;">
-                    <!-- Layers will be added here -->
-                </div>
-            `;
-            
-            const stackDiv = document.getElementById('svgLayerStack');
-            
-            // Helper to create layer wrapper
-            // ALL layers (including base) are positioned absolutely within the container
-            const createLayer = (svgContent, layerId) => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'svg-layer';
-                wrapper.id = `layer-${layerId}`;
-                wrapper.style.cssText = `
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    display: none;
-                `;
-                wrapper.innerHTML = svgContent;
-                return wrapper;
-            };
-            
-            // Add BASE layer (shown when NO options selected)
-            const baseLayer = createLayer(layers.base, 'base');
-            baseLayer.style.display = 'block'; // Show base by default
-            stackDiv.appendChild(baseLayer);
-            
-            // Add single option layers (each is FULL molecule with that option)
-            const optionLayers = [
-                { key: 'aromatic', flag: '-o' },
-                { key: 'carbon', flag: '-c' },
-                { key: 'methyl', flag: '-m' },
-                { key: 'numbers', flag: '-n' },
-                { key: 'fancy', flag: '-f' },
-                { key: 'compact', flag: '-z' }
-            ];
-            
-            optionLayers.forEach((opt) => {
-                if (layers[opt.key]) {
-                    const layer = createLayer(layers[opt.key], opt.key);
-                    layer.setAttribute('data-option-flag', opt.flag);
-                    stackDiv.appendChild(layer);
-                    console.log(`  ✅ Added full layer: ${opt.key} (${opt.flag})`);
-                }
-            });
-            
-            console.log('✅ Layered SVG ready - showing base (no options)');
-            
-            // Update visibility based on currently checked options
-            updateLayerVisibility();
-        }
-        
-        // Toggle layer visibility based on active options (instant, no backend call!)
-        // STRATEGY: Show ONLY the layer matching the active option(s)
-        // For single option: show that option's layer
-        // For multiple options: call backend to generate combined view
-        function updateLayerVisibility() {
-            if (!currentLayers) {
-                console.log('⚠️ No layers loaded yet');
-                return;
-            }
-            
-            const activeOptions = getSelectedOptions('mol'); // Get checked options from molecule tab
-            console.log('🎨 Updating layer visibility, active:', activeOptions);
-            
-            // Map option flags to layer IDs and display names
-            const flagToLayer = {
-                '-o': 'aromatic',
-                '-c': 'carbon',
-                '-m': 'methyl',
-                '-n': 'numbers',
-                '-f': 'fancy',
-                '-z': 'compact'
-            };
-            
-            const layerDisplayNames = {
-                'aromatic': 'Aromatic Circles',
-                'carbon': 'Show Carbon',
-                'methyl': 'Show Methyl',
-                'numbers': 'Atom Numbers',
-                'fancy': 'Fancy Bonds',
-                'compact': 'Compact View'
-            };
-            
-            const baseLayer = document.getElementById('layer-base');
-            const statusBadge = document.getElementById('layerStatus');
-            
-            if (activeOptions.length === 0) {
-                // NO options selected: Show ONLY base
-                if (baseLayer) baseLayer.style.display = 'block';
-                Object.values(flagToLayer).forEach(layerId => {
-                    const layer = document.getElementById(`layer-${layerId}`);
-                    if (layer) layer.style.display = 'none';
-                });
-                if (statusBadge) {
-                    statusBadge.textContent = 'Base Layer';
-                    statusBadge.style.background = '#1f6feb';
-                }
-                console.log('  → Showing base (no options)');
-            } else if (activeOptions.length === 1) {
-                // SINGLE option: Hide base, show that option's full layer
-                if (baseLayer) baseLayer.style.display = 'none';
-                
-                const activeFlag = activeOptions[0];
-                const activeLayerId = flagToLayer[activeFlag];
-                
-                Object.entries(flagToLayer).forEach(([flag, layerId]) => {
-                    const layer = document.getElementById(`layer-${layerId}`);
-                    if (layer) {
-                        layer.style.display = (layerId === activeLayerId) ? 'block' : 'none';
-                    }
-                });
-                if (statusBadge) {
-                    statusBadge.textContent = `${layerDisplayNames[activeLayerId]} Layer`;
-                    statusBadge.style.background = '#238636';
-                }
-                console.log(`  → Showing ${activeLayerId} layer (full molecule with ${activeFlag})`);
-            } else {
-                // MULTIPLE options: Need to call backend for combined view
-                // For now, show base and note that user needs to click "Apply Options"
-                if (baseLayer) baseLayer.style.display = 'block';
-                Object.values(flagToLayer).forEach(layerId => {
-                    const layer = document.getElementById(`layer-${layerId}`);
-                    if (layer) layer.style.display = 'none';
-                });
-                if (statusBadge) {
-                    statusBadge.textContent = 'Multiple Options - Click "Apply Options"';
-                    statusBadge.style.background = '#f78166';
-                }
-                console.log('  ⚠️ Multiple options selected - click "Apply Options" for combined view');
-                
-                // Show info message
-                showMessage('Multiple options selected. Click "Apply Options" to generate combined view.', 'info');
-            }
-        }
-
         // Tab switching
         function switchTab(tabName) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
+            
+            // Remove active from all buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
             });
-
+            
             // Show selected tab
-            document.getElementById(tabName + 'Tab').classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            // Activate button
             event.target.classList.add('active');
         }
 
-        // Check backend status
-        async function checkBackendStatus() {
-            const statusDiv = document.getElementById('statusIndicator');
+        // Mol2ChemFig Functions
+        async function generateMol2ChemFig() {
+            const input = document.getElementById('m2cf-input').value;
+            const use3D = document.getElementById('m2cf-3d-toggle').checked;
+            const resultDiv = document.getElementById('m2cf-result');
+            
+            resultDiv.innerHTML = '<p>Generating...</p>';
+            
             try {
-                const response = await fetch(`${API_BASE}/submit`, {
+                let smiles = input;
+                
+                // If 3D is enabled, convert name to 3D SMILES first
+                if (use3D) {
+                    resultDiv.innerHTML = '<p>Converting to 3D SMILES via OPSIN...</p>';
+                    const opsinResponse = await fetch(`http://localhost:5001/api/opsin?name=${encodeURIComponent(input)}`);
+                    const opsinData = await opsinResponse.json();
+                    
+                    if (opsinData.smiles_3d) {
+                        smiles = opsinData.smiles_3d;
+                        resultDiv.innerHTML += `<p>✓ 3D SMILES: <code>${smiles}</code></p>`;
+                    }
+                }
+                
+                // Generate with Mol2ChemFig
+                const response = await fetch('http://localhost:5001/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ textAreaData: 'C' })
+                    body: JSON.stringify({ smiles: smiles })
                 });
                 
-                if (response.ok) {
-                    statusDiv.className = 'status online';
-                    statusDiv.textContent = '✅ Backend Online';
-                } else {
-                    statusDiv.className = 'status offline';
-                    statusDiv.textContent = '❌ Backend Error: ' + response.status;
-                }
-            } catch (error) {
-                statusDiv.className = 'status offline';
-                statusDiv.textContent = '❌ Backend Offline';
-            }
-        }
-
-        // Initialize Kekule composers
-        function initializeComposers() {
-            try {
-                moleculeComposer = new Kekule.Editor.Composer(document.getElementById('moleculeComposer'));
-                moleculeComposer.setCommonToolButtons(['loadData', 'saveData', 'undo', 'redo', 'copy', 'cut', 'paste']);
-                moleculeComposer.setChemToolButtons(['manipulate', 'erase', 'bond', 'atom', 'ring', 'charge']);
-
-                reactionComposer = new Kekule.Editor.Composer(document.getElementById('reactionComposer'));
-                reactionComposer.setCommonToolButtons(['loadData', 'saveData', 'undo', 'redo', 'copy', 'cut', 'paste']);
-                reactionComposer.setChemToolButtons(['manipulate', 'erase', 'bond', 'atom', 'ring', 'charge']);
-                reactionComposer.setEnableOperContext(true);
-            } catch (error) {
-                console.error('Kekule initialization error:', error);
-                showError('moleculeError', 'Failed to initialize drawing board. Kekule.js may not be loaded.');
-            }
-        }
-
-        // Populate options checkboxes
-        function populateOptions() {
-            const molOptions = document.getElementById('moleculeOptions');
-            const rxnOptions = document.getElementById('reactionOptions');
-
-            OPTIONS.forEach((opt, idx) => {
-                const molHtml = `
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="mol_opt_${idx}" value="${opt.value}">
-                        <label for="mol_opt_${idx}">${opt.label}</label>
-                        <span class="tooltip" data-tooltip="${opt.tooltip}">ℹ️</span>
-                    </div>
-                `;
-                const rxnHtml = `
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="rxn_opt_${idx}" value="${opt.value}">
-                        <label for="rxn_opt_${idx}">${opt.label}</label>
-                        <span class="tooltip" data-tooltip="${opt.tooltip}">ℹ️</span>
-                    </div>
-                `;
-                molOptions.innerHTML += molHtml;
-                rxnOptions.innerHTML += rxnHtml;
-            });
-        }
-
-        // Get selected options
-        function getSelectedOptions(prefix) {
-            const selected = [];
-            OPTIONS.forEach((opt, idx) => {
-                const checkbox = document.getElementById(`${prefix}_opt_${idx}`);
-                if (checkbox && checkbox.checked) {
-                    selected.push(opt.value);
-                }
-            });
-            return selected;
-        }
-
-        // Update active options preview
-        function updateActiveOptions() {
-            const selections = getSelectedOptions('mol');
-            const angle = document.getElementById('moleculeAngle').value;
-            const indent = document.getElementById('moleculeIndent').value;
-            const h2 = document.getElementById('moleculeH2').value;
-            
-            const badge = document.getElementById('activeOptionsBadge');
-            if (selections.length > 0) {
-                badge.style.display = 'inline-block';
-                badge.textContent = selections.length + ' active';
-            } else {
-                badge.style.display = 'none';
-            }
-            
-            const preview = document.getElementById('optionsPreview');
-            const previewText = document.getElementById('optionsPreviewText');
-            if (selections.length > 0 || angle != 0 || indent != 4 || h2 != 'keep') {
-                preview.style.display = 'block';
-                let text = 'Options: ' + (selections.length > 0 ? selections.join(' ') : 'none') + 
-                           ', Angle: ' + angle + '°, Indent: ' + indent + ', H₂: ' + h2;
-                previewText.textContent = text;
-            } else {
-                preview.style.display = 'none';
-            }
-        }
-
-        // Hook all checkboxes to update preview
-        function hookOptionCheckboxes() {
-            OPTIONS.forEach((opt, idx) => {
-                const molCheckbox = document.getElementById(`mol_opt_${idx}`);
-                const rxnCheckbox = document.getElementById(`rxn_opt_${idx}`);
-                if (molCheckbox) {
-                    molCheckbox.addEventListener('change', () => {
-                        updateActiveOptions();
-                        updateLayerVisibility(); // Instant layer toggle!
-                    });
-                }
-                if (rxnCheckbox) {
-                    rxnCheckbox.addEventListener('change', () => {
-                        updateActiveOptions();
-                        updateLayerVisibility(); // Instant layer toggle!
-                    });
-                }
-            });
-        }
-
-        // Show error
-        function showError(elementId, message) {
-            const errorDiv = document.getElementById(elementId);
-            errorDiv.innerHTML = `
-                <div class="error-banner">
-                    <span>❌ ${message}</span>
-                    <button onclick="document.getElementById('${elementId}').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:20px;">×</button>
-                </div>
-            `;
-            errorDiv.style.display = 'block';
-        }
-
-        // Clear error
-        function clearError(elementId) {
-            const errorDiv = document.getElementById(elementId);
-            errorDiv.style.display = 'none';
-        }
-
-        // Chemical search
-        async function searchChemical() {
-            const searchTerm = document.getElementById('searchTerm').value.trim();
-            const btn = document.getElementById('searchBtn');
-            
-            if (!searchTerm) {
-                showError('moleculeError', 'Please enter a chemical name!');
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading">⏳</span> Searching...';
-            clearError('moleculeError');
-
-            try {
-                const response = await fetch(`${API_BASE}/search?searchTerm=${encodeURIComponent(searchTerm)}`);
                 const data = await response.json();
                 
-                if (data.error) {
-                    showError('moleculeError', data.error);
-                } else if (data.smiles) {
-                    document.getElementById('moleculeTextarea').value = data.smiles;
-                    // Auto-submit (which will auto-apply saved options)
-                    await submitMolecule();
-
-                    // Load into composer if setting enabled
-                    if (document.getElementById('setting_intoComposer').checked && data.molblock) {
-                        try {
-                            const mol = Kekule.IO.loadFormatData(data.molblock, 'mol');
-                            moleculeComposer.setChemObj(mol);
-                        } catch (e) {
-                            console.error('Failed to load into composer:', e);
-                        }
-                    }
-                }
-            } catch (error) {
-                showError('moleculeError', 'Network error: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Search & Convert';
-            }
-        }
-
-        function quickSearch(name) {
-            document.getElementById('searchTerm').value = name;
-            searchChemical();
-        }
-
-        // Fetch molecule layers for layered viewing mode
-        async function fetchMoleculeLayers(chem_data, chem_format) {
-            try {
-                const response = await fetch(`${API_BASE}/layers`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        chem_data: chem_data,
-                        chem_format: chem_format
-                    })
-                });
-
-                const result = await response.json();
-                
-                if (result.error) {
-                    console.error('Layer generation error:', result.error);
-                } else if (result.layers) {
-                    displayLayeredSVG(result.layers);
-                    console.log('✅ Fetched', Object.keys(result.layers).length, 'SVG layers');
-                }
-            } catch (error) {
-                console.error('Failed to fetch layers:', error);
-            }
-        }
-
-        // Submit molecule
-        async function submitMolecule() {
-            const textarea = document.getElementById('moleculeTextarea');
-            const data = textarea.value.trim();
-            const btn = document.getElementById('submitBtn');
-
-            if (!data) {
-                showError('moleculeError', 'Please enter SMILES, MOL, or chemfig data!');
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading">⏳</span> Generating...';
-            clearError('moleculeError');
-
-            try {
-                const response = await fetch(`${API_BASE}/submit`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ textAreaData: data })
-                });
-
-                const result = await response.json();
-
-                if (result.error) {
-                    showError('moleculeError', result.error);
+                if (data.svg) {
+                    resultDiv.innerHTML = `
+                        <h3>✓ Generated Successfully</h3>
+                        <p><strong>Input:</strong> ${input} ${use3D ? '(3D)' : ''}</p>
+                        <p><strong>SMILES:</strong> <code>${smiles}</code></p>
+                        <div>${data.svg}</div>
+                    `;
                 } else {
-                    document.getElementById('moleculeOutput').textContent = result.chemfig || 'No output';
-                    if (result.pdflink) {
-                        document.getElementById('moleculePDF').src = result.pdflink;
-                    }
-                    if (result.svglink) {
-                        displaySVG(result.svglink);
-                    }
-                    lastMoleculeData = result.chem_data;
-                    lastMoleculeFormat = result.chem_format;
-
-                    // Fetch layers for layered mode
-                    await fetchMoleculeLayers(result.chem_data, result.chem_format);
-
-                    // Auto-apply saved options if they exist
-                    if (savedOptions.selections.length > 0) {
-                        console.log('🔄 Auto-applying saved options after molecule generation');
-                        btn.innerHTML = '<span class="loading">⏳</span> Applying saved options...';
-                        setTimeout(async () => {
-                            await applyMoleculeOptions();
-                            btn.disabled = false;
-                            btn.textContent = 'Generate Chemfig';
-                        }, 500);
-                        return; // Skip the finally block since we handle button state above
-                    }
+                    resultDiv.innerHTML = `<p style="color: red;">Error: ${data.error || 'Failed to generate'}</p>`;
                 }
             } catch (error) {
-                showError('moleculeError', 'Network error: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Generate Chemfig';
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
             }
         }
 
-        // Convert from drawing
-        async function convertFromDrawing() {
-            if (!moleculeComposer) {
-                showError('moleculeError', 'Drawing board not initialized!');
-                return;
-            }
-
-            try {
-                const mol = moleculeComposer.getChemObj();
-                if (!mol) {
-                    showError('moleculeError', 'Please draw a structure first!');
-                    return;
-                }
-
-                const molBlock = Kekule.IO.saveFormatData(mol, 'mol');
-                document.getElementById('moleculeTextarea').value = molBlock;
-                await submitMolecule();
-            } catch (error) {
-                showError('moleculeError', 'Failed to convert drawing: ' + error.message);
-            }
+        function clearMol2ChemFig() {
+            document.getElementById('m2cf-result').innerHTML = 'Results will appear here...';
         }
 
-        // Apply molecule options
-        async function applyMoleculeOptions() {
-            if (!lastMoleculeData) {
-                showError('moleculeError', 'No molecule data to apply options to! Generate a chemfig first.');
-                return;
-            }
-
-            const selected = getSelectedOptions('mol');
-            const angle = parseInt(document.getElementById('moleculeAngle').value) || 0;
-            const indentation = parseInt(document.getElementById('moleculeIndent').value) || 4;
-            const h2 = document.getElementById('moleculeH2').value;
-            const viewerType = document.getElementById('viewerType').value;
-
-            // Save options to localStorage for persistence
-            savedOptions = {
-                selections: selected,
-                angle: angle,
-                indentation: indentation,
-                h2: h2
-            };
-            localStorage.setItem('chemfig_options', JSON.stringify(savedOptions));
-            console.log('💾 Saved chemfig options to localStorage:', savedOptions);
-
-            // Special handling for layered mode
-            if (viewerType === 'layered') {
-                if (selected.length === 0 || selected.length === 1) {
-                    // Single or no options: just toggle layers instantly
-                    updateLayerVisibility();
-                    console.log('✅ Layered mode: Updated layer visibility (no backend call)');
-                    return;
-                }
-                // Multiple options: Fall through to call backend and switch to normal SVG view
-                console.log('⚠️ Multiple options in layered mode - generating combined view via backend');
-            }
-
-            const payload = {
-                chem_data: lastMoleculeData,
-                chem_format: lastMoleculeFormat,
-                selections: selected,
-                angle: angle,
-                indentation: indentation,
-                h2: h2
-            };
-
-            console.log('🔧 Applying molecule options:', payload);
-            console.log('Selected options:', selected);
-
+        // MoleculeViewer Functions
+        async function generateMoleculeViewer() {
+            const smiles = document.getElementById('mv-smiles').value;
+            const use3D = document.getElementById('mv-3d-toggle').checked;
+            const width = document.getElementById('mv-width').value;
+            const height = document.getElementById('mv-height').value;
+            const resultDiv = document.getElementById('mv-result');
+            
+            resultDiv.innerHTML = '<p>Generating...</p>';
+            
             try {
-                const response = await fetch(`${API_BASE}/apply`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-                console.log('📊 Apply response:', result);
-
-                if (result.error) {
-                    showError('moleculeError', result.error);
-                } else {
-                    // Display chemfig output with cache links if available
-                    let outputText = result.chemfig;
-
-                    // Add cache links section
-                    if (result.pdflink || result.svglink) {
-                        outputText += '\n\n--- Cache Links ---\n';
-                        if (result.svglink) {
-                            const svgCacheUrl = result.svglink.startsWith('http') ? result.svglink : `${API_BASE.replace('/m2cf', '')}${result.svglink}`;
-                            outputText += `SVG: ${svgCacheUrl}\n`;
-                        }
-                        if (result.pdflink) {
-                            const pdfCacheUrl = result.pdflink.startsWith('http') ? result.pdflink : `${API_BASE.replace('/m2cf', '')}${result.pdflink}`;
-                            outputText += `PDF: ${pdfCacheUrl}\n`;
-                        }
-                    }
-
-                    document.getElementById('moleculeOutput').textContent = outputText;
-
-                    // For multiple options in layered mode, switch to normal SVG viewer
-                    if (viewerType === 'layered' && selected.length > 1) {
-                        document.getElementById('viewerType').value = 'svg';
-                        switchViewer();
-                        console.log('✅ Switched to normal SVG viewer for combined view');
-                    }
-
-                    if (result.pdflink) {
-                        // Force PDF refresh by resetting src first
-                        const pdfElement = document.getElementById('moleculePDF');
-                        pdfElement.src = '';
-                        setTimeout(() => {
-                            pdfElement.src = result.pdflink;
-                        }, 100);
-                    }
-
-                    // Display SVG if available
-                    if (result.svglink) {
-                        displaySVG(result.svglink);
-                    }
-
-                    // Check if aromatic circle code is present
-                    if (result.chemfig.includes('mcfcringle')) {
-                        console.log('✅ AROMATIC CIRCLE DETECTED in chemfig!');
-                    }
-
-                    // Show success message
-                    const successDiv = document.createElement('div');
-                    successDiv.className = 'success-banner';
-                    successDiv.textContent = '✅ Options applied and saved! They will be used for future conversions.';
-                    successDiv.style.marginBottom = '15px';
-                    const errorDiv = document.getElementById('moleculeError');
-                    errorDiv.innerHTML = '';
-                    errorDiv.appendChild(successDiv);
-                    errorDiv.style.display = 'block';
-                    setTimeout(() => {
-                        errorDiv.style.display = 'none';
-                    }, 4000);
-                }
-            } catch (error) {
-                showError('moleculeError', 'Failed to apply options: ' + error.message);
-                console.error('Error applying options:', error);
-            }
-        }
-
-        // Reset molecule options
-        async function resetMoleculeOptions() {
-            if (!lastMoleculeData) {
-                showError('moleculeError', 'No molecule data to reset!');
-                return;
-            }
-
-            // Clear checkboxes
-            OPTIONS.forEach((opt, idx) => {
-                const checkbox = document.getElementById(`mol_opt_${idx}`);
-                if (checkbox) checkbox.checked = false;
-            });
-
-            // Reset controls
-            document.getElementById('moleculeAngle').value = 0;
-            document.getElementById('moleculeIndent').value = 4;
-            document.getElementById('moleculeH2').value = 'keep';
-
-            // Call reset endpoint
-            const payload = {
-                chem_data: lastMoleculeData,
-                chem_format: lastMoleculeFormat
-            };
-
-            try {
-                const response = await fetch(`${API_BASE}/reset`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
+                let finalSmiles = smiles;
                 
-                if (result.error) {
-                    showError('moleculeError', result.error);
-                } else {
-                    document.getElementById('moleculeOutput').textContent = result.chemfig;
-                    if (result.pdflink) {
-                        document.getElementById('moleculePDF').src = result.pdflink;
+                // If 3D is enabled, convert to 3D SMILES first
+                if (use3D) {
+                    resultDiv.innerHTML = '<p>Converting to 3D SMILES via OPSIN...</p>';
+                    const opsinResponse = await fetch(`http://localhost:5001/api/opsin?name=${encodeURIComponent(smiles)}`);
+                    const opsinData = await opsinResponse.json();
+                    
+                    if (opsinData.smiles_3d) {
+                        finalSmiles = opsinData.smiles_3d;
+                        resultDiv.innerHTML += `<p>✓ 3D SMILES: <code>${finalSmiles}</code></p>`;
                     }
                 }
-            } catch (error) {
-                showError('moleculeError', 'Failed to reset: ' + error.message);
-            }
-        }
-
-        // Reaction functions
-        async function convertReaction() {
-            if (!reactionComposer) {
-                showError('reactionError', 'Reaction board not initialized!');
-                return;
-            }
-
-            try {
-                // Get reaction JSON
-                const docJSON = reactionComposer.exportObjs(Kekule.Molecule);
-                // For now, show placeholder
-                showError('reactionError', 'Reaction conversion requires full backend integration. Draw your reaction and the backend will process it.');
-            } catch (error) {
-                showError('reactionError', 'Failed to convert reaction: ' + error.message);
-            }
-        }
-
-        function clearReactionDrawing() {
-            if (reactionComposer) {
-                reactionComposer.setChemObj(null);
-            }
-        }
-
-        async function updateReactionChemfig() {
-            const data = document.getElementById('reactionTextarea').value.trim();
-            if (!data) {
-                showError('reactionError', 'No chemfig code to update!');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE}/reaction/update_chemfig`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ textAreaData: data })
-                });
-
-                const result = await response.json();
                 
-                if (result.pdflink) {
-                    document.getElementById('reactionPDF').src = result.pdflink;
+                // Generate image
+                const imageUrl = `http://localhost:5000/img/smiles?smiles=${encodeURIComponent(finalSmiles)}&width=${width}&height=${height}`;
+                
+                resultDiv.innerHTML = `
+                    <h3>✓ Generated Successfully</h3>
+                    <p><strong>SMILES:</strong> <code>${finalSmiles}</code> ${use3D ? '(3D)' : ''}</p>
+                    <img src="${imageUrl}" alt="Molecule" style="max-width: 100%;">
+                    <p><a href="${imageUrl}" target="_blank">Open in new tab</a></p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+
+        function clearMoleculeViewer() {
+            document.getElementById('mv-result').innerHTML = 'Results will appear here...';
+        }
+
+        // PubChem Functions
+        async function fetchPubChem() {
+            const name = document.getElementById('pubchem-name').value;
+            const type = document.getElementById('pubchem-type').value;
+            const size = document.getElementById('pubchem-size').value;
+            const imageDiv = document.getElementById('pubchem-image');
+            
+            imageDiv.innerHTML = '<p>Fetching from PubChem...</p>';
+            
+            try {
+                const imageUrl = `http://localhost:5002/img/${encodeURIComponent(name)}?size=${size}&type=${type}`;
+                
+                imageDiv.innerHTML = `
+                    <h3>✓ ${name} (${type.toUpperCase()})</h3>
+                    <img src="${imageUrl}" alt="${name}" style="max-width: 100%; background: white; padding: 20px; border-radius: 8px;">
+                    <p><a href="${imageUrl}" target="_blank">Open in new tab</a></p>
+                `;
+            } catch (error) {
+                imageDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+
+        function open3DViewer() {
+            const name = document.getElementById('pubchem-name').value;
+            window.open(`http://localhost:5002/static/viewer-3d.html?name=${encodeURIComponent(name)}&embed=true`, '_blank');
+        }
+
+        function clearPubChem() {
+            document.getElementById('pubchem-image').innerHTML = '';
+        }
+
+        // Check PubChem server status
+        async function checkPubChemStatus() {
+            try {
+                const response = await fetch('http://localhost:5002/health');
+                if (response.ok) {
+                    document.getElementById('pubchem-status').className = 'status-indicator status-online';
+                    document.getElementById('pubchem-status-text').textContent = 'Online';
+                } else {
+                    throw new Error('Not responding');
                 }
-                if (result.error) {
-                    showError('reactionError', result.error);
+            } catch {
+                document.getElementById('pubchem-status').className = 'status-indicator status-offline';
+                document.getElementById('pubchem-status-text').textContent = 'Offline';
+            }
+        }
+
+        // 3D SMILES Functions
+        async function generate3DSMILES() {
+            const name = document.getElementById('opsin-name').value;
+            const resultDiv = document.getElementById('opsin-result');
+            
+            resultDiv.innerHTML = '<p>Converting to 3D SMILES via OPSIN...</p>';
+            
+            try {
+                const response = await fetch(`http://localhost:5001/api/opsin?name=${encodeURIComponent(name)}`);
+                const data = await response.json();
+                
+                if (data.smiles_3d) {
+                    resultDiv.innerHTML = `
+                        <h3>✓ 3D SMILES Generated</h3>
+                        <p><strong>Name:</strong> ${name}</p>
+                        <p><strong>2D SMILES:</strong> <code>${data.smiles || 'N/A'}</code></p>
+                        <p><strong>3D SMILES:</strong> <code>${data.smiles_3d}</code></p>
+                        <button class="btn" onclick="useSMILES('${data.smiles_3d}')">Use in Mol2ChemFig</button>
+                        <button class="btn" onclick="useSMILESMV('${data.smiles_3d}')">Use in MoleculeViewer</button>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p style="color: red;">Error: ${data.error || 'Failed to generate 3D SMILES'}</p>`;
                 }
             } catch (error) {
-                showError('reactionError', 'Failed to update: ' + error.message);
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
             }
         }
 
-        function applyReactionOptions() {
-            showError('reactionError', 'Reaction options require drawing board integration.');
+        function clear3DSMILES() {
+            document.getElementById('opsin-result').innerHTML = 'Results will appear here...';
         }
 
-        function resetReactionOptions() {
-            OPTIONS.forEach((opt, idx) => {
-                const checkbox = document.getElementById(`rxn_opt_${idx}`);
-                if (checkbox) checkbox.checked = false;
-            });
-            document.getElementById('reactionAngle').value = 0;
-            document.getElementById('reactionIndent').value = 4;
-            document.getElementById('reactionH2').value = 'keep';
+        function useSMILES(smiles) {
+            switchTab('mol2chemfig');
+            document.getElementById('m2cf-input').value = smiles;
+            setTimeout(() => document.querySelector('.tab-button').click(), 100);
         }
 
-        // Utility functions
-        function loadExample(smiles) {
-            document.getElementById('moleculeTextarea').value = smiles;
+        function useSMILESMV(smiles) {
+            switchTab('moleculeviewer');
+            document.getElementById('mv-smiles').value = smiles;
+            setTimeout(() => document.querySelectorAll('.tab-button')[1].click(), 100);
         }
 
-        function clearMolecule() {
-            document.getElementById('moleculeTextarea').value = '';
-            document.getElementById('moleculeOutput').innerHTML = '<em style="color: #8b949e;">Output will appear here...</em>';
+        // Test Functions
+        function openTest(filename) {
+            window.open(filename, '_blank');
         }
 
-        function clearDrawing() {
-            if (moleculeComposer) {
-                moleculeComposer.setChemObj(null);
-            }
-        }
-
-        function copyToClipboard(elementId) {
-            const element = document.getElementById(elementId);
-            element.select();
-            document.execCommand('copy');
-            
-            // Show temporary success message
-            const parent = element.parentElement;
-            const successMsg = document.createElement('div');
-            successMsg.className = 'success-banner';
-            successMsg.textContent = '✅ Copied to clipboard!';
-            successMsg.style.marginTop = '10px';
-            parent.appendChild(successMsg);
-            
-            setTimeout(() => {
-                successMsg.remove();
-            }, 2000);
-        }
-
-        // Load saved chemfig options from localStorage
-        function loadSavedChemfigOptions() {
-            const savedOptionsStr = localStorage.getItem('chemfig_options');
-            if (savedOptionsStr) {
-                try {
-                    savedOptions = JSON.parse(savedOptionsStr);
-                    console.log('📂 Loaded saved chemfig options:', savedOptions);
-
-                    // Apply saved checkbox selections
-                    OPTIONS.forEach((opt, idx) => {
-                        const checkbox = document.getElementById(`mol_opt_${idx}`);
-                        if (checkbox && savedOptions.selections.includes(opt.value)) {
-                            checkbox.checked = true;
-                        }
-                    });
-
-                    // Apply saved numeric values
-                    if (savedOptions.angle !== undefined) {
-                        document.getElementById('moleculeAngle').value = savedOptions.angle;
-                    }
-                    if (savedOptions.indentation !== undefined) {
-                        document.getElementById('moleculeIndent').value = savedOptions.indentation;
-                    }
-                    if (savedOptions.h2) {
-                        document.getElementById('moleculeH2').value = savedOptions.h2;
-                    }
-
-                    // Update the preview
-                    updateActiveOptions();
-                } catch (e) {
-                    console.error('Failed to load saved options:', e);
-                }
-            }
-        }
-
-        // Auto-apply saved options when submitting molecule
-        async function submitMoleculeWithOptions() {
-            await submitMolecule();
-
-            // If saved options exist and molecule data was generated, auto-apply them
-            if (lastMoleculeData && savedOptions.selections.length > 0) {
-                console.log('🔄 Auto-applying saved options after molecule generation');
-                setTimeout(async () => {
-                    await applyMoleculeOptions();
-                }, 500);
-            }
-        }
-
-        // Settings functions
-        function saveSettings() {
-            localStorage.setItem('setting_intoComposer', document.getElementById('setting_intoComposer').checked);
-            localStorage.setItem('setting_mol_keepOnLeave', document.getElementById('setting_mol_keepOnLeave').checked);
-            localStorage.setItem('setting_mol_hideTooltips', document.getElementById('setting_mol_hideTooltips').checked);
-            localStorage.setItem('setting_rxn_keepOnLeave', document.getElementById('setting_rxn_keepOnLeave').checked);
-            localStorage.setItem('setting_rxn_hideTooltips', document.getElementById('setting_rxn_hideTooltips').checked);
-            
-            const banner = document.getElementById('settingsSaved');
-            banner.style.display = 'block';
-            setTimeout(() => {
-                banner.style.display = 'none';
-            }, 3000);
-        }
-
-        function loadSettings() {
-            document.getElementById('setting_intoComposer').checked = localStorage.getItem('setting_intoComposer') === 'true';
-            document.getElementById('setting_mol_keepOnLeave').checked = localStorage.getItem('setting_mol_keepOnLeave') === 'true';
-            document.getElementById('setting_mol_hideTooltips').checked = localStorage.getItem('setting_mol_hideTooltips') === 'true';
-            document.getElementById('setting_rxn_keepOnLeave').checked = localStorage.getItem('setting_rxn_keepOnLeave') === 'true';
-            document.getElementById('setting_rxn_hideTooltips').checked = localStorage.getItem('setting_rxn_hideTooltips') === 'true';
-        }
-
-        function clearSettings() {
-            if (confirm('Are you sure you want to clear all settings?')) {
-                localStorage.clear();
-                loadSettings();
-                alert('Settings cleared!');
-            }
-        }
-
-        // Auto-save on page unload
-        window.addEventListener('beforeunload', () => {
-            if (document.getElementById('setting_mol_keepOnLeave').checked && moleculeComposer) {
-                try {
-                    const mol = moleculeComposer.getChemObj();
-                    if (mol) {
-                        localStorage.setItem('saved_molecule', Kekule.IO.saveFormatData(mol, 'mol'));
-                    }
-                } catch (e) {}
-            }
-            if (document.getElementById('setting_rxn_keepOnLeave').checked && reactionComposer) {
-                try {
-                    const rxn = reactionComposer.getChemObj();
-                    if (rxn) {
-                        localStorage.setItem('saved_reaction', Kekule.IO.saveFormatData(rxn, 'kekule-json'));
-                    }
-                } catch (e) {}
-            }
-        });
-
-        // Restore saved structures
+        // Initialize
         window.addEventListener('load', () => {
-            setTimeout(() => {
-                if (document.getElementById('setting_mol_keepOnLeave').checked) {
-                    const saved = localStorage.getItem('saved_molecule');
-                    if (saved && moleculeComposer) {
-                        try {
-                            const mol = Kekule.IO.loadFormatData(saved, 'mol');
-                            moleculeComposer.setChemObj(mol);
-                        } catch (e) {}
-                    }
-                }
-                if (document.getElementById('setting_rxn_keepOnLeave').checked) {
-                    const saved = localStorage.getItem('saved_reaction');
-                    if (saved && reactionComposer) {
-                        try {
-                            const rxn = Kekule.IO.loadFormatData(saved, 'kekule-json');
-                            reactionComposer.setChemObj(rxn);
-                        } catch (e) {}
-                    }
-                }
-            }, 500);
+            checkPubChemStatus();
+            setInterval(checkPubChemStatus, 10000); // Check every 10 seconds
         });
     </script>
 </body>

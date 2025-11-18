@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Chemistry Renderer - Material Design</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 420px;
+      font-family: 'Roboto', 'Segoe UI', sans-serif;
+      font-size: 14px;
+      color: #212121;
+      background: #fafafa;
+    }
+
+    .container {
+      background: #fafafa;
+      display: flex;
+      flex-direction: column;
+      min-height: 650px;
+      max-height: 650px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      padding: 24px 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      position: relative;
+      z-index: 10;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .header p {
+      font-size: 13px;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .content::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .content::-webkit-scrollbar-thumb {
+      background: #bdbdbd;
+      border-radius: 2px;
+    }
+
+    .mat-card {
+      margin-bottom: 16px;
+      background: white;
+      padding: 16px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .mat-card:hover {
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .mat-card-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: #616161;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      letter-spacing: 0.8px;
+    }
+
+    .option {
+      padding: 12px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .option:not(:last-child) {
+      border-bottom: 1px solid #f5f5f5;
+    }
+
+    .option label {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .option strong {
+      display: block;
+      font-weight: 500;
+      color: #212121;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    .option small {
+      display: block;
+      color: #757575;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    input[type="checkbox"], input[type="radio"] {
+      display: none;
+    }
+
+    .mat-switch {
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+      background: #bdbdbd;
+      border-radius: 10px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+      margin-left: 12px;
+    }
+
+    .mat-switch::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    input:checked + .mat-switch {
+      background: #1976d2;
+    }
+
+    input:checked + .mat-switch::before {
+      left: 18px;
+    }
+
+    select, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      font-size: 14px;
+      margin-top: 8px;
+      background: white;
+      color: #212121;
+      font-family: 'Roboto', sans-serif;
+      transition: border-color 0.2s;
+    }
+
+    select:focus, textarea:focus {
+      outline: none;
+      border-color: #1976d2;
+      border-width: 2px;
+      padding: 11px;
+    }
+
+    .mat-info {
+      background: #e3f2fd;
+      border-left: 4px solid #1976d2;
+      padding: 12px;
+      margin-top: 12px;
+      border-radius: 2px;
+      font-size: 13px;
+      color: #0d47a1;
+      line-height: 1.6;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+      margin-top: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    button:hover {
+      background: #1565c0;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    button:active {
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .footer {
+      background: white;
+      border-top: 1px solid #e0e0e0;
+      padding: 16px 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #757575;
+      box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .footer a {
+      color: #1976d2;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .mat-radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .mat-radio {
+      padding: 12px;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mat-radio:hover {
+      background: #fafafa;
+      border-color: #1976d2;
+    }
+
+    input[type="radio"]:checked + .mat-radio {
+      background: #e3f2fd;
+      border-color: #1976d2;
+      border-width: 2px;
+      padding: 11px;
+    }
+
+    .mat-radio-button {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #757575;
+      border-radius: 50%;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    input[type="radio"]:checked + .mat-radio .mat-radio-button {
+      border-color: #1976d2;
+    }
+
+    input[type="radio"]:checked + .mat-radio .mat-radio-button::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #1976d2;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .status {
+      display: none;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      margin: 12px 0;
+      font-weight: 500;
+    }
+
+    .status.show {
+      display: block;
+      background: #c8e6c9;
+      color: #2e7d32;
+      border-left: 4px solid #4caf50;
+    }
+
+    .mat-divider {
+      height: 1px;
+      background: #e0e0e0;
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚗️ Chemistry Renderer</h1>
+      <p>Material Design</p>
+    </div>
+
+    <div class="content">
+      <!-- Main Controls -->
+      <div class="mat-card">
+        <div class="mat-card-title">Main Controls</div>
+
+        <div class="option">
+          <label for="enabledToggle">
+            <strong>Extension Status</strong>
+            <small>Enable/disable formula rendering</small>
+          </label>
+          <input type="checkbox" id="enabledToggle" checked>
+          <label class="mat-switch" for="enabledToggle"></label>
+        </div>
+
+        <div class="option">
+          <label for="mhchemToggle">
+            <strong>mhchem Formulas</strong>
+            <small>\ce{H2O}, \ce{CO2}</small>
+          </label>
+          <input type="checkbox" id="mhchemToggle" checked>
+          <label class="mat-switch" for="mhchemToggle"></label>
+        </div>
+
+        <div class="option">
+          <label for="chemfigToggle">
+            <strong>chemfig Structures</strong>
+            <small>\chemfig{...}</small>
+          </label>
+          <input type="checkbox" id="chemfigToggle" checked>
+          <label class="mat-switch" for="chemfigToggle"></label>
+        </div>
+      </div>
+
+      <!-- Renderer Selection -->
+      <div class="mat-card">
+        <div class="mat-card-title">Rendering Engine</div>
+
+        <div class="mat-radio-group">
+          <input type="radio" name="renderingEngine" value="moleculeviewer" id="engine1" checked>
+          <label for="engine1" class="mat-radio">
+            <div class="mat-radio-button"></div>
+            <div>
+              <strong>🧪 MoleculeViewer</strong>
+              <small style="display: block; margin-top: 2px;">SMILES & nomenclature rendering</small>
+            </div>
+          </label>
+
+          <input type="radio" name="renderingEngine" value="mol2chemfig" id="engine2">
+          <label for="engine2" class="mat-radio">
+            <div class="mat-radio-button"></div>
+            <div>
+              <strong>📐 mol2chemfig</strong>
+              <small style="display: block; margin-top: 2px;">Chemfig & LaTeX rendering</small>
+            </div>
+          </label>
+
+          <input type="radio" name="renderingEngine" value="pubchem" id="engine3">
+          <label for="engine3" class="mat-radio">
+            <div class="mat-radio-button"></div>
+            <div>
+              <strong>🌐 PubChem</strong>
+              <small style="display: block; margin-top: 2px;">Direct API with 3D models</small>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- mol2chemfig Options -->
+      <div id="mol2chemfigOptions" class="mat-card" style="display: none;">
+        <div class="mat-card-title">mol2chemfig Options</div>
+
+        <div class="option">
+          <label for="m2cfShowCarbonsToggle">
+            <strong>Show Carbon Atoms</strong>
+            <small>Display C labels in structure</small>
+          </label>
+          <input type="checkbox" id="m2cfShowCarbonsToggle">
+          <label class="mat-switch" for="m2cfShowCarbonsToggle"></label>
+        </div>
+
+        <div class="option">
+          <label for="m2cfAromaticCirclesToggle">
+            <strong>Aromatic Circles</strong>
+            <small>Draw circles in aromatic rings</small>
+          </label>
+          <input type="checkbox" id="m2cfAromaticCirclesToggle">
+          <label class="mat-switch" for="m2cfAromaticCirclesToggle"></label>
+        </div>
+
+        <div class="option">
+          <label for="use3DSmilesToggle">
+            <strong>3D Stereochemistry</strong>
+            <small>Use OPSIN for 3D SMILES</small>
+          </label>
+          <input type="checkbox" id="use3DSmilesToggle">
+          <label class="mat-switch" for="use3DSmilesToggle"></label>
+        </div>
+      </div>
+
+      <!-- Image Size Controls -->
+      <div class="mat-card">
+        <div class="mat-card-title">Image Size Controls</div>
+
+        <div class="option">
+          <label for="saveSizePerImageToggle">
+            <strong>Save Size Per Page</strong>
+            <small>Remember image size for each page separately</small>
+          </label>
+          <input type="checkbox" id="saveSizePerImageToggle">
+          <label class="mat-switch" for="saveSizePerImageToggle"></label>
+        </div>
+
+        <div class="option">
+          <label for="saveSizeBySMILESToggle">
+            <strong>Save Size By SMILES</strong>
+            <small>Use same size for all molecules with same SMILES</small>
+          </label>
+          <input type="checkbox" id="saveSizeBySMILESToggle">
+          <label class="mat-switch" for="saveSizeBySMILESToggle"></label>
+        </div>
+      </div>
+
+      <!-- Performance -->
+      <div class="mat-card">
+        <div class="mat-card-title">Performance</div>
+        <div class="option">
+          <label for="perfModeToggle">
+            <strong>Lazy-Loading Mode</strong>
+            <small>Only render visible formulas for better performance</small>
+          </label>
+          <input type="checkbox" id="perfModeToggle" checked>
+          <label class="mat-switch" for="perfModeToggle"></label>
+        </div>
+      </div>
+
+      <!-- Developer Mode -->
+      <div class="mat-card">
+        <div class="mat-card-title">Developer Mode</div>
+        <div class="option">
+          <label for="devModeToggle">
+            <strong>Show Raw Text</strong>
+            <small>Display chemfig text instead of rendered images</small>
+          </label>
+          <input type="checkbox" id="devModeToggle">
+          <label class="mat-switch" for="devModeToggle"></label>
+        </div>
+      </div>
+
+      <div class="status" id="status"></div>
+
+    </div>
+
+    <div class="footer">
+      Chemistry Renderer v4.0 • <a href="#">Help & Documentation</a>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

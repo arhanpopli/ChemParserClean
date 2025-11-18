@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Chemistry Renderer - Material Design</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 400px;
+      font-family: 'Roboto', 'Segoe UI', sans-serif;
+      color: #212121;
+      background: #fafafa;
+    }
+
+    .container {
+      background: #fafafa;
+      min-height: 600px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+      color: white;
+      padding: 24px 20px 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      position: relative;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+
+    .content {
+      padding: 16px;
+      max-height: 520px;
+      overflow-y: auto;
+    }
+
+    .content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .content::-webkit-scrollbar-track {
+      background: #f0f0f0;
+    }
+
+    .content::-webkit-scrollbar-thumb {
+      background: #bdbdbd;
+      border-radius: 4px;
+    }
+
+    .content::-webkit-scrollbar-thumb:hover {
+      background: #9e9e9e;
+    }
+
+    .section {
+      margin-bottom: 16px;
+      background: white;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+      overflow: hidden;
+      transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .section:hover {
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+    }
+
+    .section-header {
+      background: #f5f5f5;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #424242;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .section-content {
+      padding: 8px 16px 16px;
+    }
+
+    .option {
+      padding: 12px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 56px;
+    }
+
+    .option label {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .option strong {
+      display: block;
+      font-weight: 500;
+      color: #212121;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .option small {
+      display: block;
+      color: #757575;
+      font-size: 14px;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+
+    input[type="checkbox"], input[type="radio"] {
+      display: none;
+    }
+
+    .toggle {
+      width: 36px;
+      height: 14px;
+      background: #bdbdbd;
+      border-radius: 7px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+      margin-left: 16px;
+    }
+
+    .toggle::before {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: #fafafa;
+      border-radius: 50%;
+      top: -3px;
+      left: -2px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    input:checked + .toggle {
+      background: rgba(25, 118, 210, 0.5);
+    }
+
+    input:checked + .toggle::before {
+      left: 18px;
+      background: #1976d2;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+    }
+
+    .radio-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 8px;
+    }
+
+    .radio-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 0;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      border-radius: 4px;
+      min-height: 48px;
+    }
+
+    .radio-item:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .radio-marker {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #757575;
+      border-radius: 50%;
+      margin-right: 16px;
+      position: relative;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    input:checked + .radio-marker {
+      border-color: #1976d2;
+      border-width: 10px;
+    }
+
+    .radio-label strong {
+      display: block;
+      font-size: 16px;
+      font-weight: 500;
+      color: #212121;
+      line-height: 1.4;
+    }
+
+    .radio-label small {
+      display: block;
+      font-size: 14px;
+      color: #757575;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+
+    select {
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      border-bottom: 1px solid #e0e0e0;
+      font-size: 16px;
+      margin-top: 8px;
+      background: transparent;
+      color: #212121;
+      cursor: pointer;
+      font-family: 'Roboto', sans-serif;
+      transition: border-color 0.2s ease;
+    }
+
+    select:focus {
+      outline: none;
+      border-bottom-color: #1976d2;
+      border-bottom-width: 2px;
+    }
+
+    .info-box {
+      background: #e3f2fd;
+      border-left: 4px solid #1976d2;
+      padding: 12px 16px;
+      margin-top: 12px;
+      border-radius: 0 4px 4px 0;
+      font-size: 14px;
+      color: #0d47a1;
+      line-height: 1.6;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      background: #1976d2;
+      border-radius: 50%;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .fab:hover {
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+      transform: scale(1.1);
+    }
+
+    .fab::before {
+      content: '?';
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .footer {
+      background: white;
+      border-top: 1px solid #e0e0e0;
+      padding: 16px 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #757575;
+      box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .footer a {
+      color: #1976d2;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .ripple {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ripple::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.1);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .ripple:active::after {
+      width: 200px;
+      height: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Chemistry Renderer</h1>
+      <p>Material Design with elevation and ripple effects</p>
+    </div>
+
+    <div class="content">
+      <!-- Main Controls -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">Main Controls</div>
+        </div>
+        <div class="section-content">
+          <div class="option">
+            <label for="enabledToggle">
+              <strong>Extension Status</strong>
+              <small>Enable or disable formula rendering</small>
+            </label>
+            <input type="checkbox" id="enabledToggle" checked>
+            <label class="toggle" for="enabledToggle"></label>
+          </div>
+
+          <div class="option">
+            <label for="mhchemToggle">
+              <strong>mhchem Formulas</strong>
+              <small>\ce{H2O}, \ce{CO2}</small>
+            </label>
+            <input type="checkbox" id="mhchemToggle" checked>
+            <label class="toggle" for="mhchemToggle"></label>
+          </div>
+
+          <div class="option">
+            <label for="chemfigToggle">
+              <strong>chemfig Structures</strong>
+              <small>\chemfig{...}</small>
+            </label>
+            <input type="checkbox" id="chemfigToggle" checked>
+            <label class="toggle" for="chemfigToggle"></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Renderer Selection -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">Rendering Engine</div>
+        </div>
+        <div class="section-content">
+          <div class="radio-list">
+            <label class="radio-item ripple">
+              <input type="radio" name="renderingEngine" value="moleculeviewer" checked>
+              <div class="radio-marker"></div>
+              <div class="radio-label">
+                <strong>MoleculeViewer</strong>
+                <small>Port 5000 - SMILES and nomenclature rendering</small>
+              </div>
+            </label>
+
+            <label class="radio-item ripple">
+              <input type="radio" name="renderingEngine" value="mol2chemfig">
+              <div class="radio-marker"></div>
+              <div class="radio-label">
+                <strong>mol2chemfig</strong>
+                <small>Port 8000 - ChemFig and LaTeX rendering</small>
+              </div>
+            </label>
+
+            <label class="radio-item ripple">
+              <input type="radio" name="renderingEngine" value="pubchem">
+              <div class="radio-marker"></div>
+              <div class="radio-label">
+                <strong>PubChem</strong>
+                <small>Port 5002 - Direct API with 3D models</small>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">Performance</div>
+        </div>
+        <div class="section-content">
+          <div class="option">
+            <label for="perfModeToggle">
+              <strong>Lazy-Loading Mode</strong>
+              <small>Only render formulas that are visible</small>
+            </label>
+            <input type="checkbox" id="perfModeToggle" checked>
+            <label class="toggle" for="perfModeToggle"></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Developer Mode -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">Developer</div>
+        </div>
+        <div class="section-content">
+          <div class="option">
+            <label for="devModeToggle">
+              <strong>Show Raw Text</strong>
+              <small>Display chemfig text instead of rendered images</small>
+            </label>
+            <input type="checkbox" id="devModeToggle">
+            <label class="toggle" for="devModeToggle"></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Design 9: Material Design • <a href="#">Help & Documentation</a>
+    </div>
+
+    <div class="fab" title="Help"></div>
+  </div>
+
+  <script src="../popup.js"></script>
+</body>
+</html>

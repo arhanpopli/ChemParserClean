@@ -1,4 +1,14 @@
-# Python
+# ===== HEAVY LIBRARIES (159 MB - Don't upload!) =====
+MoleculeViewer/
+ChemDoodleWeb-11.0.0/
+
+# ===== Node Modules (2.5 MB) =====
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# ===== Python Cache & Build =====
 __pycache__/
 *.py[cod]
 *$py.class
@@ -23,13 +33,24 @@ wheels/
 .installed.cfg
 *.egg
 
-# Node
-node_modules/
-npm-debug.log
-yarn-error.log
-package-lock.json
+# ===== Cache Folders (Empty but Claude doesn't need them) =====
+cache/
+*.cache
+.cache/
+pubchem-cache/
+backend_data/
+mol2chemfig_storage/
 
-# IDE
+# ===== Logs & Temp Files =====
+*.log
+debug.log
+server.log
+temp_fix.html
+*.tmp
+nul
+Enable
+
+# ===== IDE & OS =====
 .vscode/
 .idea/
 *.swp
@@ -38,40 +59,7 @@ package-lock.json
 .DS_Store
 .env
 .env.local
-
-# Cache
-cache/
-*.cache
-.cache/
-pubchem-cache/
-
-# Logs
-*.log
-debug.log
-server.log
-
-# Temp files
-temp_fix.html
-*.tmp
-nul
-Enable
-
-# Docker
-.dockerignore
-
-# OS
-.DS_Store
 Thumbs.db
 
-# Build outputs
-dist/
-build/
-*.egg-info/
-
-# IDE workspace
-.vscode/
-.idea/
-
-# Special files
-backend_data/
-mol2chemfig_storage/
+# ===== Docker =====
+.dockerignore

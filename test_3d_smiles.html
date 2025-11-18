@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D SMILES Testing with OPSIN</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .results {
+            margin-top: 20px;
+        }
+
+        .result-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .result-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .result-box pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .image-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-cases {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .test-case {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .test-case:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .test-case h4 {
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .test-case p {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .comparison-item {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .comparison-item h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 3D SMILES Testing with OPSIN</h1>
+            <p>Test OPSIN integration for 3D stereochemistry support in mol2chemfig</p>
+        </div>
+
+        <div class="content">
+            <!-- Test OPSIN Conversion -->
+            <div class="section">
+                <h2>1. Test OPSIN Conversion</h2>
+                <p>Convert chemical nomenclature to 3D SMILES using OPSIN API</p>
+
+                <div class="input-group">
+                    <label for="opsinName">Chemical Name:</label>
+                    <input type="text" id="opsinName" placeholder="e.g., glucose, D-glucose, aspirin" value="glucose">
+                </div>
+
+                <button class="btn" onclick="testOPSINConversion()">Convert to 3D SMILES</button>
+
+                <div id="opsinResults" class="results"></div>
+            </div>
+
+            <!-- Test 3D Generation -->
+            <div class="section">
+                <h2>2. Test 3D Molecule Generation</h2>
+                <p>Generate molecule structure with 3D stereochemistry via OPSIN + mol2chemfig</p>
+
+                <div class="input-group">
+                    <label for="generate3dName">Chemical Name:</label>
+                    <input type="text" id="generate3dName" placeholder="e.g., D-glucose, L-alanine" value="D-glucose">
+                </div>
+
+                <button class="btn" onclick="test3DGeneration()">Generate 3D Structure</button>
+                <button class="btn btn-secondary" onclick="test3DGenerationWithOptions()">Generate with Options</button>
+
+                <div id="generate3dResults" class="results"></div>
+            </div>
+
+            <!-- Pre-defined Test Cases -->
+            <div class="section">
+                <h2>3. Stereochemistry Test Cases</h2>
+                <p>Click on any test case to automatically run it</p>
+
+                <div class="test-cases">
+                    <div class="test-case" onclick="runTestCase('D-glucose')">
+                        <h4>D-Glucose</h4>
+                        <p>Simple sugar with multiple chiral centers</p>
+                        <span class="status">Click to test</span>
+                    </div>
+
+                    <div class="test-case" onclick="runTestCase('L-alanine')">
+                        <h4>L-Alanine</h4>
+                        <p>Amino acid with one chiral center</p>
+                        <span class="status">Click to test</span>
+                    </div>
+
+                    <div class="test-case" onclick="runTestCase('cholesterol')">
+                        <h4>Cholesterol</h4>
+                        <p>Complex steroid with multiple rings</p>
+                        <span class="status">Click to test</span>
+                    </div>
+
+                    <div class="test-case" onclick="runTestCase('D-fructose')">
+                        <h4>D-Fructose</h4>
+                        <p>Ketose sugar with stereochemistry</p>
+                        <span class="status">Click to test</span>
+                    </div>
+
+                    <div class="test-case" onclick="runTestCase('sucrose')">
+                        <h4>Sucrose</h4>
+                        <p>Disaccharide with complex structure</p>
+                        <span class="status">Click to test</span>
+                    </div>
+
+                    <div class="test-case" onclick="runTestCase('caffeine')">
+                        <h4>Caffeine</h4>
+                        <p>Stimulant alkaloid</p>
+                        <span class="status">Click to test</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Test -->
+            <div class="section">
+                <h2>4. 2D vs 3D Comparison</h2>
+                <p>Compare regular SMILES vs 3D SMILES from OPSIN</p>
+
+                <button class="btn" onclick="compareVersions('glucose')">Compare Glucose</button>
+                <button class="btn" onclick="compareVersions('D-glucose')">Compare D-Glucose</button>
+
+                <div id="comparisonResults" class="results"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MOL2CHEMFIG_API = 'http://localhost:5001';
+
+        async function testOPSINConversion() {
+            const name = document.getElementById('opsinName').value.trim();
+            const resultsDiv = document.getElementById('opsinResults');
+
+            if (!name) {
+                resultsDiv.innerHTML = '<div class="result-box"><span class="status error">Please enter a chemical name</span></div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<div class="result-box"><span class="status loading">Converting...</span></div>';
+
+            try {
+                const response = await fetch(`${MOL2CHEMFIG_API}/api/opsin?name=${encodeURIComponent(name)}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    resultsDiv.innerHTML = `
+                        <div class="result-box">
+                            <h3>✅ Success</h3>
+                            <p><strong>Name:</strong> ${data.name}</p>
+                            <p><strong>3D SMILES:</strong> <code>${data.smiles}</code></p>
+                            <p><strong>Source:</strong> ${data.source}</p>
+                            <span class="status success">Conversion successful</span>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="result-box">
+                            <h3>❌ Error</h3>
+                            <p>${data.error}</p>
+                            <span class="status error">Conversion failed</span>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result-box">
+                        <h3>❌ Error</h3>
+                        <p>${error.message}</p>
+                        <span class="status error">Request failed</span>
+                    </div>
+                `;
+            }
+        }
+
+        async function test3DGeneration() {
+            const name = document.getElementById('generate3dName').value.trim();
+            const resultsDiv = document.getElementById('generate3dResults');
+
+            if (!name) {
+                resultsDiv.innerHTML = '<div class="result-box"><span class="status error">Please enter a chemical name</span></div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<div class="result-box"><span class="status loading">Generating...</span></div>';
+
+            try {
+                const response = await fetch(`${MOL2CHEMFIG_API}/api/generate-3d`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        return_format: 'svg'
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    resultsDiv.innerHTML = `
+                        <div class="result-box">
+                            <h3>✅ Success</h3>
+                            <p><strong>Name:</strong> ${data.name}</p>
+                            <p><strong>3D SMILES:</strong> <code>${data.smiles}</code></p>
+                            <p><strong>Source:</strong> ${data.source}</p>
+                            <p><strong>Hash:</strong> ${data.hash}</p>
+                            <p><strong>Cached:</strong> ${data.cached ? 'Yes' : 'No'}</p>
+                            <span class="status success">Generation successful</span>
+
+                            <div class="image-container">
+                                <h4>Generated Structure:</h4>
+                                <img src="${MOL2CHEMFIG_API}${data.svg_url}" alt="${data.name}">
+                            </div>
+
+                            <details style="margin-top: 20px;">
+                                <summary style="cursor: pointer; font-weight: 600;">View ChemFig Code</summary>
+                                <pre>${data.chemfig}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="result-box">
+                            <h3>❌ Error</h3>
+                            <p>${data.error}</p>
+                            <span class="status error">Generation failed</span>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result-box">
+                        <h3>❌ Error</h3>
+                        <p>${error.message}</p>
+                        <span class="status error">Request failed</span>
+                    </div>
+                `;
+            }
+        }
+
+        async function test3DGenerationWithOptions() {
+            const name = document.getElementById('generate3dName').value.trim();
+            const resultsDiv = document.getElementById('generate3dResults');
+
+            if (!name) {
+                resultsDiv.innerHTML = '<div class="result-box"><span class="status error">Please enter a chemical name</span></div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<div class="result-box"><span class="status loading">Generating with options...</span></div>';
+
+            try {
+                const response = await fetch(`${MOL2CHEMFIG_API}/api/generate-3d`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        options: ['-o', '-m'], // Show carbons and methyls
+                        return_format: 'svg'
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    resultsDiv.innerHTML = `
+                        <div class="result-box">
+                            <h3>✅ Success (with options)</h3>
+                            <p><strong>Name:</strong> ${data.name}</p>
+                            <p><strong>3D SMILES:</strong> <code>${data.smiles}</code></p>
+                            <p><strong>Options:</strong> Show carbons, Show methyls</p>
+                            <span class="status success">Generation successful</span>
+
+                            <div class="image-container">
+                                <h4>Generated Structure:</h4>
+                                <img src="${MOL2CHEMFIG_API}${data.svg_url}" alt="${data.name}">
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="result-box">
+                            <h3>❌ Error</h3>
+                            <p>${data.error}</p>
+                            <span class="status error">Generation failed</span>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result-box">
+                        <h3>❌ Error</h3>
+                        <p>${error.message}</p>
+                        <span class="status error">Request failed</span>
+                    </div>
+                `;
+            }
+        }
+
+        async function runTestCase(name) {
+            document.getElementById('generate3dName').value = name;
+            await test3DGeneration();
+
+            // Scroll to results
+            document.getElementById('generate3dResults').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function compareVersions(name) {
+            const resultsDiv = document.getElementById('comparisonResults');
+            resultsDiv.innerHTML = '<div class="result-box"><span class="status loading">Comparing...</span></div>';
+
+            try {
+                // Get 3D SMILES from OPSIN
+                const opsinResponse = await fetch(`${MOL2CHEMFIG_API}/api/opsin?name=${encodeURIComponent(name)}`);
+                const opsinData = await opsinResponse.json();
+
+                // Get regular SMILES from search
+                const searchResponse = await fetch(`${MOL2CHEMFIG_API}/api/search?name=${encodeURIComponent(name)}`);
+                const searchData = await searchResponse.json();
+
+                if (opsinData.success && searchData.success) {
+                    resultsDiv.innerHTML = `
+                        <div class="comparison">
+                            <div class="comparison-item">
+                                <h4>Regular SMILES (Search)</h4>
+                                <p><strong>SMILES:</strong></p>
+                                <pre>${searchData.smiles}</pre>
+                                <div class="image-container">
+                                    <img src="${MOL2CHEMFIG_API}${searchData.svg_url}" alt="Regular ${name}">
+                                </div>
+                            </div>
+
+                            <div class="comparison-item">
+                                <h4>3D SMILES (OPSIN)</h4>
+                                <p><strong>SMILES:</strong></p>
+                                <pre>${opsinData.smiles}</pre>
+                                <div class="image-container">
+                                    <img src="${MOL2CHEMFIG_API}/api/generate-3d" alt="Loading..." id="opsin3dImage">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    // Generate 3D version
+                    const gen3dResponse = await fetch(`${MOL2CHEMFIG_API}/api/generate-3d`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: name, return_format: 'svg' })
+                    });
+                    const gen3dData = await gen3dResponse.json();
+
+                    if (gen3dData.success) {
+                        document.getElementById('opsin3dImage').src = `${MOL2CHEMFIG_API}${gen3dData.svg_url}`;
+                    }
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="result-box">
+                            <h3>❌ Error</h3>
+                            <p>Could not complete comparison</p>
+                            <span class="status error">Comparison failed</span>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result-box">
+                        <h3>❌ Error</h3>
+                        <p>${error.message}</p>
+                        <span class="status error">Request failed</span>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

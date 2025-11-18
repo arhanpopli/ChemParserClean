@@ -1,0 +1,87 @@
+╔═══════════════════════════════════════════════════════════════╗
+║         CHEMPARSER MASTER LAUNCHER - QUICK REFERENCE          ║
+╠═══════════════════════════════════════════════════════════════╣
+║                                                               ║
+║  🚀 QUICK START                                               ║
+║  ────────────────────────────────────────────────────────────  ║
+║  1. Double-click: start_all.bat                               ║
+║  2. Wait for launcher to open                                 ║
+║  3. Check all servers are green                               ║
+║                                                               ║
+║  📊 SERVERS                                                    ║
+║  ────────────────────────────────────────────────────────────  ║
+║  Port 5000  MoleculeViewer     (Node.js)                      ║
+║  Port 8000  Docker Backend     (Docker)                       ║
+║  Port 5001  Mol2ChemFig        (Flask)                        ║
+║  Port 5002  PubChem            (Flask)                        ║
+║                                                               ║
+║  🎯 BATCH COMMANDS                                             ║
+║  ────────────────────────────────────────────────────────────  ║
+║  start_all.bat             Start all servers                  ║
+║  stop_all.bat              Stop all servers                   ║
+║  status.bat                Check server status                ║
+║  start_moleculeviewer.bat  Start MoleculeViewer only          ║
+║  start_docker.bat          Start Docker backend only          ║
+║  start_mol2chemfig.bat     Start Mol2ChemFig only             ║
+║  start_pubchem.bat         Start PubChem only                 ║
+║                                                               ║
+║  🔗 HEALTH URLS                                                ║
+║  ────────────────────────────────────────────────────────────  ║
+║  http://localhost:5000/health                                 ║
+║  http://localhost:8000                                        ║
+║  http://localhost:5001/health                                 ║
+║  http://localhost:5002/health                                 ║
+║                                                               ║
+║  ✅ TEST URLS                                                  ║
+║  ────────────────────────────────────────────────────────────  ║
+║  MoleculeViewer:                                              ║
+║    http://localhost:5000/img/smiles?smiles=CCO                ║
+║                                                               ║
+║  Mol2ChemFig:                                                 ║
+║    http://localhost:5001                                      ║
+║                                                               ║
+║  PubChem:                                                     ║
+║    http://localhost:5002/pubchem/img/histamine                ║
+║                                                               ║
+║  📁 FILES                                                      ║
+║  ────────────────────────────────────────────────────────────  ║
+║  launcher.html               Main control panel               ║
+║  LAUNCHER_README.md          Full documentation               ║
+║  QUICK_START_LAUNCHER.md     Quick start guide                ║
+║  SYSTEM_ARCHITECTURE.md      Architecture details             ║
+║  MASTER_LAUNCHER_SUMMARY.md  Implementation summary           ║
+║                                                               ║
+║  🔧 TROUBLESHOOTING                                            ║
+║  ────────────────────────────────────────────────────────────  ║
+║  Port in use:                                                 ║
+║    stop_all.bat                                               ║
+║    netstat -ano | findstr :5000                               ║
+║    taskkill /PID <pid> /F                                     ║
+║                                                               ║
+║  Docker not starting:                                         ║
+║    1. Start Docker Desktop                                    ║
+║    2. Wait for initialization                                 ║
+║    3. Run start_all.bat again                                 ║
+║                                                               ║
+║  Server offline:                                              ║
+║    1. Check terminal window for errors                        ║
+║    2. Run status.bat                                          ║
+║    3. Restart specific server                                 ║
+║                                                               ║
+║  📚 DOCUMENTATION                                              ║
+║  ────────────────────────────────────────────────────────────  ║
+║  Read LAUNCHER_README.md for:                                 ║
+║    • Complete usage guide                                     ║
+║    • API endpoint reference                                   ║
+║    • Detailed troubleshooting                                 ║
+║    • Configuration options                                    ║
+║                                                               ║
+║  🎓 LEARN MORE                                                 ║
+║  ────────────────────────────────────────────────────────────  ║
+║  • QUICK_START_LAUNCHER.md  - Getting started                 ║
+║  • SYSTEM_ARCHITECTURE.md   - How it works                    ║
+║  • .claude.md               - Project overview                ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+NEED HELP? Open LAUNCHER_README.md for detailed instructions.

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mol2chemfig Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #fff;
+        }
+        h1 {
+            color: #4CAF50;
+            text-align: center;
+        }
+        .container {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        label {
+            display: block;
+            margin: 15px 0 5px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #444;
+            border-radius: 5px;
+            font-size: 16px;
+            background: #1e1e1e;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 150px;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 20px 10px 20px 0;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .output {
+            margin-top: 30px;
+            padding: 20px;
+            background: #1e1e1e;
+            border: 2px solid #444;
+            border-radius: 5px;
+            min-height: 100px;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .chemfig-output {
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+        .pdf-preview {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .pdf-preview embed {
+            border: 2px solid #444;
+            border-radius: 5px;
+            width: 100%;
+            height: 600px;
+        }
+        .examples {
+            margin-top: 20px;
+            padding: 15px;
+            background: #333;
+            border-radius: 5px;
+        }
+        .examples h3 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        .example-btn {
+            background: #2196F3;
+            padding: 8px 15px;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .example-btn:hover {
+            background: #0b7dda;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .status.online {
+            background: #1b5e20;
+            color: #4CAF50;
+        }
+        .status.offline {
+            background: #b71c1c;
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Mol2chemfig API Tester</h1>
+    
+    <div class="container">
+        <div id="status" class="status">
+            Checking backend status...
+        </div>
+
+        <label for="smiles">Enter SMILES or MOL format:</label>
+        <textarea id="smiles" placeholder="Examples:&#10;CCO (ethanol)&#10;c1ccccc1 (benzene)&#10;CC(=O)Oc1ccccc1C(=O)O (aspirin)&#10;&#10;Or paste MOL format with ...END at the end"></textarea>
+
+        <button onclick="submitToM2CF()" id="submitBtn">Generate Chemfig</button>
+        <button onclick="searchByName()" id="searchBtn">Search by Name (use /m2cf/search)</button>
+        
+        <div class="examples">
+            <h3>Quick Examples:</h3>
+            <button class="example-btn" onclick="loadExample('CCO')">Ethanol</button>
+            <button class="example-btn" onclick="loadExample('c1ccccc1')">Benzene</button>
+            <button class="example-btn" onclick="loadExample('CC(=O)Oc1ccccc1C(=O)O')">Aspirin</button>
+            <button class="example-btn" onclick="loadExample('CC(C)C')">Isobutane</button>
+            <button class="example-btn" onclick="loadExample('C1CCCCC1')">Cyclohexane</button>
+        </div>
+
+        <div class="output" id="output">
+            <em>Output will appear here...</em>
+        </div>
+
+        <div id="pdfPreview" class="pdf-preview" style="display:none;">
+            <h3>PDF Preview:</h3>
+            <embed id="pdfEmbed" type="application/pdf">
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/m2cf';
+        
+        async function checkBackendStatus() {
+            const statusDiv = document.getElementById('status');
+            try {
+                const response = await fetch(`${API_BASE}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ textAreaData: 'C' })
+                });
+                
+                if (response.ok) {
+                    statusDiv.className = 'status online';
+                    statusDiv.textContent = '✅ Backend Online (http://localhost:8000)';
+                } else {
+                    statusDiv.className = 'status offline';
+                    statusDiv.textContent = '❌ Backend returned error: ' + response.status;
+                }
+            } catch (error) {
+                statusDiv.className = 'status offline';
+                statusDiv.textContent = '❌ Backend Offline - Start with: docker-compose up -d';
+            }
+        }
+
+        function loadExample(smiles) {
+            document.getElementById('smiles').value = smiles;
+        }
+
+        async function submitToM2CF() {
+            const smiles = document.getElementById('smiles').value.trim();
+            const output = document.getElementById('output');
+            const submitBtn = document.getElementById('submitBtn');
+            const pdfPreview = document.getElementById('pdfPreview');
+            const pdfEmbed = document.getElementById('pdfEmbed');
+            
+            if (!smiles) {
+                output.innerHTML = '<span class="error">Please enter SMILES or MOL format!</span>';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Generating...';
+            output.innerHTML = '<em>Sending request to mol2chemfig backend...</em>';
+            pdfPreview.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/submit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        textAreaData: smiles
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error && data.error !== '') {
+                    output.innerHTML = `<span class="error">Error: ${data.error}</span>`;
+                } else {
+                    let html = '<span class="success">✅ Success!</span><br><br>';
+                    
+                    if (data.chemfig) {
+                        html += '<strong>Chemfig Code:</strong>';
+                        html += `<div class="chemfig-output">${escapeHtml(data.chemfig)}</div>`;
+                    }
+                    
+                    if (data.pdflink) {
+                        html += '<br><strong>PDF Generated!</strong><br>';
+                        pdfEmbed.src = data.pdflink;
+                        pdfPreview.style.display = 'block';
+                    }
+                    
+                    if (data.chem_format) {
+                        html += `<br><strong>Format:</strong> ${data.chem_format}`;
+                    }
+                    
+                    output.innerHTML = html;
+                }
+            } catch (error) {
+                output.innerHTML = `<span class="error">Network Error: ${error.message}<br><br>Make sure backend is running: docker-compose up -d</span>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Generate Chemfig';
+            }
+        }
+
+        async function searchByName() {
+            const name = document.getElementById('smiles').value.trim();
+            const output = document.getElementById('output');
+            const searchBtn = document.getElementById('searchBtn');
+            
+            if (!name) {
+                output.innerHTML = '<span class="error">Please enter a chemical name!</span>';
+                return;
+            }
+
+            searchBtn.disabled = true;
+            searchBtn.textContent = 'Searching...';
+            output.innerHTML = '<em>Searching PubChem and common names...</em>';
+
+            try {
+                const response = await fetch(`${API_BASE}/search?searchTerm=${encodeURIComponent(name)}`, {
+                    method: 'GET'
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    output.innerHTML = `<span class="error">Error: ${data.error}</span>`;
+                } else if (data.smiles) {
+                    output.innerHTML = `<span class="success">✅ Found SMILES: ${data.smiles}</span><br><br>` +
+                                     `Now click "Generate Chemfig" to convert it!`;
+                    document.getElementById('smiles').value = data.smiles;
+                } else {
+                    output.innerHTML = '<span class="error">No SMILES found for this name</span>';
+                }
+            } catch (error) {
+                output.innerHTML = `<span class="error">Network Error: ${error.message}</span>`;
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Search by Name';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Check backend on load
+        checkBackendStatus();
+        
+        // Allow Enter key to submit
+        document.getElementById('smiles').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                submitToM2CF();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChemParser - All Features Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .feature-card h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-badge.fixed {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-badge.working {
+            background: #2196F3;
+            color: white;
+        }
+
+        .status-badge.new {
+            background: #FF9800;
+            color: white;
+        }
+
+        .feature-description {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .molecule-showcase {
+            background: #f5f5f5;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .molecule-label {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+
+        .instruction {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .instruction-title {
+            font-weight: bold;
+            color: #1976D2;
+            margin-bottom: 5px;
+        }
+
+        .instruction-steps {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .instruction-steps ol {
+            margin-left: 20px;
+        }
+
+        .console-preview {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+
+        .console-preview .success {
+            color: #4EC9B0;
+        }
+
+        .console-preview .info {
+            color: #9CDCFE;
+        }
+
+        .console-preview .warning {
+            color: #CE9178;
+        }
+
+        .footer {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .test-section {
+            margin-top: 20px;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .test-item {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .test-item h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        code {
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧪 ChemParser - All Features Demo</h1>
+            <p class="subtitle">
+                Testing size controls, OPSIN 3D stereochemistry, and MolView.org 3D viewer
+            </p>
+        </header>
+
+        <div class="feature-grid">
+            <!-- Feature 1: Size Controls -->
+            <div class="feature-card">
+                <h2>
+                    🎯 Size Control Arrows
+                    <span class="status-badge fixed">FIXED</span>
+                </h2>
+                <p class="feature-description">
+                    Resize molecules with interactive up/down arrow buttons.
+                    Size persists globally across all pages.
+                </p>
+
+                <div class="instruction">
+                    <div class="instruction-title">How to Test:</div>
+                    <div class="instruction-steps">
+                        <ol>
+                            <li>Hover over molecules below</li>
+                            <li>Arrows appear in bottom-left</li>
+                            <li>Click ▲ to grow, ▼ to shrink</li>
+                            <li>Reload page - size persists!</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="test-section">
+                    <div class="molecule-label">Test Molecule: Ethanol</div>
+                    <div class="molecule-showcase">chem:ethanol:</div>
+
+                    <div class="molecule-label">Test Molecule: Benzene</div>
+                    <div class="molecule-showcase">chem:benzene:</div>
+                </div>
+
+                <div class="console-preview">
+<span class="success">✅ Saved size for smiles:CCO: {width: 340, height: 220}</span>
+<span class="info">📏 Adjusted size: 340x220</span>
+                </div>
+            </div>
+
+            <!-- Feature 2: OPSIN 3D -->
+            <div class="feature-card">
+                <h2>
+                    🔬 OPSIN 3D Stereochemistry
+                    <span class="status-badge working">WORKING</span>
+                </h2>
+                <p class="feature-description">
+                    Get accurate 3D SMILES with stereochemistry markers for chiral molecules.
+                    See @ and @@ symbols in SMILES strings.
+                </p>
+
+                <div class="instruction">
+                    <div class="instruction-title">How to Test:</div>
+                    <div class="instruction-steps">
+                        <ol>
+                            <li>Open extension popup</li>
+                            <li>Enable "3D Stereochemistry (OPSIN)"</li>
+                            <li>Reload this page</li>
+                            <li>Open console (F12)</li>
+                            <li>Look for purple OPSIN logs</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="test-section">
+                    <div class="molecule-label">Test: Glucose (with stereochemistry)</div>
+                    <div class="molecule-showcase">chem:glucose:</div>
+
+                    <div class="molecule-label">Test: L-Alanine (chirality)</div>
+                    <div class="molecule-showcase">chem:L-alanine:</div>
+                </div>
+
+                <div class="console-preview">
+<span class="warning">🔮 Trying OPSIN 3D for name→3D SMILES conversion...</span>
+<span class="success">✅ OPSIN 3D conversion SUCCESS:</span>
+<span class="info">O=C[C@H](O)[C@@H](O)[C@H](O)[C@H](O)CO [3D]</span>
+<span class="info">    ↑     ↑      ↑     ↑     ↑</span>
+<span class="info">    Stereochemistry markers</span>
+                </div>
+            </div>
+
+            <!-- Feature 3: MolView -->
+            <div class="feature-card">
+                <h2>
+                    🔮 MolView.org 3D Viewer
+                    <span class="status-badge new">NEW</span>
+                </h2>
+                <p class="feature-description">
+                    Interactive 3D molecular viewer using MolView.org.
+                    Rotate, zoom, and explore molecules in 3D.
+                </p>
+
+                <div class="instruction">
+                    <div class="instruction-title">How to Test:</div>
+                    <div class="instruction-steps">
+                        <ol>
+                            <li>Open extension popup</li>
+                            <li>Enable "Enable 3D Viewer"</li>
+                            <li>Reload this page</li>
+                            <li>Click 3D button on molecules</li>
+                            <li>MolView iframe appears!</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="test-section">
+                    <div class="molecule-label">Test: Caffeine (complex 3D)</div>
+                    <div class="molecule-showcase">chem:caffeine:</div>
+
+                    <div class="molecule-label">Test: Cholesterol (steroid)</div>
+                    <div class="molecule-showcase">chem:cholesterol:</div>
+                </div>
+
+                <div class="console-preview">
+<span class="warning">🔮 SHOWING MOLVIEW 3D VIEWER INLINE</span>
+<span class="info">📍 MolView URL:</span>
+<span class="success">https://embed.molview.org/v1/?mode=balls&smiles=...</span>
+<span class="success">✅ 3D viewer embedded inline</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Combined Test Section -->
+        <div class="feature-card">
+            <h2>🎪 Combined Feature Showcase</h2>
+            <p class="feature-description">
+                Test all three features working together on these molecules
+            </p>
+
+            <div class="test-grid">
+                <div class="test-item">
+                    <h4>Aspirin (2D + Size)</h4>
+                    <div class="molecule-showcase">chem:aspirin:</div>
+                    <p>Hover for size controls</p>
+                </div>
+
+                <div class="test-item">
+                    <h4>D-Glucose (OPSIN 3D)</h4>
+                    <div class="molecule-showcase">chem:D-glucose:</div>
+                    <p>Check console for stereochemistry</p>
+                </div>
+
+                <div class="test-item">
+                    <h4>Morphine (3D Viewer)</h4>
+                    <div class="molecule-showcase">chem:morphine:</div>
+                    <p>Click 3D button for MolView</p>
+                </div>
+
+                <div class="test-item">
+                    <h4>Penicillin (All Features)</h4>
+                    <div class="molecule-showcase">chem:penicillin:</div>
+                    <p>Test everything!</p>
+                </div>
+
+                <div class="test-item">
+                    <h4>Vitamin C (L-ascorbic acid)</h4>
+                    <div class="molecule-showcase">chem:ascorbic acid:</div>
+                    <p>Stereochemistry + 3D</p>
+                </div>
+
+                <div class="test-item">
+                    <h4>Dopamine (Simple)</h4>
+                    <div class="molecule-showcase">chem:dopamine:</div>
+                    <p>Quick test molecule</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Setup Instructions -->
+        <div class="feature-card">
+            <h2>⚙️ Setup Instructions (One-time)</h2>
+
+            <div class="instruction">
+                <div class="instruction-title">1. Enable All Features in Popup:</div>
+                <div class="instruction-steps">
+                    <ol>
+                        <li>Click the extension icon in Chrome toolbar</li>
+                        <li>Find and enable these toggles:
+                            <ul>
+                                <li><span class="highlight">Save Size by SMILES</span> (should already be ON)</li>
+                                <li><span class="highlight">3D Stereochemistry (OPSIN)</span></li>
+                                <li><span class="highlight">Enable 3D Viewer</span></li>
+                            </ul>
+                        </li>
+                        <li>Close popup</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="instruction">
+                <div class="instruction-title">2. Reload This Page:</div>
+                <div class="instruction-steps">
+                    Press <code>F5</code> or <code>Ctrl+R</code>
+                </div>
+            </div>
+
+            <div class="instruction">
+                <div class="instruction-title">3. Open Developer Console:</div>
+                <div class="instruction-steps">
+                    Press <code>F12</code> or right-click → Inspect → Console tab
+                </div>
+            </div>
+
+            <div class="instruction">
+                <div class="instruction-title">4. Start Testing!</div>
+                <div class="instruction-steps">
+                    Follow the instructions in each feature card above
+                </div>
+            </div>
+        </div>
+
+        <!-- Backend Check -->
+        <div class="feature-card">
+            <h2>🔧 Backend Health Check</h2>
+            <p class="feature-description">
+                Verify all backend services are running
+            </p>
+
+            <div class="instruction">
+                <div class="instruction-title">Required Services:</div>
+                <div class="instruction-steps">
+                    <ol>
+                        <li><strong>MoleculeViewer</strong>: <code>http://localhost:5000</code></li>
+                        <li><strong>Mol2ChemFig</strong>: <code>http://localhost:8000</code></li>
+                        <li><strong>PubChem</strong>: <code>http://localhost:5002</code></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="console-preview">
+<span class="info">$ curl http://localhost:8000/m2cf/opsin-3d?name=glucose</span>
+<span class="success">{
+  "smiles": "O=C[C@H](O)[C@@H](O)[C@H](O)[C@H](O)CO",
+  "has_stereochemistry": true,
+  "source": "OPSIN"
+}</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>ChemParser - Features Fixer Agent</strong></p>
+            <p style="color: #666; margin-top: 10px;">
+                All features tested and working | 2025-11-10
+            </p>
+            <p style="color: #999; margin-top: 5px; font-size: 14px;">
+                For detailed documentation, see <code>FEATURES_FIXES_SUMMARY.md</code>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        console.log('%c╔═══════════════════════════════════════════════════════╗', 'color: #667eea; font-weight: bold;');
+        console.log('%c║   ChemParser - All Features Demo Page Loaded         ║', 'color: #667eea; font-weight: bold;');
+        console.log('%c╚═══════════════════════════════════════════════════════╝', 'color: #667eea; font-weight: bold;');
+        console.log('');
+        console.log('%c🎯 Feature 1: Size Control Arrows', 'background: #4CAF50; color: white; padding: 4px 8px; border-radius: 4px;');
+        console.log('   • Hover over molecules to see arrows');
+        console.log('   • Click to resize (20px increments)');
+        console.log('   • Size persists globally by SMILES');
+        console.log('');
+        console.log('%c🔬 Feature 2: OPSIN 3D Stereochemistry', 'background: #2196F3; color: white; padding: 4px 8px; border-radius: 4px;');
+        console.log('   • Enable in popup first!');
+        console.log('   • Watch for purple OPSIN logs below');
+        console.log('   • SMILES will contain @ symbols');
+        console.log('');
+        console.log('%c🔮 Feature 3: MolView.org 3D Viewer', 'background: #FF9800; color: white; padding: 4px 8px; border-radius: 4px;');
+        console.log('   • Enable in popup first!');
+        console.log('   • Click 3D button on molecules');
+        console.log('   • MolView iframe will appear');
+        console.log('');
+        console.log('%c═══════════════════════════════════════════════════════', 'color: #ccc;');
+        console.log('');
+        console.log('🔍 Watch this console for:');
+        console.log('  ✅ "Saved size for smiles:XXX"');
+        console.log('  🔮 "OPSIN 3D conversion SUCCESS"');
+        console.log('  📍 "MolView URL: https://embed.molview.org/..."');
+        console.log('');
+    </script>
+</body>
+</html>

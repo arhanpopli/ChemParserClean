@@ -1,6 +1,14 @@
-# ===== HEAVY LIBRARIES (159 MB - Don't upload!) =====
-MoleculeViewer/
+# ===== HEAVY LIBRARIES (16 MB - Don't upload!) =====
 ChemDoodleWeb-11.0.0/
+
+# ===== MoleculeViewer Heavy Files (exclude but keep source) =====
+MoleculeViewer/venv/
+MoleculeViewer/node_modules/
+MoleculeViewer/svg-cache/
+MoleculeViewer/cache/
+MoleculeViewer/pubchem/
+MoleculeViewer/opsin-cli.jar
+MoleculeViewer/package-lock.json
 
 # ===== Node Modules (2.5 MB) =====
 node_modules/

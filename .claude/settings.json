@@ -1,0 +1,51 @@
+{
+  "autoApprove": {
+    "rules": [
+      {
+        "tool": "Bash",
+        "patterns": ["*"],
+        "description": "Auto-approve all bash commands"
+      },
+      {
+        "tool": "Read",
+        "patterns": ["*"],
+        "description": "Auto-approve all file reads"
+      },
+      {
+        "tool": "Write",
+        "patterns": ["*"],
+        "description": "Auto-approve all file writes"
+      },
+      {
+        "tool": "Edit",
+        "patterns": ["*"],
+        "description": "Auto-approve all file edits"
+      },
+      {
+        "tool": "Glob",
+        "patterns": ["*"],
+        "description": "Auto-approve all file searches"
+      },
+      {
+        "tool": "Grep",
+        "patterns": ["*"],
+        "description": "Auto-approve all content searches"
+      },
+      {
+        "tool": "Task",
+        "patterns": ["*"],
+        "description": "Auto-approve all agent launches"
+      },
+      {
+        "tool": "WebSearch",
+        "patterns": ["*"],
+        "description": "Auto-approve web searches"
+      },
+      {
+        "tool": "WebFetch",
+        "patterns": ["*"],
+        "description": "Auto-approve web fetches"
+      }
+    ]
+  }
+}

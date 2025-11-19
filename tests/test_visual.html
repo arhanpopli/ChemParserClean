@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Autonomous Visual Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .test-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .test-card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .test-card p {
+            color: #666;
+            margin-bottom: 12px;
+            font-size: 0.95em;
+        }
+        
+        .test-description {
+            background: #f8f9fa;
+            padding: 10px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            color: #555;
+        }
+        
+        .svg-container {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            margin-bottom: 15px;
+            min-height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .svg-container img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 4px;
+        }
+        
+        .svg-container.loading::after {
+            content: "Loading...";
+            color: #999;
+            font-style: italic;
+        }
+        
+        .svg-container.error {
+            background: #ffe6e6;
+        }
+        
+        .svg-container.error::after {
+            content: "Failed to load";
+            color: #c00;
+            font-weight: bold;
+        }
+        
+        .cache-link {
+            background: #e8f4f8;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #0066cc;
+        }
+        
+        .cache-link small {
+            display: block;
+            color: #666;
+            margin-bottom: 6px;
+        }
+        
+        .cache-link a {
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: 600;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+        }
+        
+        .cache-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .status {
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .status.pass {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.fail {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.pending {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        
+        .summary {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        
+        .summary h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat {
+            padding: 20px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.95em;
+        }
+        
+        .controls {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        
+        .controls button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s;
+        }
+        
+        .controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .controls button:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧪 Autonomous Visual Test Suite</h1>
+            <p>Testing MoleculeViewer with Options</p>
+        </header>
+        
+        <div class="controls">
+            <button onclick="runAllTests()">▶️ Run All Tests</button>
+            <button onclick="clearResults()">🔄 Clear Results</button>
+        </div>
+        
+        <div class="test-grid" id="testGrid"></div>
+        
+        <div class="summary">
+            <h2>📊 Test Summary</h2>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-number" id="passCount">0</div>
+                    <div class="stat-label">Passed</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="failCount">0</div>
+                    <div class="stat-label">Failed</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="totalCount">0</div>
+                    <div class="stat-label">Total</div>
+                </div>
+            </div>
+            <div id="overallStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:5000';
+        
+        const tests = [
+            {
+                name: 'Benzene with Aromatic Circles',
+                description: 'Test aromatic circles option encoding in cache URL',
+                smiles: 'c1ccccc1',
+                options: { aromatic_circles: true },
+                expectedInCache: 'aromatic_circles'
+            },
+            {
+                name: 'Ethanol with Show Carbons',
+                description: 'Test show carbons option encoding in cache URL',
+                smiles: 'CCO',
+                options: { show_carbons: true },
+                expectedInCache: 'show_carbons'
+            },
+            {
+                name: 'Propane with Show Methyls',
+                description: 'Test show methyls option encoding in cache URL',
+                smiles: 'CCC',
+                options: { show_methyls: true },
+                expectedInCache: 'show_methyls'
+            },
+            {
+                name: 'Multiple Options',
+                description: 'Test multiple options combined',
+                smiles: 'c1ccccc1',
+                options: { aromatic_circles: true, show_carbons: true, fancy_bonds: true },
+                expectedInCache: ['aromatic_circles', 'show_carbons', 'fancy_bonds']
+            },
+            {
+                name: 'Nomenclature: Benzene',
+                description: 'Test nomenclature endpoint with options',
+                nomenclature: 'benzene',
+                options: { aromatic_circles: true },
+                expectedInCache: 'aromatic_circles'
+            }
+        ];
+        
+        let results = { passed: 0, failed: 0 };
+        
+        async function runTest(test, index) {
+            const cardId = `test-${index}`;
+            const card = document.getElementById(cardId);
+            
+            // Set to pending
+            updateStatus(cardId, 'pending', 'Running...');
+            
+            try {
+                // Build URL
+                let url = `${BASE_URL}/img/${test.nomenclature ? 'nomenclature' : 'smiles'}?`;
+                const params = new URLSearchParams();
+                
+                if (test.smiles) params.append('smiles', test.smiles);
+                if (test.nomenclature) params.append('nomenclature', test.nomenclature);
+                params.append('json', 'true');
+                params.append('width', '300');
+                params.append('height', '200');
+                
+                // Add options
+                if (test.options) {
+                    for (const [key, value] of Object.entries(test.options)) {
+                        params.append(key, value.toString());
+                    }
+                }
+                
+                url += params.toString();
+                
+                // Fetch
+                const response = await fetch(url, { timeout: 30000 });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                
+                // Verify cache URL
+                const cacheUrl = data.cache_url || '';
+                const imageUrl = data.image_url || '';
+                
+                let passed = false;
+                let errorMsg = '';
+                
+                if (Array.isArray(test.expectedInCache)) {
+                    // Check all expected strings
+                    const allFound = test.expectedInCache.every(exp => 
+                        cacheUrl.toLowerCase().includes(exp.toLowerCase())
+                    );
+                    passed = allFound;
+                    if (!allFound) {
+                        const found = test.expectedInCache.filter(exp => 
+                            cacheUrl.toLowerCase().includes(exp.toLowerCase())
+                        );
+                        errorMsg = `Missing: ${test.expectedInCache.filter(exp => !found.includes(exp)).join(', ')}`;
+                    }
+                } else {
+                    // Check single expected string
+                    passed = cacheUrl.toLowerCase().includes(test.expectedInCache.toLowerCase());
+                    if (!passed) {
+                        errorMsg = `Expected "${test.expectedInCache}" not found in cache URL`;
+                    }
+                }
+                
+                // Update card
+                if (passed) {
+                    results.passed++;
+                    updateStatus(cardId, 'pass', '✅ PASS');
+                    displayImage(cardId, imageUrl, cacheUrl);
+                } else {
+                    results.failed++;
+                    updateStatus(cardId, 'fail', `❌ FAIL: ${errorMsg}`);
+                    displayCacheUrl(cardId, cacheUrl, true);
+                }
+                
+                // Update summary
+                updateSummary();
+                
+            } catch (error) {
+                results.failed++;
+                updateStatus(cardId, 'fail', `❌ ERROR: ${error.message}`);
+                updateSummary();
+            }
+        }
+        
+        function updateStatus(cardId, status, text) {
+            const card = document.getElementById(cardId);
+            const statusDiv = card.querySelector('.status');
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = text;
+        }
+        
+        function displayImage(cardId, imageUrl, cacheUrl) {
+            const card = document.getElementById(cardId);
+            const container = card.querySelector('.svg-container');
+            
+            if (imageUrl) {
+                container.innerHTML = `<img src="${imageUrl}" alt="molecule">`;
+            } else {
+                container.textContent = 'No image URL';
+            }
+            
+            displayCacheUrl(cardId, cacheUrl);
+        }
+        
+        function displayCacheUrl(cardId, cacheUrl, isError = false) {
+            const card = document.getElementById(cardId);
+            const linkDiv = card.querySelector('.cache-link');
+            
+            if (cacheUrl) {
+                linkDiv.innerHTML = `
+                    <small>📍 Cache Link:</small>
+                    <a href="${cacheUrl}" target="_blank">${cacheUrl}</a>
+                    ${isError ? '<small style="color: red; margin-top: 8px;">⚠️ Options not found in URL</small>' : ''}
+                `;
+            } else {
+                linkDiv.innerHTML = '<small style="color: red;">No cache URL returned</small>';
+            }
+        }
+        
+        function updateSummary() {
+            const total = results.passed + results.failed;
+            document.getElementById('passCount').textContent = results.passed;
+            document.getElementById('failCount').textContent = results.failed;
+            document.getElementById('totalCount').textContent = total;
+            
+            if (total > 0) {
+                const statusDiv = document.getElementById('overallStatus');
+                if (results.failed === 0) {
+                    statusDiv.innerHTML = '<div class="status pass">✅ ALL TESTS PASSED!</div>';
+                } else {
+                    statusDiv.innerHTML = `<div class="status fail">❌ ${results.failed} test(s) failed</div>`;
+                }
+            }
+        }
+        
+        function createTestCard(test, index) {
+            return `
+                <div class="test-card" id="test-${index}">
+                    <h2>${test.name}</h2>
+                    <p class="test-description">${test.description}</p>
+                    <div class="status pending">⏳ Waiting...</div>
+                    <div class="svg-container loading"></div>
+                    <div class="cache-link">
+                        <small>Cache link will appear here...</small>
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function runAllTests() {
+            results = { passed: 0, failed: 0 };
+            
+            // Create all cards
+            const grid = document.getElementById('testGrid');
+            grid.innerHTML = tests.map((t, i) => createTestCard(t, i)).join('');
+            
+            // Run tests sequentially
+            for (let i = 0; i < tests.length; i++) {
+                await runTest(tests[i], i);
+                await new Promise(r => setTimeout(r, 1000)); // Delay between tests
+            }
+        }
+        
+        function clearResults() {
+            results = { passed: 0, failed: 0 };
+            document.getElementById('testGrid').innerHTML = '';
+            document.getElementById('overallStatus').innerHTML = '';
+            updateSummary();
+        }
+        
+        // Run on page load
+        window.addEventListener('load', () => {
+            console.log('🧪 Visual Test Suite Ready');
+            console.log('Click "Run All Tests" to begin');
+        });
+    </script>
+</body>
+</html>

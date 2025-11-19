@@ -23,188 +23,117 @@
 
         .animation-container {
             position: relative;
-            width: 600px;
-            height: 300px;
+            width: 800px;
+            height: 400px;
         }
 
-        /* Beaker SVG Styles */
-        .beaker {
-            position: absolute;
-            width: 80px;
-            height: 120px;
+        /* SVG Container */
+        #morphingSVG {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Beaker paths - strokes only */
+        .beaker-outline {
+            fill: none;
+            stroke: #a855f7;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
             opacity: 0;
-            animation: fadeIn 0.6s ease-in-out forwards;
         }
 
-        .beaker:nth-child(1) {
-            left: 50px;
-            top: 50%;
-            transform: translateY(-50%);
-            animation-delay: 0.2s;
+        /* Animate beakers appearing with line drawing */
+        .beaker-outline {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: drawLine 1.5s ease-out forwards;
         }
 
-        .beaker:nth-child(2) {
-            left: 150px;
-            top: 50%;
-            transform: translateY(-50%);
-            animation-delay: 0.4s;
-        }
+        .beaker-1 { animation-delay: 0.2s; }
+        .beaker-2 { animation-delay: 0.4s; }
+        .beaker-3 { animation-delay: 0.6s; }
+        .beaker-4 { animation-delay: 0.8s; }
 
-        .beaker:nth-child(3) {
-            left: 250px;
-            top: 50%;
-            transform: translateY(-50%);
-            animation-delay: 0.6s;
-        }
-
-        .beaker:nth-child(4) {
-            left: 350px;
-            top: 50%;
-            transform: translateY(-50%);
-            animation-delay: 0.8s;
-        }
-
-        /* Beaker to Q transformation */
-        .beaker.to-q {
-            animation: fadeIn 0.6s ease-in-out forwards, morphToQ 1s ease-in-out 1.5s forwards;
-        }
-
-        /* Beakers to "Labs" transformation */
-        .beaker.to-labs {
-            animation: fadeIn 0.6s ease-in-out forwards, morphToLabs 1s ease-in-out 1.5s forwards;
-        }
-
-        /* The Q letter */
-        .letter-q {
-            position: absolute;
-            left: 50px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 80px;
-            font-weight: bold;
-            color: #a855f7;
+        /* Letter paths - also strokes */
+        .letter-path {
+            fill: none;
+            stroke: #a855f7;
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
             opacity: 0;
-            animation: revealQ 0.8s ease-in-out 2.5s forwards;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
         }
 
-        /* The "uintessen" text */
-        .quintessen-text {
-            position: absolute;
-            left: 140px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 48px;
-            font-weight: 600;
-            color: #a855f7;
-            opacity: 0;
-            animation: slideOutFromQ 1s ease-out 3s forwards;
-        }
-
-        /* The "Labs" text */
-        .labs-text {
-            position: absolute;
-            left: 50px;
-            top: calc(50% + 60px);
-            font-size: 48px;
-            font-weight: 300;
-            color: #64748b;
-            opacity: 0;
-            letter-spacing: 8px;
-            animation: revealLabs 0.8s ease-in-out 2.5s forwards;
-        }
-
-        /* Liquid in beakers */
-        .beaker-liquid {
-            fill: #a855f7;
-            opacity: 0.7;
-            animation: bubble 2s ease-in-out infinite;
+        .labs-letter {
+            stroke: #64748b;
+            stroke-width: 3;
         }
 
         /* Animations */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-50%) scale(0.5);
-            }
+        @keyframes drawLine {
             to {
+                stroke-dashoffset: 0;
                 opacity: 1;
-                transform: translateY(-50%) scale(1);
             }
         }
 
-        @keyframes morphToQ {
+        @keyframes morphBeakerToQ {
             0% {
+                d: path("M 50 80 L 50 40 L 45 20 L 65 20 L 60 40 L 60 80 L 55 100 L 50 100");
                 opacity: 1;
-                transform: translateY(-50%) scale(1);
             }
             50% {
-                opacity: 0.3;
-                transform: translateY(-50%) scale(1.2) rotate(180deg);
+                d: path("M 50 40 Q 30 40 30 60 Q 30 80 50 80 Q 70 80 70 60 Q 70 40 50 40 M 65 75 L 75 90");
+                opacity: 0.5;
             }
             100% {
-                opacity: 0;
-                transform: translateY(-50%) scale(0.1) rotate(360deg);
-            }
-        }
-
-        @keyframes morphToLabs {
-            0% {
+                d: path("M 50 40 Q 30 40 30 60 Q 30 80 50 80 Q 70 80 70 60 Q 70 40 50 40 M 65 75 L 75 90");
                 opacity: 1;
-                transform: translateY(-50%) scale(1);
-            }
-            50% {
-                opacity: 0.3;
-                transform: translateY(-50%) scale(1.2);
-            }
-            100% {
-                opacity: 0;
-                transform: translateY(-50%) translateX(50px) scale(0.1);
+                stroke: #a855f7;
+                stroke-width: 5;
             }
         }
 
-        @keyframes revealQ {
-            from {
+        @keyframes eraseLine {
+            to {
+                stroke-dashoffset: 1000;
                 opacity: 0;
-                transform: translateY(-50%) scale(0.5) rotate(-90deg);
+            }
+        }
+
+        @keyframes drawLetter {
+            from {
+                stroke-dashoffset: 1000;
+                opacity: 0;
             }
             to {
+                stroke-dashoffset: 0;
                 opacity: 1;
-                transform: translateY(-50%) scale(1) rotate(0deg);
             }
         }
 
-        @keyframes slideOutFromQ {
-            from {
-                opacity: 0;
-                transform: translateY(-50%) translateX(-80px);
-                letter-spacing: -10px;
-            }
+        /* Text labels */
+        .text-label {
+            font-size: 60px;
+            font-weight: bold;
+            fill: #a855f7;
+            opacity: 0;
+            animation: fadeInText 0.8s ease-out 4s forwards;
+        }
+
+        .labs-label {
+            fill: #64748b;
+            font-size: 50px;
+            font-weight: 300;
+            letter-spacing: 10px;
+        }
+
+        @keyframes fadeInText {
             to {
                 opacity: 1;
-                transform: translateY(-50%) translateX(0);
-                letter-spacing: 2px;
-            }
-        }
-
-        @keyframes revealLabs {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-                letter-spacing: 20px;
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-                letter-spacing: 8px;
-            }
-        }
-
-        @keyframes bubble {
-            0%, 100% {
-                transform: translateY(0);
-            }
-            50% {
-                transform: translateY(-3px);
             }
         }
 
@@ -230,116 +159,173 @@
             box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
         }
 
-        /* Glow effect */
-        .letter-q, .quintessen-text {
-            text-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+        /* Glow effects */
+        .letter-path, .text-label {
+            filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.6));
         }
 
-        .labs-text {
-            text-shadow: 0 0 15px rgba(100, 116, 139, 0.3);
+        .labs-letter, .labs-label {
+            filter: drop-shadow(0 0 6px rgba(100, 116, 139, 0.4));
         }
     </style>
 </head>
 <body>
-    <div class="animation-container" id="animationContainer">
-        <!-- Beaker SVGs -->
-        <svg class="beaker to-q" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
+    <div class="animation-container">
+        <svg id="morphingSVG" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
             <defs>
-                <linearGradient id="beakerGradient1" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style="stop-color:#e0e7ff;stop-opacity:0.8" />
-                    <stop offset="100%" style="stop-color:#c7d2fe;stop-opacity:0.9" />
-                </linearGradient>
-            </defs>
-            <!-- Beaker body -->
-            <path d="M 30 20 L 30 60 L 20 120 L 80 120 L 70 60 L 70 20 Z"
-                  fill="url(#beakerGradient1)"
-                  stroke="#a855f7"
-                  stroke-width="2"/>
-            <!-- Beaker neck -->
-            <rect x="35" y="10" width="30" height="10"
-                  fill="url(#beakerGradient1)"
-                  stroke="#a855f7"
-                  stroke-width="2"/>
-            <!-- Liquid -->
-            <path class="beaker-liquid" d="M 30 80 L 25 120 L 75 120 L 70 80 Z" />
-        </svg>
+                <!-- Define beaker paths of different sizes -->
+                <!-- Small beaker -->
+                <path id="beaker1" d="M 60 200 L 60 160 L 55 140 L 75 140 L 70 160 L 70 200 L 65 220 L 60 220" />
 
-        <svg class="beaker to-labs" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="beakerGradient2" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style="stop-color:#e0e7ff;stop-opacity:0.8" />
-                    <stop offset="100%" style="stop-color:#c7d2fe;stop-opacity:0.9" />
-                </linearGradient>
-            </defs>
-            <path d="M 30 20 L 30 60 L 20 120 L 80 120 L 70 60 L 70 20 Z"
-                  fill="url(#beakerGradient2)"
-                  stroke="#64748b"
-                  stroke-width="2"/>
-            <rect x="35" y="10" width="30" height="10"
-                  fill="url(#beakerGradient2)"
-                  stroke="#64748b"
-                  stroke-width="2"/>
-            <path class="beaker-liquid" d="M 30 80 L 25 120 L 75 120 L 70 80 Z"
-                  style="fill: #64748b; opacity: 0.5"/>
-        </svg>
+                <!-- Medium beaker -->
+                <path id="beaker2" d="M 170 210 L 170 150 L 163 125 L 187 125 L 180 150 L 180 210 L 173 240 L 170 240" />
 
-        <svg class="beaker to-labs" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="beakerGradient3" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style="stop-color:#e0e7ff;stop-opacity:0.8" />
-                    <stop offset="100%" style="stop-color:#c7d2fe;stop-opacity:0.9" />
-                </linearGradient>
-            </defs>
-            <path d="M 30 20 L 30 60 L 20 120 L 80 120 L 70 60 L 70 20 Z"
-                  fill="url(#beakerGradient3)"
-                  stroke="#64748b"
-                  stroke-width="2"/>
-            <rect x="35" y="10" width="30" height="10"
-                  fill="url(#beakerGradient3)"
-                  stroke="#64748b"
-                  stroke-width="2"/>
-            <path class="beaker-liquid" d="M 30 80 L 25 120 L 75 120 L 70 80 Z"
-                  style="fill: #64748b; opacity: 0.5"/>
-        </svg>
+                <!-- Large beaker -->
+                <path id="beaker3" d="M 290 220 L 290 140 L 280 110 L 310 110 L 300 140 L 300 220 L 290 260 L 290 260" />
 
-        <svg class="beaker to-labs" viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="beakerGradient4" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style="stop-color:#e0e7ff;stop-opacity:0.8" />
-                    <stop offset="100%" style="stop-color:#c7d2fe;stop-opacity:0.9" />
-                </linearGradient>
+                <!-- Medium-small beaker -->
+                <path id="beaker4" d="M 410 205 L 410 155 L 404 135 L 426 135 L 420 155 L 420 205 L 413 230 L 410 230" />
             </defs>
-            <path d="M 30 20 L 30 60 L 20 120 L 80 120 L 70 60 L 70 20 Z"
-                  fill="url(#beakerGradient4)"
-                  stroke="#64748b"
-                  stroke-width="2"/>
-            <rect x="35" y="10" width="30" height="10"
-                  fill="url(#beakerGradient4)"
-                  stroke="#64748b"
-                  stroke-width="2"/>
-            <path class="beaker-liquid" d="M 30 80 L 25 120 L 75 120 L 70 80 Z"
-                  style="fill: #64748b; opacity: 0.5"/>
-        </svg>
 
-        <!-- Text elements -->
-        <div class="letter-q">Q</div>
-        <div class="quintessen-text">uintessen</div>
-        <div class="labs-text">LABS</div>
+            <!-- Morphing elements - These will transform from beakers to letters -->
+            <!-- Beaker 1 -> Q -->
+            <path class="beaker-outline beaker-1" d="M 60 200 L 60 160 L 55 140 L 75 140 L 70 160 L 70 200 L 65 220 L 60 220">
+                <animate
+                    attributeName="d"
+                    dur="1.5s"
+                    begin="2s"
+                    fill="freeze"
+                    values="
+                        M 60 200 L 60 160 L 55 140 L 75 140 L 70 160 L 70 200 L 65 220 L 60 220;
+                        M 60 180 Q 65 160 65 160 Q 70 140 75 140 Q 80 160 70 180 L 65 220;
+                        M 80 160 Q 50 160 50 190 Q 50 220 80 220 Q 110 220 110 190 Q 110 160 80 160 M 100 210 L 115 230
+                    "
+                />
+                <animate attributeName="stroke-width" dur="0.5s" begin="3s" fill="freeze" values="3; 5" />
+            </path>
+
+            <!-- Beaker 2 -> u -->
+            <path class="beaker-outline beaker-2" d="M 170 210 L 170 150 L 163 125 L 187 125 L 180 150 L 180 210 L 173 240 L 170 240">
+                <animate
+                    attributeName="d"
+                    dur="1.5s"
+                    begin="2.2s"
+                    fill="freeze"
+                    values="
+                        M 170 210 L 170 150 L 163 125 L 187 125 L 180 150 L 180 210 L 173 240 L 170 240;
+                        M 170 200 L 170 160 Q 170 150 175 150 Q 180 150 180 160 L 180 200;
+                        M 160 160 L 160 190 Q 160 210 175 210 Q 190 210 190 190 L 190 160
+                    "
+                />
+            </path>
+
+            <!-- Beaker 3 -> i -->
+            <path class="beaker-outline beaker-3" d="M 290 220 L 290 140 L 280 110 L 310 110 L 300 140 L 300 220 L 290 260 L 290 260">
+                <animate
+                    attributeName="d"
+                    dur="1.5s"
+                    begin="2.4s"
+                    fill="freeze"
+                    values="
+                        M 290 220 L 290 140 L 280 110 L 310 110 L 300 140 L 300 220 L 290 260 L 290 260;
+                        M 290 200 L 290 160 L 290 140;
+                        M 230 160 L 230 210 M 230 145 L 230 150
+                    "
+                />
+            </path>
+
+            <!-- Beaker 4 -> n -->
+            <path class="beaker-outline beaker-4" d="M 410 205 L 410 155 L 404 135 L 426 135 L 420 155 L 420 205 L 413 230 L 410 230">
+                <animate
+                    attributeName="d"
+                    dur="1.5s"
+                    begin="2.6s"
+                    fill="freeze"
+                    values="
+                        M 410 205 L 410 155 L 404 135 L 426 135 L 420 155 L 420 205 L 413 230 L 410 230;
+                        M 410 200 L 410 160 Q 420 165 420 175 L 420 200;
+                        M 260 160 L 260 210 M 260 175 Q 270 165 280 165 Q 290 165 290 175 L 290 210
+                    "
+                />
+            </path>
+
+            <!-- Additional letters that draw in -->
+            <!-- t -->
+            <path class="letter-path" d="M 310 160 L 310 210 M 300 170 L 320 170" style="animation-delay: 3.5s;">
+                <animate attributeName="opacity" dur="0.01s" begin="3.5s" fill="freeze" values="0; 1" />
+                <animate attributeName="stroke-dashoffset" dur="0.8s" begin="3.5s" fill="freeze" values="1000; 0" />
+            </path>
+
+            <!-- e -->
+            <path class="letter-path" d="M 360 185 L 330 185 Q 330 165 345 165 Q 360 165 360 180 Q 360 210 345 210 Q 330 210 330 195" style="animation-delay: 3.7s;">
+                <animate attributeName="opacity" dur="0.01s" begin="3.7s" fill="freeze" values="0; 1" />
+                <animate attributeName="stroke-dashoffset" dur="0.8s" begin="3.7s" fill="freeze" values="1000; 0" />
+            </path>
+
+            <!-- s -->
+            <path class="letter-path" d="M 395 165 Q 375 165 375 175 Q 375 183 385 183 Q 395 183 395 193 Q 395 210 375 210" style="animation-delay: 3.9s;">
+                <animate attributeName="opacity" dur="0.01s" begin="3.9s" fill="freeze" values="0; 1" />
+                <animate attributeName="stroke-dashoffset" dur="0.8s" begin="3.9s" fill="freeze" values="1000; 0" />
+            </path>
+
+            <!-- s -->
+            <path class="letter-path" d="M 430 165 Q 410 165 410 175 Q 410 183 420 183 Q 430 183 430 193 Q 430 210 410 210" style="animation-delay: 4.1s;">
+                <animate attributeName="opacity" dur="0.01s" begin="4.1s" fill="freeze" values="0; 1" />
+                <animate attributeName="stroke-dashoffset" dur="0.8s" begin="4.1s" fill="freeze" values="1000; 0" />
+            </path>
+
+            <!-- e -->
+            <path class="letter-path" d="M 470 185 L 440 185 Q 440 165 455 165 Q 470 165 470 180 Q 470 210 455 210 Q 440 210 440 195" style="animation-delay: 4.3s;">
+                <animate attributeName="opacity" dur="0.01s" begin="4.3s" fill="freeze" values="0; 1" />
+                <animate attributeName="stroke-dashoffset" dur="0.8s" begin="4.3s" fill="freeze" values="1000; 0" />
+            </path>
+
+            <!-- n -->
+            <path class="letter-path" d="M 480 160 L 480 210 M 480 175 Q 490 165 500 165 Q 510 165 510 175 L 510 210" style="animation-delay: 4.5s;">
+                <animate attributeName="opacity" dur="0.01s" begin="4.5s" fill="freeze" values="0; 1" />
+                <animate attributeName="stroke-dashoffset" dur="0.8s" begin="4.5s" fill="freeze" values="1000; 0" />
+            </path>
+
+            <!-- LABS letters below -->
+            <path class="letter-path labs-letter" d="M 80 280 L 80 320 L 110 320" style="animation-delay: 2.8s;">
+                <animate attributeName="opacity" dur="0.01s" begin="2.8s" fill="freeze" values="0; 1" />
+                <animate attributeName="stroke-dashoffset" dur="0.6s" begin="2.8s" fill="freeze" values="1000; 0" />
+            </path>
+
+            <!-- A -->
+            <path class="letter-path labs-letter" d="M 130 320 L 145 280 L 160 320 M 135 305 L 155 305" style="animation-delay: 3s;">
+                <animate attributeName="opacity" dur="0.01s" begin="3s" fill="freeze" values="0; 1" />
+                <animate attributeName="stroke-dashoffset" dur="0.6s" begin="3s" fill="freeze" values="1000; 0" />
+            </path>
+
+            <!-- B -->
+            <path class="letter-path labs-letter" d="M 180 280 L 180 320 M 180 280 Q 200 280 200 290 Q 200 300 180 300 M 180 300 Q 200 300 200 310 Q 200 320 180 320" style="animation-delay: 3.2s;">
+                <animate attributeName="opacity" dur="0.01s" begin="3.2s" fill="freeze" values="0; 1" />
+                <animate attributeName="stroke-dashoffset" dur="0.6s" begin="3.2s" fill="freeze" values="1000; 0" />
+            </path>
+
+            <!-- S -->
+            <path class="letter-path labs-letter" d="M 240 280 Q 220 280 220 290 Q 220 298 230 298 Q 240 298 240 308 Q 240 320 220 320" style="animation-delay: 3.4s;">
+                <animate attributeName="opacity" dur="0.01s" begin="3.4s" fill="freeze" values="0; 1" />
+                <animate attributeName="stroke-dashoffset" dur="0.6s" begin="3.4s" fill="freeze" values="1000; 0" />
+            </path>
+        </svg>
     </div>
 
     <button class="restart-btn" onclick="restartAnimation()">Restart Animation</button>
 
     <script>
         function restartAnimation() {
-            const container = document.getElementById('animationContainer');
-            const clone = container.cloneNode(true);
-            container.parentNode.replaceChild(clone, container);
+            // Reload the page to restart SVG animations
+            location.reload();
         }
 
         // Auto-restart after animation completes
-        setInterval(() => {
-            restartAnimation();
-        }, 8000); // Restart every 8 seconds
+        setTimeout(() => {
+            setInterval(() => {
+                location.reload();
+            }, 10000);
+        }, 10000);
     </script>
 </body>
 </html>

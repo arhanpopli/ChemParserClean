@@ -4,19 +4,25 @@ A stunning chemistry-themed animation featuring beakers transforming into the Qu
 
 ## Features
 
-- **Chemistry-themed**: Beautiful SVG beakers with animated liquid
-- **Smooth transformations**: Beakers morph into the logo text
+- **Line morphing animation**: Beaker outlines literally transform and bend into text
+- **Different sized beakers**: 4 beakers of varying sizes (small, medium, large, medium-small)
+- **SVG path morphing**: Lines smoothly morph from beaker shapes into letter shapes
 - **Purple branding**: "Quintessen" appears in vibrant purple (#a855f7)
+- **Line drawing effect**: Uses stroke-dasharray for smooth line drawing animations
 - **Auto-restart**: Optional automatic animation looping
 - **Responsive**: Works on desktop and mobile devices
 - **Multiple formats**: Standalone HTML and Vue component versions
 
 ## Animation Sequence
 
-1. **0.2s - 0.8s**: Four chemistry beakers fade in sequentially from left to right
-2. **1.5s - 2.5s**: Beakers transform - first beaker morphs into "Q", others into "LABS"
-3. **2.5s - 3s**: The "Q" letter appears with rotation effect, "LABS" materializes below
-4. **3s - 4s**: "uintessen" slides out from the Q, forming complete "Quintessen" text
+1. **0.2s - 1.7s**: Four beakers of different sizes draw in sequentially (line drawing effect)
+2. **2s - 3.5s**: Beaker outlines morph and bend into letters:
+   - Small beaker → "Q" (with tail)
+   - Medium beaker → "u"
+   - Large beaker → "i" (with dot)
+   - Medium-small beaker → "n"
+3. **2.8s - 3.4s**: "LABS" letters draw in below (L, A, B, S)
+4. **3.5s - 5s**: Remaining letters of "Quintessen" draw in (t, e, s, s, e, n)
 
 ## Files Created
 
@@ -180,22 +186,24 @@ For the Vue component, adjust the container size:
 
 - **Vue 3**: Composition API with `<script setup>`
 - **Quasar Framework**: For buttons and UI components (Vue version only)
-- **CSS3 Animations**: @keyframes, transforms, transitions
-- **SVG**: Scalable vector graphics for beakers
+- **SVG SMIL Animations**: Native SVG `<animate>` elements for path morphing
+- **CSS3**: stroke-dasharray/stroke-dashoffset for line drawing effects
+- **SVG Path Commands**: Complex path morphing with L (line), Q (quadratic curve), M (move) commands
 
 ### Browser Compatibility
 
-- ✅ Chrome/Edge (latest)
-- ✅ Firefox (latest)
-- ✅ Safari (latest)
+- ✅ Chrome/Edge (latest) - Full support for SMIL animations
+- ✅ Firefox (latest) - Full support for SMIL animations
+- ✅ Safari (latest) - Full support for SMIL animations
 - ✅ Mobile browsers (iOS Safari, Chrome Mobile)
 
 ### Performance
 
-- GPU-accelerated CSS animations
-- No external animation libraries required
-- Lightweight SVG graphics
+- GPU-accelerated SVG animations
+- No external animation libraries required (uses native SVG SMIL)
+- Lightweight stroke-only graphics (no fills)
 - Optimized for 60fps on modern devices
+- Smooth path morphing with cubic bezier timing functions
 
 ## Examples
 

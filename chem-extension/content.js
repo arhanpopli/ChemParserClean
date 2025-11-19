@@ -12,6 +12,51 @@ const MOLECULE_VIEWER_API = 'http://localhost:5000';
 const MOL2CHEMFIG_API = 'http://localhost:5001';  // Flask wrapper (NOT port 8000 Docker backend)
 const PUBCHEM_API = 'http://localhost:5002';
 
+// ============================================
+// PROXY FETCH HELPER
+// ============================================
+/**
+ * Fetch URLs through the background script to bypass CSP/CORS restrictions
+ * This is necessary because content scripts can't directly access localhost servers
+ */
+async function proxyFetch(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage({
+      action: 'fetchUrl',
+      url: url,
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      body: options.body || undefined
+    }, (response) => {
+      if (!response) {
+        reject(new Error('No response from background script'));
+        return;
+      }
+
+      if (response.success) {
+        // Create a mock Response-like object
+        const mockResponse = {
+          ok: response.ok,
+          status: response.status,
+          json: async () => response.type === 'json' ? response.data : JSON.parse(response.data),
+          text: async () => response.type === 'text' ? response.data : response.data,
+          blob: async () => {
+            if (response.type === 'blob') {
+              // Convert base64 data URL back to blob
+              const base64Response = await fetch(response.data);
+              return await base64Response.blob();
+            }
+            return new Blob([response.data]);
+          }
+        };
+        resolve(mockResponse);
+      } else {
+        reject(new Error(response.error || 'Fetch failed'));
+      }
+    });
+  });
+}
+
 // For Heroku production (uncomment when ready to deploy):
 // const MOLECULE_VIEWER_API = 'https://YOUR-HEROKU-APP.herokuapp.com';
 // const MOL2CHEMFIG_API = 'https://YOUR-MOL2CHEMFIG-APP.herokuapp.com';
@@ -1067,9 +1112,9 @@ function setupLazyLoading() {
         hydrogensMode: settings.hydrogensMode
       });
       
-      // Fetch JSON response with cache link
-      console.log('%c🌐 Fetching from backend...', 'color: #00AAFF; font-weight: bold;');
-      fetch(apiUrl)
+      // Fetch JSON response with cache link (using proxy to bypass CSP/CORS)
+      console.log('%c🌐 Fetching from backend via proxy...', 'color: #00AAFF; font-weight: bold;');
+      proxyFetch(apiUrl)
         .then(response => {
           console.log('%c✅ Got response from backend:', 'color: #00FF00; font-weight: bold;', response);
           return response.json();
@@ -1180,11 +1225,11 @@ function setupLazyLoading() {
       const apiUrl = `${PUBCHEM_API}/pubchem/img/${encodeURIComponent(compoundName)}?size=${settings.pubchemImageSize || 'large'}&type=${settings.pubchemRecordType || '2d'}`;
       console.log('%c📡 PubChem API URL:', 'color: #4CAF50; font-weight: bold;', apiUrl);
 
-      // Fetch the image directly
-      fetch(apiUrl)
+      // Fetch the image directly (using proxy to bypass CSP/CORS)
+      proxyFetch(apiUrl)
         .then(response => {
           if (!response.ok) {
-            throw new Error(`PubChem returned ${response.status}: ${response.statusText}`);
+            throw new Error(`PubChem returned ${response.status}`);
           }
           return response.blob();
         })
@@ -1632,8 +1677,8 @@ function setupLazyLoading() {
         h2: settings.m2cfHydrogensMode || 'keep'
       };
       console.log('%c📤 POST Body:', 'color: #9B59B6; font-weight: bold;', requestBody);
-      
-      fetch(`${MOL2CHEMFIG_API}/m2cf/submit`, {
+
+      proxyFetch(`${MOL2CHEMFIG_API}/m2cf/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)

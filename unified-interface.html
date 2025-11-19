@@ -241,23 +241,13 @@
 
     <!-- Mol2ChemFig Tab -->
     <div id="mol2chemfig" class="tab-content active">
-        <h2>Mol2ChemFig Generator</h2>
-        <div class="control-panel">
-            <div class="control-group">
-                <label>Enter Chemical Name or SMILES:</label>
-                <input type="text" id="m2cf-input" placeholder="e.g., aspirin or CCO" value="aspirin">
-            </div>
-            <div class="control-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="m2cf-3d-toggle">
-                    <span>Generate 3D SMILES (using OPSIN)</span>
-                </label>
-            </div>
-            <button class="btn" onclick="generateMol2ChemFig()">🚀 Generate</button>
-            <button class="btn btn-secondary" onclick="clearMol2ChemFig()">Clear</button>
-        </div>
-        <div id="m2cf-result" class="result-container">
-            Results will appear here...
+        <h2>Mol2ChemFig Generator - Full Interface with ALL 8 Options</h2>
+        <p style="margin-bottom: 15px; color: #666;">
+            Complete ChemFig conversion tool with aromatic, fancy bonds, compact view, show carbon, show methyl, flip, flop, and atom numbers options.
+            Includes Kekule.js drawing, PubChem search, reaction schemes, and multiple export formats.
+        </p>
+        <div class="iframe-container" style="height: 1200px;">
+            <iframe src="mol2chemfig-full-interface.html"></iframe>
         </div>
     </div>
 

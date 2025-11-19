@@ -7,7 +7,8 @@ const routes = [
       { path: '', component: () => import('pages/MoleculePage.vue') },
       { path: '/reaction', component: () => import('pages/ReactionPage.vue') },
       { path: '/settings', component: () => import('pages/SettingsPage.vue') },
-      { path: '/tutorial', component: () => import('pages/TutorialPage.vue') }
+      { path: '/tutorial', component: () => import('pages/TutorialPage.vue') },
+      { path: '/quintessen-demo', component: () => import('pages/QuintessenLabsDemo.vue') }
     ]
   },
 

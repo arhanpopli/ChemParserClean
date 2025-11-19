@@ -1,9 +1,9 @@
 """
-Mol2ChemFig Server - Flask wrapper for mol2chemfig Docker backend
+Mol2ChemFig Server - Flask wrapper for mol2chemfig rendering
 Provides persistent SVG/PDF links and Chrome extension integration
 
-Similar to MoleculeViewer but uses mol2chemfig for superior rendering
-Port: 5001 (MoleculeViewer uses 5000)
+Now uses NATIVE Python mol2chemfig library - Docker is OPTIONAL!
+Port: 5001
 """
 
 from flask import Flask, request, jsonify, send_file, send_from_directory, session
@@ -15,25 +15,41 @@ import json
 from datetime import datetime
 from pathlib import Path
 import sys
+import tempfile
+import shutil
+import subprocess
+import base64
 
 # Import canonicalization utility
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from canonicalize_smiles import canonicalize_smiles
+
+# Try to import native mol2chemfig libraries
+try:
+    from mol2chemfig.processor import process as m2cf_process
+    from mol2chemfig import pdfgen
+    from chemistry.utils import combine_args
+    HAS_NATIVE_M2CF = True
+    print("✅ Native mol2chemfig libraries loaded successfully")
+except ImportError as e:
+    HAS_NATIVE_M2CF = False
+    print(f"⚠️  Native mol2chemfig not available: {e}")
+    print("   Will use Docker backend only")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'chemfig-server-secret-key-change-in-production')
 CORS(app, supports_credentials=True)
 
 # Configuration
-MOL2CHEMFIG_BACKEND = "http://localhost:8000"  # Docker backend
-STORAGE_DIR = Path("cache") / "mol2chemfig"  # Local storage for generated files - mol2chemfig specific
+MOL2CHEMFIG_BACKEND = "http://localhost:8000"  # Docker backend (fallback)
+STORAGE_DIR = Path("cache") / "mol2chemfig"  # Local storage for generated files
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+USE_NATIVE_FIRST = True  # Try native mol2chemfig before Docker
 
 # In-memory cache for quick lookups
 image_cache = {}  # key: hash -> {svg: path, pdf: path, chemfig: str, options: [], timestamp}
 
 # Default options storage (persistent across requests)
-# This will store user preferences for chemfig options
 default_options = {
     "selections": [],
     "angle": 0,
@@ -61,31 +77,126 @@ def save_content(content, extension, content_hash):
     """Save content to disk and return relative path"""
     filename = f"{content_hash}.{extension}"
     filepath = STORAGE_DIR / filename
-    
+
     if extension in ['svg', 'chemfig', 'mol']:
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
     else:  # binary files like PDF
         with open(filepath, 'wb') as f:
             f.write(content)
-    
+
     return str(filepath)
+
+# =============================================================================
+# NATIVE MOL2CHEMFIG PROCESSING (No Docker Required!)
+# =============================================================================
+
+def chemfig_to_svg_native(chemfig_code):
+    """Convert chemfig LaTeX code to SVG using latex + dvisvgm (native, no Docker)"""
+    try:
+        tempdir = tempfile.mkdtemp()
+        tex_file = os.path.join(tempdir, 'molecule.tex')
+        dvi_file = os.path.join(tempdir, 'molecule.dvi')
+        svg_file = os.path.join(tempdir, 'molecule.svg')
+
+        latex_content = r'''\documentclass{minimal}
+\usepackage{mol2chemfig}
+\setcrambond{2.5pt}{0.4pt}{1.0pt}
+\setbondoffset{1pt}
+\setdoublesep{3pt}
+\setatomsep{28pt}
+\renewcommand{\printatom}[1]{\fontsize{12pt}{14pt}\selectfont{\ensuremath{\mathsf{#1}}}}
+\setlength{\parindent}{0pt}
+\begin{document}
+%s
+\end{document}
+''' % chemfig_code
+
+        with open(tex_file, 'w') as f:
+            f.write(latex_content)
+
+        latex_cmd = f"latex -interaction=nonstopmode -output-directory={tempdir} {tex_file}"
+        subprocess.run(latex_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+
+        if os.path.exists(dvi_file):
+            dvisvgm_cmd = f"dvisvgm --pdf --font-format=woff --exact --output={svg_file} {dvi_file}"
+            subprocess.run(dvisvgm_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+
+            if os.path.exists(svg_file):
+                with open(svg_file, 'r') as f:
+                    svg_content = f.read()
+                shutil.rmtree(tempdir)
+                return svg_content
+
+        shutil.rmtree(tempdir)
+        return None
+    except Exception as e:
+        print(f"SVG generation error: {e}")
+        return None
+
+def process_with_native_m2cf(data, format_type='smiles', options=None):
+    """Process molecule data using native Python mol2chemfig library"""
+    if not HAS_NATIVE_M2CF:
+        return (False, None, None, None, "Native mol2chemfig not available")
+
+    try:
+        args = ""
+        if options:
+            if isinstance(options, list):
+                args = " ".join(options)
+            elif isinstance(options, dict):
+                selections = options.get('selections', [])
+                angle = options.get('angle', 0)
+                indentation = options.get('indentation', 4)
+                h2 = options.get('h2', 'keep')
+                args = combine_args(selections, str(angle), str(indentation), h2)
+
+        tempdir = tempfile.mkdtemp()
+        data_file = os.path.join(tempdir, f'molecule.{format_type}')
+        with open(data_file, 'w') as f:
+            f.write(data)
+
+        full_args = f"-w {args} {data_file}" if args else f"-w {data_file}"
+        success, result = m2cf_process(rawargs=full_args.split(), progname='mol2chemfig')
+
+        shutil.rmtree(tempdir)
+
+        if not success:
+            return (False, None, None, None, str(result))
+
+        chemfig_code = result.render_user()
+
+        pdf_content = None
+        pdf_success, pdf_result = pdfgen.pdfgen(result)
+        if pdf_success:
+            pdf_content = pdf_result
+
+        svg_content = chemfig_to_svg_native(chemfig_code)
+
+        return (True, chemfig_code, svg_content, pdf_content, None)
+    except Exception as e:
+        import traceback
+        return (False, None, None, None, f"Native error: {str(e)}\n{traceback.format_exc()}")
+
+# =============================================================================
 
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
+    # Check Docker backend
     try:
-        # Check if mol2chemfig backend is accessible
         response = requests.get(f"{MOL2CHEMFIG_BACKEND}/", timeout=2)
-        backend_status = "healthy" if response.status_code == 200 else "unhealthy"
+        docker_status = "healthy" if response.status_code == 200 else "unhealthy"
     except:
-        backend_status = "unreachable"
-    
+        docker_status = "unreachable"
+
     return jsonify({
         "status": "running",
         "server": "mol2chemfig_server",
         "port": 5001,
-        "backend": backend_status,
+        "native_mol2chemfig": "available" if HAS_NATIVE_M2CF else "not available",
+        "docker_backend": docker_status,
+        "mode": "native" if HAS_NATIVE_M2CF else "docker-only",
         "storage": str(STORAGE_DIR),
         "cached_images": len(image_cache)
     })
@@ -154,59 +265,100 @@ def generate():
                 "timestamp": cached.get('timestamp')
             })
         
-        # Not in cache - generate via mol2chemfig backend
-        if options:
-            # With options - use /apply endpoint
-            payload = {
-                "chem_data": smiles,
-                "chem_format": chem_format,
+        # Not in cache - generate new content
+        # Try native mol2chemfig first, fallback to Docker if needed
+
+        chemfig = None
+        svg_content = None
+        pdf_content = None
+        error = None
+        used_native = False
+
+        # Try native processing first
+        if HAS_NATIVE_M2CF and USE_NATIVE_FIRST:
+            print(f"Trying native mol2chemfig processing...")
+            options_dict = {
                 "selections": options,
                 "angle": 0,
                 "indentation": 4,
                 "h2": "keep"
             }
-            response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/apply", 
-                                    json=payload, timeout=30)
-        else:
-            # No options - use /submit endpoint
-            payload = {"textAreaData": smiles}
-            response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/submit", 
-                                    json=payload, timeout=30)
-        
-        if response.status_code != 200:
-            return jsonify({"success": False, "error": "Backend request failed"}), 500
-        
-        result = response.json()
-        
-        if result.get('error'):
-            return jsonify({"success": False, "error": result['error']}), 400
-        
+            success, chemfig, svg_content, pdf_content, error = process_with_native_m2cf(
+                smiles, chem_format, options_dict
+            )
+            if success:
+                used_native = True
+                print("✅ Native processing successful")
+            else:
+                print(f"⚠️  Native processing failed: {error}")
+
+        # Fallback to Docker if native failed or not available
+        if not used_native:
+            print("Falling back to Docker backend...")
+            try:
+                if options:
+                    payload = {
+                        "chem_data": smiles,
+                        "chem_format": chem_format,
+                        "selections": options,
+                        "angle": 0,
+                        "indentation": 4,
+                        "h2": "keep"
+                    }
+                    response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/apply",
+                                            json=payload, timeout=30)
+                else:
+                    payload = {"textAreaData": smiles}
+                    response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/submit",
+                                            json=payload, timeout=30)
+
+                if response.status_code != 200:
+                    return jsonify({"success": False, "error": "Backend request failed, Docker not running"}), 500
+
+                result = response.json()
+
+                if result.get('error'):
+                    return jsonify({"success": False, "error": result['error']}), 400
+
+                chemfig = result.get('chemfig', '')
+
+                if result.get('svglink') and return_format in ['svg', 'both']:
+                    svg_response = requests.get(f"{MOL2CHEMFIG_BACKEND}{result['svglink']}")
+                    if svg_response.status_code == 200:
+                        svg_content = svg_response.text
+
+                if result.get('pdflink') and return_format in ['pdf', 'both']:
+                    pdf_response = requests.get(f"{MOL2CHEMFIG_BACKEND}{result['pdflink']}")
+                    if pdf_response.status_code == 200:
+                        pdf_content = pdf_response.content
+
+                print("✅ Docker backend successful")
+            except Exception as docker_error:
+                return jsonify({
+                    "success": False,
+                    "error": f"Both native and Docker failed. Native: {error}, Docker: {str(docker_error)}"
+                }), 500
+
         # Save generated content
-        chemfig = result.get('chemfig', '')
         svg_path = None
         pdf_path = None
-        
-        # Fetch and save SVG if available
-        if result.get('svglink') and return_format in ['svg', 'both']:
-            svg_response = requests.get(f"{MOL2CHEMFIG_BACKEND}{result['svglink']}")
-            if svg_response.status_code == 200:
-                svg_path = save_content(svg_response.text, 'svg', content_hash)
-        
-        # Fetch and save PDF if available
-        if result.get('pdflink') and return_format in ['pdf', 'both']:
-            pdf_response = requests.get(f"{MOL2CHEMFIG_BACKEND}{result['pdflink']}")
-            if pdf_response.status_code == 200:
-                pdf_path = save_content(pdf_response.content, 'pdf', content_hash)
-        
+
+        if svg_content and return_format in ['svg', 'both']:
+            svg_path = save_content(svg_content, 'svg', content_hash)
+
+        if pdf_content and return_format in ['pdf', 'both']:
+            svg_path = save_content(pdf_content, 'pdf', content_hash)
+
         # Cache the result
         image_cache[content_hash] = {
             "svg": svg_path,
             "pdf": pdf_path,
             "chemfig": chemfig,
             "options": options,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "method": "native" if used_native else "docker"
         }
-        
+
         return jsonify({
             "success": True,
             "hash": content_hash,
@@ -215,6 +367,7 @@ def generate():
             "chemfig": chemfig,
             "cached": False,
             "applied_options": options,
+            "method": "native" if used_native else "docker",
             "timestamp": datetime.now().isoformat()
         })
 

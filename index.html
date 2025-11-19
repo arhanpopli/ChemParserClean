@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChemParser - Chemistry Visualization API</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .status {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #444;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .endpoint {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        .endpoint-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .endpoint-url {
+            font-family: 'Courier New', monospace;
+            background: #e9ecef;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            word-break: break-all;
+            color: #495057;
+        }
+
+        .try-it {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+
+        .try-it:hover {
+            background: #5568d3;
+        }
+
+        .example-image {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .example-image img {
+            max-width: 100%;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .feature {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .feature-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .feature-desc {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e9ecef;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧬 ChemParser</h1>
+        <p class="subtitle">Chemistry Visualization & LaTeX Conversion API</p>
+        <span class="status">✓ Service Online</span>
+
+        <div class="section">
+            <h2>Features</h2>
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">⚗️</div>
+                    <div class="feature-title">SMILES to SVG</div>
+                    <div class="feature-desc">Convert chemical formulas to beautiful SVG renderings</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🔬</div>
+                    <div class="feature-title">Name Lookup</div>
+                    <div class="feature-desc">Convert chemical names to molecular structures</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📐</div>
+                    <div class="feature-title">ChemFig Export</div>
+                    <div class="feature-desc">Export to LaTeX ChemFig format</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-title">Fast & Cached</div>
+                    <div class="feature-desc">24-hour caching for quick responses</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>API Endpoints</h2>
+
+            <div class="endpoint">
+                <div class="endpoint-title">Health Check</div>
+                <div class="endpoint-url">GET /api/health</div>
+                <a href="/api/health" class="try-it" target="_blank">Try it →</a>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-title">SMILES to SVG</div>
+                <div class="endpoint-url">GET /api/img/smiles?smiles=CCO&width=300&height=200</div>
+                <a href="/api/img/smiles?smiles=c1ccccc1&width=300&height=200" class="try-it" target="_blank">Try it →</a>
+            </div>
+
+            <div class="endpoint">
+                <div class="endpoint-title">Nomenclature to SVG</div>
+                <div class="endpoint-url">GET /api/img/nomenclature?nomenclature=benzene&width=300&height=200</div>
+                <a href="/api/img/nomenclature?nomenclature=benzene&width=300&height=200" class="try-it" target="_blank">Try it →</a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Example</h2>
+            <p style="margin-bottom: 10px;">Benzene molecule (SMILES: c1ccccc1)</p>
+            <div class="example-image">
+                <img src="/api/img/smiles?smiles=c1ccccc1&width=300&height=200" alt="Benzene molecule" id="example-img">
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Quick Start</h2>
+            <p style="color: #666; line-height: 1.6;">
+                Use ChemParser to generate molecule visualizations by making GET requests to the API endpoints.
+                All images are cached for 24 hours for better performance. Perfect for embedding in documents,
+                websites, or scientific papers.
+            </p>
+        </div>
+
+        <footer>
+            <p>ChemParser v1.0 - Powered by RDKit & Vercel</p>
+            <p style="margin-top: 5px;">
+                <a href="https://github.com/arhanpopli/ChemParserClean" style="color: #667eea; text-decoration: none;">View on GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // Handle image loading errors
+        document.getElementById('example-img').onerror = function() {
+            this.style.display = 'none';
+            this.parentElement.innerHTML += '<p style="color: #666;">Example image loading...</p>';
+        };
+    </script>
+</body>
+</html>

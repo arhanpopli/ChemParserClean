@@ -1,6 +1,31 @@
 {
+  "name": "chemparser",
+  "version": "1.0.0",
+  "description": "Chemistry Visualization & LaTeX Conversion API",
+  "main": "api/health.js",
+  "engines": {
+    "node": ">=18.x"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step required'",
+    "start": "node MoleculeViewer/server.js"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.1.0"
-  }
+  },
+  "devDependencies": {
+    "vercel": "^33.0.0"
+  },
+  "keywords": [
+    "chemistry",
+    "smiles",
+    "svg",
+    "chemfig",
+    "rdkit",
+    "molecular-visualization"
+  ],
+  "author": "ChemParser Team",
+  "license": "MIT"
 }

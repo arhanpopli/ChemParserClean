@@ -1,0 +1,63 @@
+# Vercel ignore file - exclude large/unnecessary files from deployment
+
+# Cache directories
+cache/
+MoleculeViewer/cache/
+pubchem-cache/
+backend_data/
+mol2chemfig_storage/
+__pycache__/
+
+# Node modules (will be installed during build)
+node_modules/
+
+# Large libraries (will be installed via npm)
+MoleculeViewer/node_modules/
+ChemDoodleWeb-11.0.0/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files
+test_*.html
+test_*.py
+TEST_*.html
+
+# Batch files (Windows only)
+*.bat
+
+# Log files
+*.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.github/
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
+BACKEND_RUNNING.txt
+CONSOLE_DEBUG_COMMANDS.txt
+MANUAL_TEST.txt
+START.txt
+tracked.txt
+
+# Build artifacts
+dist/
+build/
+
+# Python cache
+*.pyc
+*.pyo
+*.egg-info/

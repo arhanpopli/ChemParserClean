@@ -718,6 +718,90 @@ def generate_3d():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+# =============================================================================
+# BACKWARDS COMPATIBILITY ROUTES - /m2cf/* endpoints
+# These proxy to the Docker backend directly for mol2chemfig-full-interface.html
+# =============================================================================
+
+@app.route('/m2cf/submit', methods=['POST'])
+def m2cf_submit_proxy():
+    """Proxy /m2cf/submit to Docker backend"""
+    try:
+        data = request.get_json()
+        response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/submit", json=data, timeout=30)
+        return response.content, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'application/json')}
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/m2cf/search', methods=['GET', 'POST'])
+def m2cf_search_proxy():
+    """Proxy /m2cf/search to Docker backend"""
+    try:
+        if request.method == 'GET':
+            search_term = request.args.get('searchTerm', '')
+            response = requests.get(f"{MOL2CHEMFIG_BACKEND}/m2cf/search?searchTerm={search_term}", timeout=30)
+        else:
+            data = request.get_json()
+            response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/search", json=data, timeout=30)
+        return response.content, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'application/json')}
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/m2cf/apply', methods=['POST'])
+def m2cf_apply_proxy():
+    """Proxy /m2cf/apply to Docker backend"""
+    try:
+        data = request.get_json()
+        response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/apply", json=data, timeout=30)
+        return response.content, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'application/json')}
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/m2cf/layers', methods=['POST'])
+def m2cf_layers_proxy():
+    """Proxy /m2cf/layers to Docker backend"""
+    try:
+        data = request.get_json()
+        response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/layers", json=data, timeout=30)
+        return response.content, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'application/json')}
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/m2cf/reset', methods=['POST'])
+def m2cf_reset_proxy():
+    """Proxy /m2cf/reset to Docker backend"""
+    try:
+        data = request.get_json()
+        response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/reset", json=data, timeout=30)
+        return response.content, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'application/json')}
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/m2cf/reaction/update_chemfig', methods=['POST'])
+def m2cf_reaction_update_proxy():
+    """Proxy /m2cf/reaction/update_chemfig to Docker backend"""
+    try:
+        data = request.get_json()
+        response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/reaction/update_chemfig", json=data, timeout=30)
+        return response.content, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'application/json')}
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/m2cf/<path:subpath>', methods=['GET', 'POST'])
+def m2cf_generic_proxy(subpath):
+    """Proxy any other /m2cf/* requests to Docker backend"""
+    try:
+        url = f"{MOL2CHEMFIG_BACKEND}/m2cf/{subpath}"
+        if request.method == 'GET':
+            response = requests.get(url, params=request.args, timeout=30)
+        else:
+            response = requests.post(url, json=request.get_json(), timeout=30)
+        return response.content, response.status_code, {'Content-Type': response.headers.get('Content-Type', 'application/json')}
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# =============================================================================
+
 @app.route('/', methods=['GET'])
 def index():
     """Serve the test HTML file"""

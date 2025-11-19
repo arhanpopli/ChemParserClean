@@ -9,7 +9,7 @@
 // ============================================
 // LOCAL TESTING - Use localhost to avoid HTTPS mixed content errors
 const MOLECULE_VIEWER_API = 'http://localhost:5000';
-const MOL2CHEMFIG_API = 'http://localhost:8000';
+const MOL2CHEMFIG_API = 'http://localhost:5001';  // Flask wrapper (NOT port 8000 Docker backend)
 const PUBCHEM_API = 'http://localhost:5002';
 
 // For Heroku production (uncomment when ready to deploy):

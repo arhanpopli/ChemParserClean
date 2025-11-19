@@ -432,7 +432,7 @@
     <div class="status-bar">
         <div id="statusIndicator" class="status">Checking backend...</div>
         <div style="color: #8b949e; font-size: 14px;">
-            Backend: <code>http://localhost:8000</code>
+            Backend: <code>http://localhost:5001</code> (Flask wrapper → Docker port 8000)
         </div>
     </div>
 
@@ -768,7 +768,7 @@ Or paste existing chemfig code"></textarea>
                     • 8 chemfig formatting options<br>
                     • Real-time PDF preview<br>
                     • Angle rotation and indentation control<br><br>
-                    <strong>Backend:</strong> http://localhost:8000<br>
+                    <strong>Backend:</strong> http://localhost:5001 (Flask wrapper)<br>
                     <strong>Version:</strong> 2.0 (Full UI)
                 </p>
             </div>
@@ -776,7 +776,7 @@ Or paste existing chemfig code"></textarea>
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:8000/m2cf';
+        const API_BASE = 'http://localhost:5001/m2cf';  // Flask wrapper (proxies to Docker on port 8000)
         
         // Chemfig options (same for molecule and reaction)
         const OPTIONS = [

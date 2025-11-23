@@ -34,11 +34,66 @@ try:
             from rdkit.Chem import AllChem
             AllChem.Compute2DCoords(mol)
 
-            # Draw molecule to SVG
+            # Draw molecule to SVG with options
             drawer = Draw.MolDraw2DSVG(width, height)
+
+            # Apply drawing options if available
+            try:
+                draw_options = drawer.drawOptions()
+                draw_options.clearBackground = False
+                # Note: RDKit doesn't have a direct "aromatic circles" option
+                # It draws aromatic bonds as Kekulé structure by default
+                # The aromaticCircles option is more relevant for mol2chemfig/chemfig
+            except Exception:
+                pass  # Older RDKit versions may not have drawOptions
+
             drawer.DrawMolecule(mol)
             drawer.FinishDrawing()
             svg = drawer.GetDrawingText()
+
+            # Make background transparent by removing/modifying the background rect
+            # RDKit generates a white rect as background - we want it transparent
+            # RDKit format: <rect style='opacity:1.0;fill:#FFFFFF;stroke:none' width='300.0' height='200.0' x='0.0' y='0.0'> </rect>
+
+            # Remove rect with style containing fill:#FFFFFF - handles both /> and > </rect> endings
+            svg = re.sub(
+                r"<rect[^>]*style='[^']*fill:#FFFFFF[^']*'[^>]*>[\s]*</rect>",
+                "",
+                svg
+            )
+            svg = re.sub(
+                r"<rect[^>]*style='[^']*fill:#FFFFFF[^']*'[^>]*/>",
+                "",
+                svg
+            )
+
+            # Remove rect with fill='#FFFFFF' attribute
+            svg = re.sub(
+                r"<rect[^>]*fill='#FFFFFF'[^>]*>[\s]*</rect>",
+                "",
+                svg
+            )
+            svg = re.sub(
+                r"<rect[^>]*fill='#FFFFFF'[^>]*/>",
+                "",
+                svg
+            )
+
+            # Remove any rect that has white fill (case insensitive variations)
+            svg = re.sub(
+                r"<rect[^>]*fill='white'[^>]*>[\s]*</rect>",
+                "",
+                svg,
+                flags=re.IGNORECASE
+            )
+
+            # Final fallback: Remove the first rect element after the header comment
+            # This catches any format RDKit might use
+            svg = re.sub(
+                r"(<!-- END OF HEADER -->)\s*<rect[^>]*>[\s]*</rect>",
+                r"\1",
+                svg
+            )
 
             # Embed SMILES metadata in SVG for deduplication
             # Get canonical SMILES

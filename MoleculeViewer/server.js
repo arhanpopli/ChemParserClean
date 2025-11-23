@@ -219,8 +219,12 @@ app.get('/img/smiles', async (req, res) => {
     const smiles = req.query.smiles?.trim();
     const width = parseInt(req.query.width) || 300;
     const height = parseInt(req.query.height) || 200;
+    const wantJson = req.query.json === 'true';
 
     if (!smiles) {
+      if (wantJson) {
+        return res.json({ success: false, error: 'SMILES required' });
+      }
       return res.status(400).send(createErrorSvg('SMILES required', width, height));
     }
 
@@ -228,6 +232,7 @@ app.get('/img/smiles', async (req, res) => {
     console.log(`📥 [MoleculeViewer] GET /img/smiles`);
     console.log(`   SMILES: ${smiles}`);
     console.log(`   Size: ${width}x${height}px`);
+    console.log(`   JSON mode: ${wantJson}`);
 
     // Canonicalize SMILES to prevent duplicate cache entries
     let canonicalSmiles;
@@ -245,6 +250,14 @@ app.get('/img/smiles', async (req, res) => {
 
     if (svg) {
       console.log(`✅ Served from cache: ${cacheKey}`);
+      if (wantJson) {
+        return res.json({
+          success: true,
+          svg: svg,
+          cache_url: `http://localhost:${PORT}/cache/moleculeviewer/${cacheKey}`,
+          cached: true
+        });
+      }
       res.set('Content-Type', 'image/svg+xml');
       res.set('Cache-Control', 'public, max-age=86400');
       res.set('Access-Control-Allow-Origin', '*');
@@ -263,12 +276,24 @@ app.get('/img/smiles', async (req, res) => {
     console.log(`✅ Generated and cached: ${cacheKey}`);
     console.log(`${'='.repeat(70)}\n`);
 
+    if (wantJson) {
+      return res.json({
+        success: true,
+        svg: svg,
+        cache_url: `http://localhost:${PORT}/cache/moleculeviewer/${cacheKey}`,
+        cached: false
+      });
+    }
+
     res.set('Content-Type', 'image/svg+xml');
     res.set('Cache-Control', 'public, max-age=86400');
     res.set('Access-Control-Allow-Origin', '*');
     res.send(svg);
   } catch (error) {
     console.error(`❌ Error: ${error.message}`);
+    if (req.query.json === 'true') {
+      return res.json({ success: false, error: error.message });
+    }
     res.set('Content-Type', 'image/svg+xml');
     res.send(createErrorSvg(error.message, 300, 200));
   }
@@ -277,14 +302,19 @@ app.get('/img/smiles', async (req, res) => {
 /**
  * GET /img/nomenclature - Render chemical name as SVG image
  * Usage: http://localhost:5000/img/nomenclature?nomenclature=acetone&width=300&height=200
+ * Add json=true for JSON response with SVG data
  */
 app.get('/img/nomenclature', async (req, res) => {
   try {
     const nomenclature = req.query.nomenclature?.trim();
     const width = parseInt(req.query.width) || 300;
     const height = parseInt(req.query.height) || 200;
+    const wantJson = req.query.json === 'true';
 
     if (!nomenclature) {
+      if (wantJson) {
+        return res.json({ success: false, error: 'Nomenclature required' });
+      }
       return res.status(400).send(createErrorSvg('Nomenclature required', width, height));
     }
 
@@ -292,6 +322,7 @@ app.get('/img/nomenclature', async (req, res) => {
     console.log(`📥 [MoleculeViewer] GET /img/nomenclature`);
     console.log(`   Nomenclature: ${nomenclature}`);
     console.log(`   Size: ${width}x${height}px`);
+    console.log(`   JSON mode: ${wantJson}`);
 
     // Step 1: Convert nomenclature to SMILES
     console.log(`   Converting to SMILES...`);
@@ -314,6 +345,14 @@ app.get('/img/nomenclature', async (req, res) => {
 
     if (svg) {
       console.log(`✅ Served from cache: ${cacheKey}`);
+      if (wantJson) {
+        return res.json({
+          success: true,
+          svg: svg,
+          cache_url: `http://localhost:${PORT}/cache/moleculeviewer/${cacheKey}`,
+          cached: true
+        });
+      }
       res.set('Content-Type', 'image/svg+xml');
       res.set('Cache-Control', 'public, max-age=86400');
       res.set('Access-Control-Allow-Origin', '*');
@@ -332,12 +371,24 @@ app.get('/img/nomenclature', async (req, res) => {
     console.log(`✅ Generated and cached: ${cacheKey}`);
     console.log(`${'='.repeat(70)}\n`);
 
+    if (wantJson) {
+      return res.json({
+        success: true,
+        svg: svg,
+        cache_url: `http://localhost:${PORT}/cache/moleculeviewer/${cacheKey}`,
+        cached: false
+      });
+    }
+
     res.set('Content-Type', 'image/svg+xml');
     res.set('Cache-Control', 'public, max-age=86400');
     res.set('Access-Control-Allow-Origin', '*');
     res.send(svg);
   } catch (error) {
     console.error(`❌ Error: ${error.message}`);
+    if (req.query.json === 'true') {
+      return res.json({ success: false, error: error.message });
+    }
     res.set('Content-Type', 'image/svg+xml');
     res.send(createErrorSvg(`Not found: ${error.message}`, 300, 200));
   }
@@ -364,6 +415,43 @@ app.get('/', (req, res) => {
       nomenclature: 'http://localhost:5000/img/nomenclature?nomenclature=benzene'
     }
   });
+});
+
+/**
+ * POST /api/nomenclature-to-smiles - Convert chemical name to SMILES
+ * Used by mol2chemfig extension to get SMILES for rendering
+ */
+app.post('/api/nomenclature-to-smiles', async (req, res) => {
+  try {
+    const { nomenclature } = req.body;
+
+    if (!nomenclature) {
+      return res.status(400).json({ error: 'Nomenclature required' });
+    }
+
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`📥 [MoleculeViewer] POST /api/nomenclature-to-smiles`);
+    console.log(`   Nomenclature: ${nomenclature}`);
+
+    const smiles = await convertNomenclatureToSmiles(nomenclature);
+
+    console.log(`   ✓ SMILES: ${smiles}`);
+    console.log(`${'='.repeat(70)}\n`);
+
+    res.json({
+      success: true,
+      nomenclature: nomenclature,
+      smiles: smiles,
+      source: 'MoleculeViewer/PubChem'
+    });
+  } catch (error) {
+    console.error(`❌ Nomenclature conversion error: ${error.message}`);
+    res.status(404).json({
+      success: false,
+      error: error.message,
+      nomenclature: req.body?.nomenclature
+    });
+  }
 });
 
 /**

@@ -1,12 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Chemistry Formula Renderer",
-  "version": "3.0",
+  "version": "5.1",
   "description": "Renders mhchem and chemfig formulas using MathJax - works on all sites!",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_security_policy": {
-    "extension_pages": "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* http://192.168.1.4:* ws://localhost:*; frame-src https://embed.molview.org"
+    "extension_pages": "script-src 'self'; default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:* http://192.168.1.4:* ws://localhost:* https://www.ebi.ac.uk https://*.ebi.ac.uk https://pubchem.ncbi.nlm.nih.gov; frame-src https://embed.molview.org"
   },
   "web_accessible_resources": [
     {

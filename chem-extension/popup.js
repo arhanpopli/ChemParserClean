@@ -14,14 +14,12 @@ const engineInfo = document.getElementById('engineInfo');
 
 // MoleculeViewer options
 const moleculeViewerOptions = document.getElementById('moleculeViewerOptions');
-const showCarbonsToggle = document.getElementById('showCarbonsToggle');
-const showMethylsToggle = document.getElementById('showMethylsToggle');
-const aromaticCirclesToggle = document.getElementById('aromaticCirclesToggle');
-const fancyBondsToggle = document.getElementById('fancyBondsToggle');
-const atomNumbersToggle = document.getElementById('atomNumbersToggle');
+const mvUse3DSmilesToggle = document.getElementById('mvUse3DSmilesToggle');
 const flipHorizontalToggle = document.getElementById('flipHorizontalToggle');
 const flipVerticalToggle = document.getElementById('flipVerticalToggle');
-const hydrogensSelect = document.getElementById('hydrogensSelect');
+const mvInvertToggle = document.getElementById('mvInvertToggle');
+const mvRotateSlider = document.getElementById('mvRotateSlider');
+const mvRotateValue = document.getElementById('mvRotateValue');
 
 // mol2chemfig options
 const mol2chemfigOptions = document.getElementById('mol2chemfigOptions');
@@ -65,14 +63,12 @@ chrome.storage.sync.get({
   performanceMode: true,
   rendererEngine: 'moleculeviewer',  // Default to MoleculeViewer
   devMode: false,
-  showCarbons: false,
-  showMethyls: false,
-  aromaticCircles: true,
-  fancyBonds: true,
-  atomNumbers: false,
+  // MoleculeViewer options
+  mvUse3DSmiles: false,  // Use OPSIN 3D for stereochemistry
   flipHorizontal: false,
   flipVertical: false,
-  hydrogensMode: 'keep',
+  mvInvert: false,  // Invert colors for MoleculeViewer
+  mvRotate: 0,  // Rotation angle for MoleculeViewer
   // mol2chemfig options
   m2cfShowCarbons: false,
   m2cfAromaticCircles: false,
@@ -84,6 +80,9 @@ chrome.storage.sync.get({
   m2cfFlipVertical: false,
   m2cfHydrogensMode: 'keep',
   use3DSmiles: false,
+  m2cfAddH2: false,
+  m2cfInvert: false,
+  m2cfRotate: 0,
   // Image size controls
   saveSizePerImage: false,
   saveSizeBySMILES: true,  // FIX: Enable by default - global size saving across all pages
@@ -100,17 +99,17 @@ chrome.storage.sync.get({
   chemfigToggle.checked = settings.renderChemfig;
   perfModeToggle.checked = settings.performanceMode;
   devModeToggle.checked = settings.devMode;
-  
+
   // Load MoleculeViewer options
-  if (showCarbonsToggle) showCarbonsToggle.checked = settings.showCarbons;
-  if (showMethylsToggle) showMethylsToggle.checked = settings.showMethyls;
-  if (aromaticCirclesToggle) aromaticCirclesToggle.checked = settings.aromaticCircles;
-  if (fancyBondsToggle) fancyBondsToggle.checked = settings.fancyBonds;
-  if (atomNumbersToggle) atomNumbersToggle.checked = settings.atomNumbers;
+  if (mvUse3DSmilesToggle) mvUse3DSmilesToggle.checked = settings.mvUse3DSmiles;
   if (flipHorizontalToggle) flipHorizontalToggle.checked = settings.flipHorizontal;
   if (flipVerticalToggle) flipVerticalToggle.checked = settings.flipVertical;
-  if (hydrogensSelect) hydrogensSelect.value = settings.hydrogensMode;
-  
+  if (mvInvertToggle) mvInvertToggle.checked = settings.mvInvert;
+  if (mvRotateSlider) {
+    mvRotateSlider.value = settings.mvRotate;
+    if (mvRotateValue) mvRotateValue.textContent = settings.mvRotate + '°';
+  }
+
   // Load mol2chemfig options
   if (m2cfShowCarbonsToggle) m2cfShowCarbonsToggle.checked = settings.m2cfShowCarbons;
   if (m2cfAromaticCirclesToggle) m2cfAromaticCirclesToggle.checked = settings.m2cfAromaticCircles;
@@ -122,6 +121,15 @@ chrome.storage.sync.get({
   if (m2cfFlipVerticalToggle) m2cfFlipVerticalToggle.checked = settings.m2cfFlipVertical;
   if (m2cfHydrogensSelect) m2cfHydrogensSelect.value = settings.m2cfHydrogensMode;
   if (use3DSmilesToggle) use3DSmilesToggle.checked = settings.use3DSmiles;
+
+  // New controls
+  if (m2cfAddH2Toggle) m2cfAddH2Toggle.checked = settings.m2cfAddH2;
+  if (m2cfFlipToggle) m2cfFlipToggle.checked = settings.m2cfFlipHorizontal; // Reuse existing setting
+  if (m2cfInvertToggle) m2cfInvertToggle.checked = settings.m2cfInvert;
+  if (m2cfRotateSlider) {
+    m2cfRotateSlider.value = settings.m2cfRotate;
+    if (m2cfRotateValue) m2cfRotateValue.textContent = settings.m2cfRotate + '°';
+  }
 
   // Load PubChem options
   if (pubchemImageSizeSelect) pubchemImageSizeSelect.value = settings.pubchemImageSize;
@@ -141,7 +149,7 @@ chrome.storage.sync.get({
   engineRadios.forEach(radio => {
     radio.checked = (radio.value === settings.rendererEngine);
   });
-  
+
   // Show MoleculeViewer, mol2chemfig, or PubChem options based on selected engine
   if (moleculeViewerOptions) {
     moleculeViewerOptions.style.display = (settings.rendererEngine === 'moleculeviewer') ? 'block' : 'none';
@@ -152,16 +160,6 @@ chrome.storage.sync.get({
   if (pubchemOptions) {
     pubchemOptions.style.display = (settings.rendererEngine === 'pubchem') ? 'block' : 'none';
   }
-
-  // Update engine info
-  updateEngineInfo(settings.rendererEngine);
-});
-
-// Save settings when changed
-enabledToggle.addEventListener('change', (e) => {
-  chrome.storage.sync.set({ enabled: e.target.checked }, () => {
-    showStatus('Extension ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-  });
 });
 
 mhchemToggle.addEventListener('change', (e) => {
@@ -207,42 +205,10 @@ if (saveSizeBySMILESToggle) {
 }
 
 // MoleculeViewer rendering options
-if (showCarbonsToggle) {
-  showCarbonsToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ showCarbons: e.target.checked }, () => {
-      showStatus('Show carbons ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (showMethylsToggle) {
-  showMethylsToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ showMethyls: e.target.checked }, () => {
-      showStatus('Show methyls ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (aromaticCirclesToggle) {
-  aromaticCirclesToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ aromaticCircles: e.target.checked }, () => {
-      showStatus('Aromatic circles ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (fancyBondsToggle) {
-  fancyBondsToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ fancyBonds: e.target.checked }, () => {
-      showStatus('Fancy bonds ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (atomNumbersToggle) {
-  atomNumbersToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ atomNumbers: e.target.checked }, () => {
-      showStatus('Atom numbers ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+if (mvUse3DSmilesToggle) {
+  mvUse3DSmilesToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ mvUse3DSmiles: e.target.checked }, () => {
+      showStatus('3D Stereochemistry (OPSIN) ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
     });
   });
 }
@@ -263,10 +229,22 @@ if (flipVerticalToggle) {
   });
 }
 
-if (hydrogensSelect) {
-  hydrogensSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ hydrogensMode: e.target.value }, () => {
-      showStatus('Hydrogens set to ' + e.target.value + '. Reload page to apply.', 'success');
+if (mvInvertToggle) {
+  mvInvertToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ mvInvert: e.target.checked }, () => {
+      showStatus('Invert colors ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (mvRotateSlider) {
+  mvRotateSlider.addEventListener('input', (e) => {
+    mvRotateValue.textContent = e.target.value + '°';
+  });
+
+  mvRotateSlider.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ mvRotate: parseInt(e.target.value) }, () => {
+      showStatus('Rotation set to ' + e.target.value + '°. Reload page to apply.', 'success');
     });
   });
 }
@@ -336,6 +314,13 @@ if (m2cfFlipVerticalToggle) {
   });
 }
 
+// New mol2chemfig controls
+const m2cfAddH2Toggle = document.getElementById('m2cfAddH2Toggle');
+const m2cfFlipToggle = document.getElementById('m2cfFlipToggle');
+const m2cfInvertToggle = document.getElementById('m2cfInvertToggle');
+const m2cfRotateSlider = document.getElementById('m2cfRotateSlider');
+const m2cfRotateValue = document.getElementById('m2cfRotateValue');
+
 if (m2cfHydrogensSelect) {
   m2cfHydrogensSelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ m2cfHydrogensMode: e.target.value }, () => {
@@ -348,6 +333,43 @@ if (use3DSmilesToggle) {
   use3DSmilesToggle.addEventListener('change', (e) => {
     chrome.storage.sync.set({ use3DSmiles: e.target.checked }, () => {
       showStatus('3D SMILES (OPSIN) ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+// New Event Listeners
+if (m2cfAddH2Toggle) {
+  m2cfAddH2Toggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ m2cfAddH2: e.target.checked }, () => {
+      showStatus('Add Hydrogens ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (m2cfFlipToggle) {
+  m2cfFlipToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ m2cfFlipHorizontal: e.target.checked }, () => {
+      showStatus('Horizontal Flip ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (m2cfInvertToggle) {
+  m2cfInvertToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ m2cfInvert: e.target.checked }, () => {
+      showStatus('Invert Colors ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (m2cfRotateSlider) {
+  m2cfRotateSlider.addEventListener('input', (e) => {
+    m2cfRotateValue.textContent = e.target.value + '°';
+  });
+
+  m2cfRotateSlider.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ m2cfRotate: parseInt(e.target.value) }, () => {
+      showStatus('Rotation set to ' + e.target.value + '°. Reload page to apply.', 'success');
     });
   });
 }
@@ -402,7 +424,12 @@ engineRadios.forEach(radio => {
       const engine = e.target.value;
       chrome.storage.sync.set({ rendererEngine: engine }, () => {
         updateEngineInfo(engine);
-        showStatus(`Switched to ${engine === 'moleculeviewer' ? '🧪 MoleculeViewer' : '📐 mol2chemfig'}. Reload page to apply.`, 'success');
+        const engineNames = {
+          'moleculeviewer': 'MoleculeViewer',
+          'mol2chemfig': 'mol2chemfig',
+          'pubchem': 'PubChem'
+        };
+        showStatus(`Switched to ${engineNames[engine]}. Reload page to apply.`, 'success');
       });
     }
   });
@@ -412,20 +439,18 @@ engineRadios.forEach(radio => {
  * Update engine info display
  */
 function updateEngineInfo(engine) {
-  if (!engineInfo) return;
-
   if (engine === 'moleculeviewer') {
-    engineInfo.textContent = '🧪 MoleculeViewer Server (localhost:5000)';
+    if (engineInfo) engineInfo.textContent = '🧪 MoleculeViewer Server (localhost:5000)';
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'block';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
     if (pubchemOptions) pubchemOptions.style.display = 'none';
   } else if (engine === 'mol2chemfig') {
-    engineInfo.textContent = '📐 mol2chemfig Server (localhost:8000)';
+    if (engineInfo) engineInfo.textContent = '📐 mol2chemfig Server (localhost:8000)';
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'block';
     if (pubchemOptions) pubchemOptions.style.display = 'none';
   } else if (engine === 'pubchem') {
-    engineInfo.textContent = '🌐 PubChem Server (localhost:5002)';
+    if (engineInfo) engineInfo.textContent = '🌐 PubChem Server (localhost:5002)';
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
     if (pubchemOptions) pubchemOptions.style.display = 'block';
@@ -437,8 +462,8 @@ function updateEngineInfo(engine) {
  */
 function showStatus(message, type) {
   statusDiv.textContent = message;
-  statusDiv.className = `status ${type}`;
-  
+  statusDiv.className = 'status show';
+
   setTimeout(() => {
     statusDiv.className = 'status';
   }, 2500);
@@ -473,11 +498,11 @@ if (renderCodeBtn && codeEditor && codePreview && codePreviewContent) {
 
     // Show preview section
     codePreview.style.display = 'block';
-    
+
     // Create a temporary rendering of the code
     // We'll inject it into the preview content div
     codePreviewContent.innerHTML = code;
-    
+
     // Send message to content script to process the preview
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]) {
@@ -496,3 +521,142 @@ if (renderCodeBtn && codeEditor && codePreview && codePreviewContent) {
     });
   });
 }
+
+// ==========================================
+// UI SETTINGS - Glassmorphism Controls
+// ==========================================
+
+const blurSlider = document.getElementById('blurSlider');
+const opacitySlider = document.getElementById('opacitySlider');
+const blurValue = document.getElementById('blurValue');
+const opacityValue = document.getElementById('opacityValue');
+
+// Apply glassmorphism styles to all sections
+function applyGlassmorphism(blur, opacity) {
+  var sections = document.querySelectorAll('.section');
+  var header = document.querySelector('.header');
+  var footer = document.querySelector('.footer');
+  var radioOptions = document.querySelectorAll('.radio-option');
+
+  var blurPx = blur + 'px';
+  var bgOpacity = opacity / 100;
+
+  sections.forEach(function (section) {
+    section.style.backdropFilter = 'blur(' + blurPx + ')';
+    section.style.webkitBackdropFilter = 'blur(' + blurPx + ')';
+    section.style.background = 'rgba(255, 255, 255, ' + bgOpacity + ')';
+  });
+
+  if (header) {
+    header.style.backdropFilter = 'blur(' + blurPx + ')';
+    header.style.webkitBackdropFilter = 'blur(' + blurPx + ')';
+    header.style.background = 'rgba(255, 255, 255, ' + (bgOpacity * 0.9) + ')';
+  }
+
+  if (footer) {
+    footer.style.backdropFilter = 'blur(' + blurPx + ')';
+    footer.style.webkitBackdropFilter = 'blur(' + blurPx + ')';
+    footer.style.background = 'rgba(255, 255, 255, ' + (bgOpacity * 0.9) + ')';
+  }
+
+  radioOptions.forEach(function (opt) {
+    opt.style.background = 'rgba(255, 255, 255, ' + (bgOpacity * 0.8) + ')';
+  });
+}
+
+// Load UI settings
+chrome.storage.sync.get({
+  uiBlur: 10,
+  uiOpacity: 45
+}, function (settings) {
+  if (blurSlider) {
+    blurSlider.value = settings.uiBlur;
+    blurValue.textContent = settings.uiBlur + 'px';
+  }
+  if (opacitySlider) {
+    opacitySlider.value = settings.uiOpacity;
+    opacityValue.textContent = settings.uiOpacity + '%';
+  }
+  applyGlassmorphism(settings.uiBlur, settings.uiOpacity);
+});
+
+// Blur slider handler
+if (blurSlider) {
+  blurSlider.addEventListener('input', function (e) {
+    var val = parseInt(e.target.value);
+    blurValue.textContent = val + 'px';
+    var opacity = parseInt(opacitySlider.value);
+    applyGlassmorphism(val, opacity);
+  });
+
+  blurSlider.addEventListener('change', function (e) {
+    chrome.storage.sync.set({ uiBlur: parseInt(e.target.value) });
+  });
+}
+
+// Opacity slider handler
+if (opacitySlider) {
+  opacitySlider.addEventListener('input', function (e) {
+    var val = parseInt(e.target.value);
+    opacityValue.textContent = val + '%';
+    var blur = parseInt(blurSlider.value);
+    applyGlassmorphism(blur, val);
+  });
+
+  opacitySlider.addEventListener('change', function (e) {
+    chrome.storage.sync.set({ uiOpacity: parseInt(e.target.value) });
+  });
+}
+
+// Molecule Count slider handler
+const molCountSlider = document.getElementById('molCountSlider');
+const molCountValue = document.getElementById('molCountValue');
+
+if (molCountSlider) {
+  molCountSlider.addEventListener('input', function (e) {
+    molCountValue.textContent = e.target.value;
+  });
+
+  molCountSlider.addEventListener('change', function (e) {
+    chrome.storage.sync.set({ moleculeCount: parseInt(e.target.value) }, () => {
+      // Trigger animation update if possible, or just let the user reload
+      // For now, we'll rely on the animation script listening to storage changes or reload
+      if (window.updateMoleculeAnimation) {
+        window.updateMoleculeAnimation();
+      }
+    });
+  });
+}
+
+// Molecule Scale slider handler
+const molScaleSlider = document.getElementById('molScaleSlider');
+const molScaleValue = document.getElementById('molScaleValue');
+
+if (molScaleSlider) {
+  molScaleSlider.addEventListener('input', function (e) {
+    molScaleValue.textContent = e.target.value;
+  });
+
+  molScaleSlider.addEventListener('change', function (e) {
+    chrome.storage.sync.set({ moleculeScale: parseFloat(e.target.value) }, () => {
+      if (window.updateMoleculeAnimation) {
+        window.updateMoleculeAnimation();
+      }
+    });
+  });
+}
+
+// Load Molecule Settings
+chrome.storage.sync.get({
+  moleculeCount: 20,
+  moleculeScale: 0.5
+}, function (settings) {
+  if (molCountSlider) {
+    molCountSlider.value = settings.moleculeCount;
+    molCountValue.textContent = settings.moleculeCount;
+  }
+  if (molScaleSlider) {
+    molScaleSlider.value = settings.moleculeScale;
+    molScaleValue.textContent = settings.moleculeScale;
+  }
+});

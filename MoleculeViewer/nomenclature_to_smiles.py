@@ -27,11 +27,14 @@ try:
 
             data = response.json()
 
-            # Extract SMILES from response
-            if 'properties' in data and len(data['properties']) > 0:
-                smiles = data['properties'][0].get('CanonicalSMILES')
-                if smiles:
-                    return {"smiles": smiles}
+            # Extract SMILES from response - PubChem uses PropertyTable.Properties
+            if 'PropertyTable' in data and 'Properties' in data['PropertyTable']:
+                props = data['PropertyTable']['Properties']
+                if len(props) > 0:
+                    # Try different SMILES field names (PubChem API variations)
+                    smiles = props[0].get('CanonicalSMILES') or props[0].get('ConnectivitySMILES') or props[0].get('IsomericSMILES')
+                    if smiles:
+                        return {"smiles": smiles}
 
             return {"error": f"Could not find SMILES for: {nomenclature}"}
 

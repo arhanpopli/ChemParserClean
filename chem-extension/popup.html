@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
-  <title>Chemistry Renderer - Hybrid Neumorphic Gradient</title>
+  <title>Chemistry Renderer</title>
   <style>
     * {
       margin: 0;
@@ -11,451 +12,318 @@
     }
 
     body {
-      width: 420px;
+      width: 360px;
+      min-height: 600px;
+      max-height: 650px;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-size: 14px;
-      color: #2d3748;
-      /* Design 1: Purple gradient background */
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #1a1a1a;
+      background: #fafafa;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Container for floating SVG molecules */
+    #moleculeContainer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 360px;
+      height: 650px;
+      z-index: 0;
+      pointer-events: none;
       overflow: hidden;
     }
 
+    .floating-molecule {
+      position: absolute;
+      pointer-events: none;
+    }
+
     .container {
-      /* Design 8: Neumorphic base */
-      background: #e0e5ec;
+      position: relative;
+      z-index: 1;
       display: flex;
       flex-direction: column;
-      min-height: 650px;
+      min-height: 600px;
       max-height: 650px;
-      border-radius: 20px;
-      margin: 10px;
-      /* Hybrid: Combine gradient shadow with neumorphic depth */
-      box-shadow:
-        20px 20px 40px rgba(0, 0, 0, 0.25),
-        -10px -10px 30px rgba(255, 255, 255, 0.1);
       overflow: hidden;
     }
 
     .header {
-      /* Design 1: Gradient background */
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 24px;
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #1a1a1a;
+      padding: 16px;
       text-align: center;
-      position: relative;
-      overflow: hidden;
-      /* Design 8: Soft embossed bottom edge */
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    /* Design 1: Shimmer animation */
-    .header::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      right: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
-      animation: shimmer 3s infinite;
-    }
-
-    @keyframes shimmer {
-      0%, 100% { transform: translate(0, 0); }
-      50% { transform: translate(-10px, -10px); }
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     }
 
     .header h1 {
-      font-size: 24px;
+      font-size: 18px;
       font-weight: 700;
-      margin-bottom: 6px;
-      position: relative;
-      z-index: 1;
-      /* Hybrid: Soft text shadow for depth */
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+      margin-bottom: 4px;
+      letter-spacing: -0.5px;
     }
 
     .header p {
-      font-size: 13px;
-      opacity: 0.95;
-      position: relative;
-      z-index: 1;
+      font-size: 12px;
+      color: #666;
+      font-weight: 400;
     }
 
     .content {
       flex: 1;
       overflow-y: auto;
-      padding: 20px;
-      /* Design 8: Neumorphic background */
-      background: #e0e5ec;
+      padding: 12px;
     }
 
     .content::-webkit-scrollbar {
-      width: 8px;
+      width: 6px;
     }
 
     .content::-webkit-scrollbar-track {
-      background: #e0e5ec;
+      background: transparent;
     }
 
     .content::-webkit-scrollbar-thumb {
-      background: #e0e5ec;
-      border-radius: 4px;
-      /* Design 8: Neumorphic scrollbar */
-      box-shadow:
-        inset 4px 4px 8px #a3b1c6,
-        inset -4px -4px 8px #ffffff;
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 3px;
     }
 
     .content::-webkit-scrollbar-thumb:hover {
-      box-shadow:
-        inset 6px 6px 12px #a3b1c6,
-        inset -6px -6px 12px #ffffff;
+      background: rgba(0, 0, 0, 0.25);
     }
 
+    /* Glassmorphic sections - more transparent */
     .section {
-      margin-bottom: 18px;
-      /* Hybrid: Gradient background with neumorphic shadows */
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-      padding: 20px;
-      border-radius: 16px;
-      /* Design 8: Soft neumorphic shadows */
-      box-shadow:
-        8px 8px 16px #a3b1c6,
-        -8px -8px 16px #ffffff;
-      transition: transform 0.2s, box-shadow 0.3s;
-    }
-
-    .section:hover {
-      /* Design 1: Lift on hover */
-      transform: translateY(-2px);
-      /* Hybrid: Enhanced gradient shadow on hover */
-      box-shadow:
-        12px 12px 24px #a3b1c6,
-        -12px -12px 24px #ffffff,
-        0 0 20px rgba(102, 126, 234, 0.1);
+      margin-bottom: 12px;
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
     }
 
     .section-title {
       font-size: 11px;
       font-weight: 700;
-      /* Design 1: Gradient color */
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: #1a1a1a;
       text-transform: uppercase;
-      margin-bottom: 16px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid transparent;
-      border-image: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-      border-image-slice: 1;
-      letter-spacing: 1px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      /* Hybrid: Subtle embossed effect */
-      text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      letter-spacing: 0.8px;
     }
 
     .option {
-      padding: 14px 0;
+      padding: 8px 0;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid rgba(163, 177, 198, 0.2);
-      gap: 12px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+      gap: 10px;
     }
 
     .option:last-child {
       border-bottom: none;
+      padding-bottom: 0;
     }
 
-    .option label {
+    .option:first-of-type {
+      padding-top: 0;
+    }
+
+    .option-label {
       flex: 1;
       cursor: pointer;
+      min-width: 0;
     }
 
     .option strong {
       display: block;
       font-weight: 600;
-      color: #2d3748;
-      margin-bottom: 3px;
+      color: #1a1a1a;
+      font-size: 13px;
+      margin-bottom: 2px;
     }
 
     .option small {
       display: block;
-      color: #718096;
-      font-size: 12px;
-      line-height: 1.4;
+      color: #555;
+      font-size: 11px;
+      line-height: 1.3;
     }
 
-    input[type="checkbox"], input[type="radio"] {
+    input[type="checkbox"],
+    input[type="radio"] {
       display: none;
     }
 
+    /* Fixed toggle switch */
     .toggle {
-      display: inline-block;
-      width: 52px;
-      height: 28px;
-      min-width: 52px;
-      max-width: 52px;
-      /* Design 8: Neumorphic base */
-      background: #e0e5ec;
-      border-radius: 14px;
+      width: 40px;
+      height: 22px;
+      min-width: 40px;
+      max-width: 40px;
+      background: #ccc;
+      border-radius: 11px;
       position: relative;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: background 0.2s ease;
       flex-shrink: 0;
       flex-grow: 0;
-      margin-left: 12px;
-      /* Design 8: Inset shadow */
-      box-shadow:
-        inset 4px 4px 8px #a3b1c6,
-        inset -4px -4px 8px #ffffff;
+      display: block;
     }
 
     .toggle::before {
       content: '';
       position: absolute;
-      width: 24px;
-      height: 24px;
-      /* Design 8: Neumorphic knob */
-      background: #e0e5ec;
+      width: 18px;
+      height: 18px;
+      background: white;
       border-radius: 50%;
       top: 2px;
       left: 2px;
-      transition: left 0.3s ease, box-shadow 0.3s;
-      /* Design 8: Raised shadow */
-      box-shadow:
-        3px 3px 6px #a3b1c6,
-        -3px -3px 6px #ffffff;
+      transition: transform 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
 
-    input:checked + .toggle {
-      /* Hybrid: Gradient background when checked */
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      /* Keep inset shadow for depth */
-      box-shadow:
-        inset 2px 2px 4px rgba(0, 0, 0, 0.2),
-        inset -2px -2px 4px rgba(255, 255, 255, 0.1);
+    input:checked+.toggle {
+      background: #1a1a1a;
     }
 
-    input:checked + .toggle::before {
-      left: 26px;
-      background: white;
-      /* Design 1: Stronger shadow when active */
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    input:checked+.toggle::before {
+      transform: translateX(18px);
     }
 
-    select, textarea {
-      width: 100%;
-      padding: 12px 14px;
-      border: none;
-      border-radius: 10px;
-      font-size: 13px;
-      margin-top: 10px;
-      background: #e0e5ec;
-      color: #2d3748;
-      /* Design 8: Inset neumorphic shadow */
-      box-shadow:
-        inset 4px 4px 8px #a3b1c6,
-        inset -4px -4px 8px #ffffff;
-      font-family: 'Inter', -apple-system, sans-serif;
-      transition: box-shadow 0.2s;
-    }
-
-    select:focus, textarea:focus {
-      outline: none;
-      /* Hybrid: Gradient glow on focus */
-      box-shadow:
-        inset 4px 4px 8px #a3b1c6,
-        inset -4px -4px 8px #ffffff,
-        0 0 0 3px rgba(102, 126, 234, 0.2);
-    }
-
-    .info-box {
-      /* Hybrid: Gradient background with neumorphic inset */
-      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-      padding: 12px;
-      margin-top: 12px;
-      border-radius: 10px;
-      font-size: 12px;
-      color: #92400e;
-      line-height: 1.6;
-      border-left: 4px solid #f59e0b;
-      /* Design 8: Subtle inset shadow */
-      box-shadow:
-        inset 2px 2px 4px rgba(163, 177, 198, 0.3),
-        inset -2px -2px 4px rgba(255, 255, 255, 0.3);
-    }
-
-    .info-box.success {
-      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-      border-left-color: #10b981;
-      color: #065f46;
-    }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      /* Design 1: Gradient background */
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 14px;
-      margin-top: 12px;
-      transition: all 0.3s;
-      /* Hybrid: Neumorphic raised shadow with gradient glow */
-      box-shadow:
-        6px 6px 12px #a3b1c6,
-        -6px -6px 12px rgba(255, 255, 255, 0.5),
-        0 0 20px rgba(102, 126, 234, 0.3);
-    }
-
-    button:hover {
-      /* Design 1: Lift effect */
-      transform: translateY(-2px);
-      /* Enhanced shadow on hover */
-      box-shadow:
-        8px 8px 16px #a3b1c6,
-        -8px -8px 16px rgba(255, 255, 255, 0.5),
-        0 4px 30px rgba(102, 126, 234, 0.4);
-    }
-
-    button:active {
-      transform: translateY(0);
-      /* Design 8: Pressed inset shadow */
-      box-shadow:
-        inset 4px 4px 8px rgba(0, 0, 0, 0.2),
-        inset -4px -4px 8px rgba(255, 255, 255, 0.1);
-    }
-
-    .footer {
-      /* Lighter purple gradient matching header */
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%);
-      color: white;
-      padding: 16px 20px;
-      text-align: center;
-      font-size: 11px;
-      /* Hybrid: Subtle top emboss */
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      box-shadow:
-        0 -2px 10px rgba(0, 0, 0, 0.3);
-    }
-
-    .footer a {
-      /* Design 1: Gradient color */
-      color: #667eea;
-      text-decoration: none;
-      font-weight: 600;
-      transition: color 0.2s;
-    }
-
-    .footer a:hover {
-      color: #764ba2;
-    }
-
+    /* Radio group */
     .radio-group {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      margin-top: 12px;
+      gap: 8px;
+      margin-top: 8px;
     }
 
     .radio-option {
-      padding: 14px;
-      /* Hybrid: Subtle gradient on neumorphic base */
-      background: linear-gradient(135deg, rgba(224, 229, 236, 1) 0%, rgba(230, 235, 242, 1) 100%);
-      border-radius: 12px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.4);
+      border-radius: 8px;
       cursor: pointer;
-      transition: all 0.3s;
+      transition: all 0.2s;
       display: flex;
       align-items: center;
-      gap: 12px;
-      /* Design 8: Raised neumorphic shadow */
-      box-shadow:
-        4px 4px 8px #a3b1c6,
-        -4px -4px 8px #ffffff;
+      gap: 10px;
+      border: 1px solid rgba(0, 0, 0, 0.04);
     }
 
     .radio-option:hover {
-      /* Hybrid: Lift with gradient glow */
-      transform: translateY(-1px);
-      box-shadow:
-        6px 6px 12px #a3b1c6,
-        -6px -6px 12px #ffffff,
-        0 0 15px rgba(102, 126, 234, 0.15);
+      background: rgba(255, 255, 255, 0.6);
     }
 
-    input[type="radio"]:checked + .radio-option {
-      /* Hybrid: Gradient background with inset shadow */
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-      box-shadow:
-        inset 4px 4px 8px #a3b1c6,
-        inset -4px -4px 8px #ffffff;
+    input[type="radio"]:checked+.radio-option {
+      background: rgba(0, 0, 0, 0.04);
+      border-color: rgba(0, 0, 0, 0.15);
     }
 
     .radio-indicator {
-      width: 20px;
-      height: 20px;
+      width: 16px;
+      height: 16px;
+      min-width: 16px;
       border-radius: 50%;
-      background: #e0e5ec;
+      border: 2px solid #999;
       position: relative;
       flex-shrink: 0;
-      /* Design 8: Inset neumorphic shadow */
-      box-shadow:
-        inset 3px 3px 6px #a3b1c6,
-        inset -3px -3px 6px #ffffff;
+      transition: border-color 0.2s;
     }
 
-    input[type="radio"]:checked + .radio-option .radio-indicator::after {
+    input[type="radio"]:checked+.radio-option .radio-indicator {
+      border-color: #1a1a1a;
+    }
+
+    input[type="radio"]:checked+.radio-option .radio-indicator::after {
       content: '';
       position: absolute;
-      width: 10px;
-      height: 10px;
-      /* Design 1: Gradient dot */
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      width: 8px;
+      height: 8px;
+      background: #1a1a1a;
       border-radius: 50%;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      /* Hybrid: Raised shadow on gradient */
-      box-shadow:
-        2px 2px 4px rgba(0, 0, 0, 0.2),
-        -1px -1px 2px rgba(255, 255, 255, 0.3);
     }
 
-    #codePreview {
-      margin-top: 12px;
-      padding: 16px;
-      background: #e0e5ec;
-      border-radius: 10px;
-      min-height: 80px;
-      /* Design 8: Inset neumorphic shadow */
-      box-shadow:
-        inset 4px 4px 8px #a3b1c6,
-        inset -4px -4px 8px #ffffff;
+    .radio-option strong {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a1a1a;
     }
 
+    .radio-option small {
+      display: block;
+      margin-top: 2px;
+      color: #555;
+      font-size: 11px;
+    }
+
+    /* Info box */
+    .info-box {
+      background: rgba(0, 0, 0, 0.03);
+      padding: 8px 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      color: #444;
+      line-height: 1.4;
+      border-left: 3px solid #1a1a1a;
+    }
+
+    .info-box strong {
+      color: #1a1a1a;
+    }
+
+    /* Footer */
+    .footer {
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #666;
+      padding: 10px 12px;
+      text-align: center;
+      font-size: 10px;
+      border-top: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .footer a {
+      color: #1a1a1a;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Status message */
     .status {
       display: none;
-      padding: 14px;
-      border-radius: 10px;
-      font-size: 12px;
-      margin: 14px 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      margin: 10px 0;
       font-weight: 500;
-      animation: slideIn 0.3s ease;
+      animation: slideIn 0.2s ease;
     }
 
     @keyframes slideIn {
       from {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translateY(-8px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -464,30 +332,123 @@
 
     .status.show {
       display: block;
-      /* Hybrid: Gradient background with inset shadow */
-      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-      color: #065f46;
-      box-shadow:
-        inset 3px 3px 6px rgba(16, 185, 129, 0.2),
-        inset -3px -3px 6px rgba(255, 255, 255, 0.3);
-      border: 2px solid #10b981;
+      background: rgba(0, 0, 0, 0.04);
+      color: #1a1a1a;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    /* Select dropdown */
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 8px;
+      font-size: 12px;
+      margin-top: 6px;
+      background: rgba(255, 255, 255, 0.5);
+      color: #1a1a1a;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #1a1a1a;
+    }
+
+    /* Slider styles */
+    .slider-option {
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .slider-option:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .slider-header label strong {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .slider-header span {
+      font-size: 11px;
+      color: #555;
+      font-weight: 500;
+      min-width: 30px;
+      text-align: right;
+    }
+
+    .slider {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: #ddd;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      transition: transform 0.1s;
+    }
+
+    .slider::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+
+    .slider::-webkit-slider-thumb:active {
+      transform: scale(0.95);
+    }
+
+    .slider::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     }
   </style>
 </head>
+
 <body>
+  <!-- Container for floating SVG molecules -->
+  <div id="moleculeContainer"></div>
+
   <div class="container">
     <div class="header">
-      <h1>⚗️ Chemistry Renderer</h1>
-      <p>Hybrid Neumorphic Gradient Design</p>
+      <h1>Chemistry Renderer</h1>
+      <p>Molecular Structure Visualization</p>
     </div>
 
     <div class="content">
       <!-- Main Controls -->
       <div class="section">
-        <div class="section-title">🎛️ Main Controls</div>
+        <div class="section-title">Main Controls</div>
 
         <div class="option">
-          <label for="enabledToggle">
+          <label class="option-label" for="enabledToggle">
             <strong>Extension Status</strong>
             <small>Enable/disable formula rendering</small>
           </label>
@@ -496,7 +457,7 @@
         </div>
 
         <div class="option">
-          <label for="mhchemToggle">
+          <label class="option-label" for="mhchemToggle">
             <strong>mhchem Formulas</strong>
             <small>\ce{H2O}, \ce{CO2}</small>
           </label>
@@ -505,7 +466,7 @@
         </div>
 
         <div class="option">
-          <label for="chemfigToggle">
+          <label class="option-label" for="chemfigToggle">
             <strong>chemfig Structures</strong>
             <small>\chemfig{...}</small>
           </label>
@@ -516,15 +477,15 @@
 
       <!-- Renderer Selection -->
       <div class="section">
-        <div class="section-title">🧪 Rendering Engine</div>
+        <div class="section-title">Rendering Engine</div>
 
         <div class="radio-group">
           <input type="radio" name="renderingEngine" value="moleculeviewer" id="engine1" checked>
           <label for="engine1" class="radio-option">
             <div class="radio-indicator"></div>
             <div>
-              <strong>🧪 MoleculeViewer</strong>
-              <small style="display: block; margin-top: 2px;">SMILES & nomenclature (port 5000)</small>
+              <strong>MoleculeViewer</strong>
+              <small>SMILES & nomenclature (port 5000)</small>
             </div>
           </label>
 
@@ -532,8 +493,8 @@
           <label for="engine2" class="radio-option">
             <div class="radio-indicator"></div>
             <div>
-              <strong>📐 mol2chemfig</strong>
-              <small style="display: block; margin-top: 2px;">Chemfig & LaTeX (port 8000)</small>
+              <strong>mol2chemfig</strong>
+              <small>Chemfig & LaTeX (port 8000)</small>
             </div>
           </label>
 
@@ -541,23 +502,72 @@
           <label for="engine3" class="radio-option">
             <div class="radio-indicator"></div>
             <div>
-              <strong>🌐 PubChem</strong>
-              <small style="display: block; margin-top: 2px;">Direct API with 3D models (port 5002)</small>
+              <strong>PubChem</strong>
+              <small>Direct API with 3D models (port 5002)</small>
             </div>
           </label>
         </div>
 
-        <div class="info-box success">
-          <strong>✅ Using Local Rendering</strong> - All chemistry structures render locally without external API dependencies.
+        <div class="info-box" id="engineInfo">
+          <strong>Local Rendering</strong> - All chemistry structures render locally without external API dependencies.
+        </div>
+      </div>
+
+      <!-- MoleculeViewer Options -->
+      <div id="moleculeViewerOptions" class="section">
+        <div class="section-title">MoleculeViewer Options</div>
+
+        <div class="option">
+          <label class="option-label" for="mvUse3DSmilesToggle">
+            <strong>3D Stereochemistry (OPSIN)</strong>
+            <small>Use OPSIN for 3D SMILES with stereochemistry</small>
+          </label>
+          <input type="checkbox" id="mvUse3DSmilesToggle">
+          <label class="toggle" for="mvUse3DSmilesToggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label" for="flipHorizontalToggle">
+            <strong>Flip Horizontal</strong>
+            <small>Mirror image</small>
+          </label>
+          <input type="checkbox" id="flipHorizontalToggle">
+          <label class="toggle" for="flipHorizontalToggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label" for="flipVerticalToggle">
+            <strong>Flip Vertical</strong>
+            <small>Upside down</small>
+          </label>
+          <input type="checkbox" id="flipVerticalToggle">
+          <label class="toggle" for="flipVerticalToggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label" for="mvInvertToggle">
+            <strong>Invert Colors</strong>
+            <small>Dark mode / negative effect</small>
+          </label>
+          <input type="checkbox" id="mvInvertToggle">
+          <label class="toggle" for="mvInvertToggle"></label>
+        </div>
+
+        <div class="slider-option">
+          <div class="slider-header">
+            <label><strong>Rotation</strong></label>
+            <span id="mvRotateValue">0°</span>
+          </div>
+          <input type="range" id="mvRotateSlider" min="0" max="360" step="90" value="0" class="slider">
         </div>
       </div>
 
       <!-- mol2chemfig Options -->
       <div id="mol2chemfigOptions" class="section" style="display: none;">
-        <div class="section-title">📐 mol2chemfig Options</div>
+        <div class="section-title">mol2chemfig Options</div>
 
         <div class="option">
-          <label for="m2cfShowCarbonsToggle">
+          <label class="option-label" for="m2cfShowCarbonsToggle">
             <strong>Show Carbon Atoms</strong>
             <small>Display C labels (-c flag)</small>
           </label>
@@ -566,7 +576,7 @@
         </div>
 
         <div class="option">
-          <label for="m2cfAromaticCirclesToggle">
+          <label class="option-label" for="m2cfAromaticCirclesToggle">
             <strong>Aromatic Circles</strong>
             <small>Draw circles in rings (-o flag)</small>
           </label>
@@ -575,7 +585,7 @@
         </div>
 
         <div class="option">
-          <label for="m2cfShowMethylsToggle">
+          <label class="option-label" for="m2cfShowMethylsToggle">
             <strong>Show Methyl Groups</strong>
             <small>Display CH3 labels (-m flag)</small>
           </label>
@@ -584,32 +594,141 @@
         </div>
 
         <div class="option">
-          <label for="use3DSmilesToggle">
+          <label class="option-label" for="m2cfAtomNumbersToggle">
+            <strong>Atom Numbers</strong>
+            <small>Number atoms except H (-n flag)</small>
+          </label>
+          <input type="checkbox" id="m2cfAtomNumbersToggle">
+          <label class="toggle" for="m2cfAtomNumbersToggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label" for="m2cfFancyBondsToggle">
+            <strong>Fancy Bonds</strong>
+            <small>Nicer double/triple bonds (-f flag)</small>
+          </label>
+          <input type="checkbox" id="m2cfFancyBondsToggle">
+          <label class="toggle" for="m2cfFancyBondsToggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label" for="m2cfCompactToggle">
+            <strong>Compact View</strong>
+            <small>More compact structure (-z flag)</small>
+          </label>
+          <input type="checkbox" id="m2cfCompactToggle">
+          <label class="toggle" for="m2cfCompactToggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label" for="m2cfFlipVerticalToggle">
+            <strong>Flip Vertical</strong>
+            <small>Upside down (CSS transform)</small>
+          </label>
+          <input type="checkbox" id="m2cfFlipVerticalToggle">
+          <label class="toggle" for="m2cfFlipVerticalToggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label" for="use3DSmilesToggle">
             <strong>3D Stereochemistry (OPSIN)</strong>
-            <small>Use OPSIN for 3D SMILES with stereochemistry</small>
+            <small>Use OPSIN for 3D SMILES</small>
           </label>
           <input type="checkbox" id="use3DSmilesToggle">
           <label class="toggle" for="use3DSmilesToggle"></label>
         </div>
+
+        <div class="option">
+          <label class="option-label" for="m2cfAddH2Toggle">
+            <strong>Add Hydrogens</strong>
+            <small>Explicitly show H atoms</small>
+          </label>
+          <input type="checkbox" id="m2cfAddH2Toggle">
+          <label class="toggle" for="m2cfAddH2Toggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label" for="m2cfFlipToggle">
+            <strong>Flip Horizontal</strong>
+            <small>Mirror image</small>
+          </label>
+          <input type="checkbox" id="m2cfFlipToggle">
+          <label class="toggle" for="m2cfFlipToggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label" for="m2cfInvertToggle">
+            <strong>Invert Colors</strong>
+            <small>Negative effect</small>
+          </label>
+          <input type="checkbox" id="m2cfInvertToggle">
+          <label class="toggle" for="m2cfInvertToggle"></label>
+        </div>
+
+        <div class="slider-option">
+          <div class="slider-header">
+            <label><strong>Rotation</strong></label>
+            <span id="m2cfRotateValue">0°</span>
+          </div>
+          <input type="range" id="m2cfRotateSlider" min="0" max="360" step="90" value="0" class="slider">
+        </div>
+      </div>
+
+      <!-- PubChem Options -->
+      <div id="pubchemOptions" class="section" style="display: none;">
+        <div class="section-title">PubChem Options</div>
+
+        <div class="option">
+          <label class="option-label" for="enable3DViewerToggle">
+            <strong>Enable 3D Viewer</strong>
+            <small>Show interactive 3D models inline</small>
+          </label>
+          <input type="checkbox" id="enable3DViewerToggle">
+          <label class="toggle" for="enable3DViewerToggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label">
+            <strong>Record Type</strong>
+            <small>2D or 3D Conformer</small>
+          </label>
+        </div>
+        <select id="pubchemRecordTypeSelect">
+          <option value="2d">2D Structure</option>
+          <option value="3d">3D Conformer</option>
+        </select>
+
+        <div class="option">
+          <label class="option-label">
+            <strong>Image Size</strong>
+            <small>Default image dimensions</small>
+          </label>
+        </div>
+        <select id="pubchemImageSizeSelect">
+          <option value="small">Small (100x100)</option>
+          <option value="medium">Medium (200x200)</option>
+          <option value="large" selected>Large (300x300)</option>
+          <option value="xlarge">Extra Large (500x500)</option>
+        </select>
       </div>
 
       <!-- Image Size Controls -->
       <div class="section">
-        <div class="section-title">📏 Image Size Controls</div>
+        <div class="section-title">Image Size Controls</div>
 
         <div class="option">
-          <label for="saveSizePerImageToggle">
+          <label class="option-label" for="saveSizePerImageToggle">
             <strong>Save Size Per Page</strong>
-            <small>Remember image size for each page separately</small>
+            <small>Remember size for each page separately</small>
           </label>
           <input type="checkbox" id="saveSizePerImageToggle">
           <label class="toggle" for="saveSizePerImageToggle"></label>
         </div>
 
         <div class="option">
-          <label for="saveSizeBySMILESToggle">
+          <label class="option-label" for="saveSizeBySMILESToggle">
             <strong>Save Size By SMILES</strong>
-            <small>Use same size for all molecules with same SMILES</small>
+            <small>Use same size for identical molecules</small>
           </label>
           <input type="checkbox" id="saveSizeBySMILESToggle">
           <label class="toggle" for="saveSizeBySMILESToggle"></label>
@@ -618,9 +737,9 @@
 
       <!-- Performance -->
       <div class="section">
-        <div class="section-title">⚡ Performance</div>
+        <div class="section-title">Performance</div>
         <div class="option">
-          <label for="perfModeToggle">
+          <label class="option-label" for="perfModeToggle">
             <strong>Lazy-Loading Mode</strong>
             <small>Only render visible formulas</small>
           </label>
@@ -631,9 +750,9 @@
 
       <!-- Developer Mode -->
       <div class="section">
-        <div class="section-title">🔧 Developer Mode</div>
+        <div class="section-title">Developer Mode</div>
         <div class="option">
-          <label for="devModeToggle">
+          <label class="option-label" for="devModeToggle">
             <strong>Show Raw Text</strong>
             <small>Display chemfig text instead of images</small>
           </label>
@@ -642,15 +761,55 @@
         </div>
       </div>
 
+      <!-- UI Settings -->
+      <div class="section">
+        <div class="section-title">UI Settings</div>
+
+        <div class="slider-option">
+          <div class="slider-header">
+            <label><strong>Molecule Count</strong></label>
+            <span id="molCountValue">20</span>
+          </div>
+          <input type="range" id="molCountSlider" min="0" max="50" value="20" class="slider">
+        </div>
+
+        <div class="slider-option">
+          <div class="slider-header">
+            <label><strong>Molecule Size</strong></label>
+            <span id="molScaleValue">0.6</span>
+          </div>
+          <input type="range" id="molScaleSlider" min="0.1" max="1.5" step="0.1" value="0.6" class="slider">
+        </div>
+
+        <div class="slider-option">
+          <div class="slider-header">
+            <label><strong>Background Blur</strong></label>
+            <span id="blurValue">10px</span>
+          </div>
+          <input type="range" id="blurSlider" min="0" max="20" value="10" class="slider">
+        </div>
+
+        <div class="slider-option">
+          <div class="slider-header">
+            <label><strong>Box Opacity</strong></label>
+            <span id="opacityValue">45%</span>
+          </div>
+          <input type="range" id="opacitySlider" min="0" max="100" value="45" class="slider">
+        </div>
+      </div>
+
       <div class="status" id="status"></div>
 
     </div>
 
     <div class="footer">
-      v4.0 Hybrid Design (Gradient + Neumorphism) • <a href="#">Help</a>
+      v5.0 Glassmorphic Design &bull; <a href="#">Help</a>
     </div>
   </div>
 
+  <!-- External scripts (CSP compliant) -->
+  <script src="popup-animation.js"></script>
   <script src="popup.js"></script>
 </body>
+
 </html>

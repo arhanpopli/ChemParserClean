@@ -2,6 +2,7 @@ import tempfile
 import os
 import shutil
 import json
+import subprocess
 from pprint import pprint
 try:
     import urllib2 as urllib_request
@@ -122,82 +123,127 @@ def extract_svg_diff(base_svg, option_svg):
 # SVG generation using pdflatex + dvisvgm --pdf (EXACT same rendering as PDF!)
 def chemfig_to_svg(chemfig_code):
     """
-    Convert chemfig LaTeX code to SVG using latex + dvisvgm.
-    Uses the EXACT SAME LaTeX template as pdfgen.py with proper bond spacing settings.
+    Convert chemfig LaTeX code to SVG using pdflatex + pdf2svg or dvisvgm.
+    Uses a LaTeX template similar to pdfgen.py with proper bond spacing settings.
     Key settings: \\setdoublesep{3pt}, \\setcrambond{2.5pt}{0.4pt}{1.0pt}
+
+    Now uses pdflatex for better compatibility with complex molecules (hydrogens, etc.)
     """
     tempdir = tempfile.mkdtemp()
     tex_file = os.path.join(tempdir, 'molecule.tex')
+    pdf_file = os.path.join(tempdir, 'molecule.pdf')
     dvi_file = os.path.join(tempdir, 'molecule.dvi')
     svg_file = os.path.join(tempdir, 'molecule.svg')
-    
+
     # Path to mol2chemfig.sty (same as pdfgen.py)
     m2pkg_path = '/usr/src/app/src/mol2chemfig'
     pkg = '/mol2chemfig.sty'
-    
-    # LaTeX template - EXACT SAME as original pdfgen.py (lines 128-145)
-    # This includes critical bond spacing parameters!
+
+    # LaTeX template - similar to pdfgen.py with geometry package for proper sizing
+    # Uses larger paper size to accommodate complex molecules with hydrogens
     latex_content = r'''\documentclass{minimal}
 \usepackage{xcolor, mol2chemfig}
+\usepackage[margin=10pt,papersize={400pt, 300pt}]{geometry}
 \usepackage[helvet]{sfmath}
 \setcrambond{2.5pt}{0.4pt}{1.0pt}
 \setbondoffset{1pt}
 \setdoublesep{3pt}
-\setatomsep{28pt}
-\renewcommand{\printatom}[1]{\fontsize{12pt}{14pt}\selectfont{\ensuremath{\mathsf{#1}}}}
+\setatomsep{20pt}
+\renewcommand{\printatom}[1]{\fontsize{10pt}{12pt}\selectfont{\ensuremath{\mathsf{#1}}}}
 \setlength{\parindent}{0pt}
+\setlength{\fboxsep}{0pt}
 \begin{document}
+\vspace*{\fill}
+\begin{center}
 %s
+\end{center}
+\vspace*{\fill}
 \end{document}''' % chemfig_code
-    
+
     try:
         # Create symlink to mol2chemfig.sty (same as pdfgen.py does)
         try:
-            os.symlink(m2pkg_path + pkg, tempdir + pkg)
+            os.symlink(m2pkg_path + pkg, os.path.join(tempdir, 'mol2chemfig.sty'))
         except (OSError, AttributeError):
             # Fallback if symlink fails
-            shutil.copy(m2pkg_path + pkg, tempdir + pkg)
-        
+            shutil.copy(m2pkg_path + pkg, os.path.join(tempdir, 'mol2chemfig.sty'))
+
         # Write LaTeX file
         with open(tex_file, 'w') as f:
             f.write(latex_content)
-        
-        # Compile using latex (not pdflatex - dvisvgm needs DVI)
-        latex_cmd = 'latex -interaction=nonstopmode %s > /dev/null 2>&1' % tex_file
-        curdir = os.getcwd()
-        os.chdir(tempdir)
-        os.system(latex_cmd)
-        
+
+        # Try pdflatex first (better for complex molecules with H2)
+        cmd_pdflatex = ['pdflatex', '-interaction=nonstopmode', 'molecule.tex']
+
+        with open(os.devnull, 'w') as devnull:
+            subprocess.call(cmd_pdflatex, cwd=tempdir, stdout=devnull, stderr=devnull)
+
+        # Check if PDF was created (pdflatex succeeded)
+        if os.path.exists(pdf_file):
+            # Convert PDF to SVG using dvisvgm --pdf or pdf2svg
+            cmd_dvisvgm_pdf = ['dvisvgm', '--pdf', '--font-format=woff', '--exact', 'molecule.pdf', '-o', 'molecule.svg']
+
+            with open(os.devnull, 'w') as devnull:
+                result = subprocess.call(cmd_dvisvgm_pdf, cwd=tempdir, stdout=devnull, stderr=devnull)
+
+            if os.path.exists(svg_file):
+                with open(svg_file, 'r') as f:
+                    svg_content = f.read()
+
+                # Post-processing for consistent browser rendering
+                if '<svg' in svg_content and '<defs>' in svg_content:
+                    style_block = '''<style type="text/css">
+    <![CDATA[
+    text { font-family: "Computer Modern", serif; }
+    ]]>
+</style>'''
+                    svg_content = svg_content.replace('<defs>', '<defs>' + style_block)
+
+                return svg_content, None
+
+            # Fallback: try pdf2svg if dvisvgm --pdf failed
+            cmd_pdf2svg = ['pdf2svg', 'molecule.pdf', 'molecule.svg']
+            with open(os.devnull, 'w') as devnull:
+                result = subprocess.call(cmd_pdf2svg, cwd=tempdir, stdout=devnull, stderr=devnull)
+
+            if os.path.exists(svg_file):
+                with open(svg_file, 'r') as f:
+                    svg_content = f.read()
+                return svg_content, None
+
+        # Fallback to latex + dvisvgm (original method)
+        cmd_latex = ['latex', '-interaction=nonstopmode', 'molecule.tex']
+
+        with open(os.devnull, 'w') as devnull:
+            subprocess.call(cmd_latex, cwd=tempdir, stdout=devnull, stderr=devnull)
+
         if not os.path.exists(dvi_file):
-            os.chdir(curdir)
-            return None, "latex compilation failed"
-        
-        # Convert DVI to SVG - extract vector with proper fonts
-        dvisvgm_cmd = 'dvisvgm --font-format=woff --exact %s -o %s 2>&1' % (dvi_file, svg_file)
-        result = os.system(dvisvgm_cmd)
-        
+            return None, "latex compilation failed (both pdflatex and latex)"
+
+        # Convert DVI to SVG
+        cmd_dvisvgm = ['dvisvgm', '--font-format=woff', '--exact', 'molecule.dvi', '-o', 'molecule.svg']
+
+        with open(os.devnull, 'w') as devnull:
+            result = subprocess.call(cmd_dvisvgm, cwd=tempdir, stdout=devnull, stderr=devnull)
+
         if not os.path.exists(svg_file):
-            os.chdir(curdir)
-            return None, "PDF to SVG conversion failed (exit code: %d)" % result
-        
+            return None, "DVI to SVG conversion failed (exit code: %d)" % result
+
         # Read SVG file
         with open(svg_file, 'r') as f:
             svg_content = f.read()
-        
-        os.chdir(curdir)
-        
-        # Minimal post-processing - just ensure proper display
+
+        # Post-processing
         if '<svg' in svg_content and '<defs>' in svg_content:
-            # Insert minimal style for consistent browser rendering
             style_block = '''<style type="text/css">
     <![CDATA[
     text { font-family: "Computer Modern", serif; }
     ]]>
 </style>'''
             svg_content = svg_content.replace('<defs>', '<defs>' + style_block)
-        
+
         return svg_content, None
-        
+
     except Exception as e:
         return None, str(e)
     finally:

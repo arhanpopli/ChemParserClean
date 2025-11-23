@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mol2chemfig - Complete Interface</title>
     
-    <!-- Kekule.js for chemical drawing -->
-    <link rel="stylesheet" type="text/css" href="https://partridgejiang.github.io/Kekule.js/dist/themes/default/kekule.css" />
-    <script src="https://partridgejiang.github.io/Kekule.js/dist/kekule.min.js"></script>
     
     <style>
         * {
@@ -431,8 +428,8 @@
 
     <div class="status-bar">
         <div id="statusIndicator" class="status">Checking backend...</div>
-        <div style="color: #8b949e; font-size: 14px;">
-            Backend: <code>http://localhost:5001</code> (Flask wrapper → Docker port 8000)
+        <div style="color: #8b949e; font-size: 13px;">
+            Backend: http://localhost:5001 (Docker)
         </div>
     </div>
 
@@ -441,9 +438,6 @@
         <div class="tabs">
             <div class="tab active" onclick="switchTab('molecule')">
                 💊 Molecule
-            </div>
-            <div class="tab" onclick="switchTab('reaction')">
-                ⚗️ Reaction
             </div>
             <div class="tab" onclick="switchTab('settings')">
                 ⚙️ Settings
@@ -505,21 +499,6 @@ Or paste existing chemfig code"></textarea>
                         </div>
                     </div>
 
-                    <!-- Drawing Board -->
-                    <div class="section">
-                        <div class="section-title">✏️ Draw Structure (Kekule.js)</div>
-                        <div class="composer-container">
-                            <div id="moleculeComposer" style="width:100%;height:400px;"></div>
-                        </div>
-                        <div class="button-group" style="margin-top: 10px;">
-                            <button class="btn btn-primary" onclick="convertFromDrawing()">
-                                Convert Drawing to Chemfig
-                            </button>
-                            <button class="btn btn-secondary" onclick="clearDrawing()">
-                                Clear Drawing
-                            </button>
-                        </div>
-                    </div>
 
                     <!-- Options -->
                     <div class="section">
@@ -590,6 +569,7 @@ Or paste existing chemfig code"></textarea>
                                 <option value="svg">SVG (Vector)</option>
                                 <option value="layered">SVG (Layered) ⚡</option>
                                 <option value="pdf">PDF (Embed)</option>
+                                <option value="pdf2svg">PDF → SVG</option>
                             </select>
                         </div>
                         <div id="moleculeSVG" class="svg-viewer">
@@ -604,137 +584,15 @@ Or paste existing chemfig code"></textarea>
             </div>
         </div>
 
-        <!-- Reaction Tab -->
-        <div id="reactionTab" class="tab-content">
-            <div class="split-view">
-                <div>
-                    <!-- Reaction Drawing Board -->
-                    <div class="section">
-                        <div class="section-title">⚗️ Draw Reaction Scheme</div>
-                        <div class="composer-container">
-                            <div id="reactionComposer" style="width:100%;height:450px;"></div>
-                        </div>
-                        <div class="button-group" style="margin-top: 10px;">
-                            <button class="btn btn-primary" onclick="convertReaction()">
-                                Convert Reaction to Chemfig
-                            </button>
-                            <button class="btn btn-secondary" onclick="clearReactionDrawing()">
-                                Clear Drawing
-                            </button>
-                        </div>
-                        <p style="color: #8b949e; font-size: 13px; margin-top: 10px;">
-                            💡 Draw complete reaction schemes with reactants, products, and arrows
-                        </p>
-                    </div>
-
-                    <!-- Reaction Options -->
-                    <div class="section">
-                        <div class="section-title">⚙️ Reaction Options</div>
-                        <div class="checkbox-group" id="reactionOptions">
-                            <!-- Will be populated by JavaScript -->
-                        </div>
-
-                        <div class="controls-grid">
-                            <div class="input-group">
-                                <label>Rotation Angle (°)</label>
-                                <input type="number" id="reactionAngle" value="0" min="-360" max="360">
-                            </div>
-                            <div class="input-group">
-                                <label>Indentation</label>
-                                <input type="number" id="reactionIndent" value="4" min="0" max="20">
-                            </div>
-                            <div class="input-group">
-                                <label>H₂ Treatment</label>
-                                <select id="reactionH2">
-                                    <option value="keep">Keep H₂</option>
-                                    <option value="add">Add H₂</option>
-                                    <option value="delete">Delete H₂</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="button-group">
-                            <button class="btn" onclick="applyReactionOptions()">
-                                ✅ Apply Options
-                            </button>
-                            <button class="btn btn-secondary" onclick="resetReactionOptions()">
-                                🔄 Reset to Default
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Reaction Text Area -->
-                    <div class="section">
-                        <div class="section-title">📝 Manual Chemfig Edit</div>
-                        <textarea id="reactionTextarea" placeholder="Edit chemfig code directly or paste existing reaction chemfig"></textarea>
-                        <div class="button-group" style="margin-top: 10px;">
-                            <button class="btn btn-primary" onclick="updateReactionChemfig()">
-                                Update PDF
-                            </button>
-                            <button class="btn btn-secondary" onclick="copyToClipboard('reactionTextarea')">
-                                📋 Copy
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <!-- Reaction Output -->
-                    <div class="section">
-                        <div class="section-title">📤 Chemfig Output</div>
-                        <div id="reactionError" style="display:none;"></div>
-                        <div class="output-area" id="reactionOutput">
-                            <em style="color: #8b949e;">Draw a reaction and click convert...</em>
-                        </div>
-                    </div>
-
-                    <!-- Reaction PDF Preview -->
-                    <div class="section">
-                        <div class="section-title">📄 PDF Preview</div>
-                        <embed id="reactionPDF" class="pdf-viewer" type="application/pdf">
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Settings Tab -->
         <div id="settingsTab" class="tab-content">
             <div class="section">
                 <div class="section-title">⚙️ Application Settings</div>
-                
-                <h3 style="color: #58a6ff; margin: 20px 0 10px;">Molecule Settings</h3>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="setting_intoComposer">
-                    <label for="setting_intoComposer">
-                        Insert searched chemical structure into drawing board
-                        <span class="tooltip" data-tooltip="When you search for a chemical, automatically load it into the Kekule drawing board">ℹ️</span>
-                    </label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="setting_mol_keepOnLeave">
-                    <label for="setting_mol_keepOnLeave">
-                        Preserve drawn structures when leaving page
-                        <span class="tooltip" data-tooltip="Your drawings will be saved in browser and restored when you come back">ℹ️</span>
-                    </label>
-                </div>
+
+                <h3 style="color: #58a6ff; margin: 20px 0 10px;">Display Settings</h3>
                 <div class="checkbox-item">
                     <input type="checkbox" id="setting_mol_hideTooltips">
                     <label for="setting_mol_hideTooltips">
-                        Hide tooltips for checkbox options
-                    </label>
-                </div>
-
-                <h3 style="color: #58a6ff; margin: 20px 0 10px;">Reaction Settings</h3>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="setting_rxn_keepOnLeave">
-                    <label for="setting_rxn_keepOnLeave">
-                        Preserve drawn reactions when leaving page
-                        <span class="tooltip" data-tooltip="Your reaction schemes will be saved and restored">ℹ️</span>
-                    </label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="setting_rxn_hideTooltips">
-                    <label for="setting_rxn_hideTooltips">
                         Hide tooltips for checkbox options
                     </label>
                 </div>
@@ -759,24 +617,23 @@ Or paste existing chemfig code"></textarea>
             <div class="section">
                 <div class="section-title">ℹ️ About</div>
                 <p style="line-height: 1.6; color: #8b949e;">
-                    <strong style="color: #c9d1d9;">Mol2chemfig</strong> - Complete chemical structure to LaTeX chemfig converter<br><br>
+                    <strong style="color: #c9d1d9;">Mol2chemfig</strong> - Chemical structure to LaTeX chemfig converter<br><br>
                     <strong>Features:</strong><br>
                     • SMILES and MOL format support<br>
                     • Chemical name search (PubChem + common names)<br>
-                    • Interactive drawing board with Kekule.js<br>
-                    • Reaction scheme conversion<br>
+                    • Docker backend for full mol2chemfig processing<br>
                     • 8 chemfig formatting options<br>
-                    • Real-time PDF preview<br>
+                    • Real-time SVG/PDF preview<br>
                     • Angle rotation and indentation control<br><br>
-                    <strong>Backend:</strong> http://localhost:5001 (Flask wrapper)<br>
-                    <strong>Version:</strong> 2.0 (Full UI)
+                    <strong>Backend:</strong> http://localhost:5001 (Docker)<br>
+                    <strong>Version:</strong> 2.2
                 </p>
             </div>
         </div>
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:5001/m2cf';  // Flask wrapper (proxies to Docker on port 8000)
+        const API_BASE = 'http://localhost:5001/m2cf';  // Flask wrapper -> Docker backend
         
         // Chemfig options (same for molecule and reaction)
         const OPTIONS = [
@@ -791,10 +648,9 @@ Or paste existing chemfig code"></textarea>
         ];
 
         // State
-        let moleculeComposer, reactionComposer;
         let lastMoleculeData = null;
         let lastMoleculeFormat = null;
-        let lastReactionData = null;
+        let lastPdfLink = null;  // Store PDF link for PDF to SVG conversion
         let hideTooltips = false;
         let savedOptions = {
             selections: [],
@@ -819,19 +675,92 @@ Or paste existing chemfig code"></textarea>
             const svgDiv = document.getElementById('moleculeSVG');
             const layeredDiv = document.getElementById('moleculeLayered');
             const pdfEmbed = document.getElementById('moleculePDF');
-            
+
             // Hide all viewers first
             svgDiv.style.display = 'none';
             layeredDiv.style.display = 'none';
             pdfEmbed.style.display = 'none';
-            
+
             // Show selected viewer
             if (viewerType === 'svg') {
                 svgDiv.style.display = 'flex';
             } else if (viewerType === 'layered') {
                 layeredDiv.style.display = 'flex';
-            } else {
+            } else if (viewerType === 'pdf') {
                 pdfEmbed.style.display = 'block';
+            } else if (viewerType === 'pdf2svg') {
+                // PDF to SVG conversion
+                svgDiv.style.display = 'flex';
+                convertPdfToSvg();
+            }
+        }
+
+        // Convert PDF to SVG using backend endpoint
+        async function convertPdfToSvg() {
+            const svgDiv = document.getElementById('moleculeSVG');
+
+            if (!lastPdfLink) {
+                svgDiv.innerHTML = `
+                    <div style="text-align:center; padding:40px; color:#8b949e;">
+                        <p style="font-size:16px; margin-bottom:15px;">No PDF available for conversion</p>
+                        <p style="font-size:14px;">Generate a chemfig first to create a PDF</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Show loading state
+            svgDiv.innerHTML = `
+                <div style="text-align:center; padding:40px; color:#8b949e;">
+                    <span class="loading" style="font-size:24px;">Loading...</span>
+                    <p style="margin-top:15px;">Converting PDF to SVG...</p>
+                </div>
+            `;
+
+            try {
+                // Extract base64 PDF data from the data URL
+                let pdfBase64 = lastPdfLink;
+                if (pdfBase64.startsWith('data:application/pdf;base64,')) {
+                    pdfBase64 = pdfBase64.replace('data:application/pdf;base64,', '');
+                }
+
+                const response = await fetch(`${API_BASE}/pdf2svg`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pdflink: pdfBase64 })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    svgDiv.innerHTML = `
+                        <div style="text-align:center; padding:40px; color:#da3633;">
+                            <p style="font-size:16px; margin-bottom:15px;">PDF to SVG conversion failed</p>
+                            <p style="font-size:14px;">${result.error}</p>
+                        </div>
+                    `;
+                } else if (result.svg) {
+                    // Display the converted SVG
+                    svgDiv.innerHTML = result.svg;
+                    console.log('PDF to SVG conversion successful');
+                } else if (result.svglink) {
+                    // If backend returns a link instead of inline SVG
+                    await displaySVG(result.svglink);
+                } else {
+                    svgDiv.innerHTML = `
+                        <div style="text-align:center; padding:40px; color:#8b949e;">
+                            <p style="font-size:16px;">No SVG returned from conversion</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                svgDiv.innerHTML = `
+                    <div style="text-align:center; padding:40px; color:#da3633;">
+                        <p style="font-size:16px; margin-bottom:15px;">Network error during conversion</p>
+                        <p style="font-size:14px;">${error.message}</p>
+                    </div>
+                `;
+                console.error('PDF to SVG conversion error:', error);
             }
         }
 
@@ -843,11 +772,36 @@ Or paste existing chemfig code"></textarea>
         }
 
         // Display SVG from backend response
-        function displaySVG(svgContent) {
+        // Handles both: URL paths like /images/xxx.svg AND inline SVG content starting with <?xml
+        async function displaySVG(svgData) {
             const svgDiv = document.getElementById('moleculeSVG');
-            if (svgContent) {
-                svgDiv.innerHTML = svgContent;
-                console.log('✅ SVG rendered from chemfig LaTeX');
+            if (svgData) {
+                // Check if it's inline SVG content (starts with <?xml or <svg)
+                if (svgData.trim().startsWith('<?xml') || svgData.trim().startsWith('<svg')) {
+                    // Direct inline SVG content - display it directly
+                    svgDiv.innerHTML = svgData;
+                    console.log('✅ SVG rendered from inline content');
+                } else {
+                    // It's a URL path - fetch the content
+                    try {
+                        const fullUrl = svgData.startsWith('http') ? svgData : `http://localhost:5001${svgData}`;
+                        console.log('🖼️ Fetching SVG from:', fullUrl);
+
+                        const response = await fetch(fullUrl);
+                        if (response.ok) {
+                            const svgContent = await response.text();
+                            svgDiv.innerHTML = svgContent;
+                            console.log('✅ SVG rendered from URL');
+                        } else {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                    } catch (error) {
+                        console.error('Failed to fetch SVG:', error);
+                        // Fallback: display as image
+                        const fullUrl = svgData.startsWith('http') ? svgData : `http://localhost:5001${svgData}`;
+                        svgDiv.innerHTML = `<img src="${fullUrl}" alt="Molecule SVG" style="max-width:100%; height:auto;">`;
+                    }
+                }
             } else {
                 svgDiv.innerHTML = `
                     <div style="text-align:center; padding:40px; color:#8b949e;">
@@ -1062,27 +1016,16 @@ Or paste existing chemfig code"></textarea>
             }
         }
 
-        // Initialize Kekule composers
+        // Initialize (drawing boards removed)
         function initializeComposers() {
-            try {
-                moleculeComposer = new Kekule.Editor.Composer(document.getElementById('moleculeComposer'));
-                moleculeComposer.setCommonToolButtons(['loadData', 'saveData', 'undo', 'redo', 'copy', 'cut', 'paste']);
-                moleculeComposer.setChemToolButtons(['manipulate', 'erase', 'bond', 'atom', 'ring', 'charge']);
-
-                reactionComposer = new Kekule.Editor.Composer(document.getElementById('reactionComposer'));
-                reactionComposer.setCommonToolButtons(['loadData', 'saveData', 'undo', 'redo', 'copy', 'cut', 'paste']);
-                reactionComposer.setChemToolButtons(['manipulate', 'erase', 'bond', 'atom', 'ring', 'charge']);
-                reactionComposer.setEnableOperContext(true);
-            } catch (error) {
-                console.error('Kekule initialization error:', error);
-                showError('moleculeError', 'Failed to initialize drawing board. Kekule.js may not be loaded.');
-            }
+            // Drawing boards have been removed - no initialization needed
+            console.log('Drawing boards disabled - use SMILES or search input instead');
         }
 
         // Populate options checkboxes
         function populateOptions() {
             const molOptions = document.getElementById('moleculeOptions');
-            const rxnOptions = document.getElementById('reactionOptions');
+            if (!molOptions) return;
 
             OPTIONS.forEach((opt, idx) => {
                 const molHtml = `
@@ -1092,15 +1035,7 @@ Or paste existing chemfig code"></textarea>
                         <span class="tooltip" data-tooltip="${opt.tooltip}">ℹ️</span>
                     </div>
                 `;
-                const rxnHtml = `
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="rxn_opt_${idx}" value="${opt.value}">
-                        <label for="rxn_opt_${idx}">${opt.label}</label>
-                        <span class="tooltip" data-tooltip="${opt.tooltip}">ℹ️</span>
-                    </div>
-                `;
                 molOptions.innerHTML += molHtml;
-                rxnOptions.innerHTML += rxnHtml;
             });
         }
 
@@ -1147,15 +1082,8 @@ Or paste existing chemfig code"></textarea>
         function hookOptionCheckboxes() {
             OPTIONS.forEach((opt, idx) => {
                 const molCheckbox = document.getElementById(`mol_opt_${idx}`);
-                const rxnCheckbox = document.getElementById(`rxn_opt_${idx}`);
                 if (molCheckbox) {
                     molCheckbox.addEventListener('change', () => {
-                        updateActiveOptions();
-                        updateLayerVisibility(); // Instant layer toggle!
-                    });
-                }
-                if (rxnCheckbox) {
-                    rxnCheckbox.addEventListener('change', () => {
                         updateActiveOptions();
                         updateLayerVisibility(); // Instant layer toggle!
                     });
@@ -1205,16 +1133,6 @@ Or paste existing chemfig code"></textarea>
                     document.getElementById('moleculeTextarea').value = data.smiles;
                     // Auto-submit (which will auto-apply saved options)
                     await submitMolecule();
-
-                    // Load into composer if setting enabled
-                    if (document.getElementById('setting_intoComposer').checked && data.molblock) {
-                        try {
-                            const mol = Kekule.IO.loadFormatData(data.molblock, 'mol');
-                            moleculeComposer.setChemObj(mol);
-                        } catch (e) {
-                            console.error('Failed to load into composer:', e);
-                        }
-                    }
                 }
             } catch (error) {
                 showError('moleculeError', 'Network error: ' + error.message);
@@ -1284,9 +1202,10 @@ Or paste existing chemfig code"></textarea>
                     document.getElementById('moleculeOutput').textContent = result.chemfig || 'No output';
                     if (result.pdflink) {
                         document.getElementById('moleculePDF').src = result.pdflink;
+                        lastPdfLink = result.pdflink;  // Store for PDF to SVG conversion
                     }
                     if (result.svglink) {
-                        displaySVG(result.svglink);
+                        await displaySVG(result.svglink);
                     }
                     lastMoleculeData = result.chem_data;
                     lastMoleculeFormat = result.chem_format;
@@ -1314,26 +1233,9 @@ Or paste existing chemfig code"></textarea>
             }
         }
 
-        // Convert from drawing
+        // Convert from drawing (disabled - drawing boards removed)
         async function convertFromDrawing() {
-            if (!moleculeComposer) {
-                showError('moleculeError', 'Drawing board not initialized!');
-                return;
-            }
-
-            try {
-                const mol = moleculeComposer.getChemObj();
-                if (!mol) {
-                    showError('moleculeError', 'Please draw a structure first!');
-                    return;
-                }
-
-                const molBlock = Kekule.IO.saveFormatData(mol, 'mol');
-                document.getElementById('moleculeTextarea').value = molBlock;
-                await submitMolecule();
-            } catch (error) {
-                showError('moleculeError', 'Failed to convert drawing: ' + error.message);
-            }
+            showError('moleculeError', 'Drawing board has been removed. Please use SMILES input or chemical search instead.');
         }
 
         // Apply molecule options
@@ -1428,11 +1330,12 @@ Or paste existing chemfig code"></textarea>
                         setTimeout(() => {
                             pdfElement.src = result.pdflink;
                         }, 100);
+                        lastPdfLink = result.pdflink;  // Store for PDF to SVG conversion
                     }
 
                     // Display SVG if available
                     if (result.svglink) {
-                        displaySVG(result.svglink);
+                        await displaySVG(result.svglink);
                     }
 
                     // Check if aromatic circle code is present
@@ -1505,69 +1408,7 @@ Or paste existing chemfig code"></textarea>
             }
         }
 
-        // Reaction functions
-        async function convertReaction() {
-            if (!reactionComposer) {
-                showError('reactionError', 'Reaction board not initialized!');
-                return;
-            }
-
-            try {
-                // Get reaction JSON
-                const docJSON = reactionComposer.exportObjs(Kekule.Molecule);
-                // For now, show placeholder
-                showError('reactionError', 'Reaction conversion requires full backend integration. Draw your reaction and the backend will process it.');
-            } catch (error) {
-                showError('reactionError', 'Failed to convert reaction: ' + error.message);
-            }
-        }
-
-        function clearReactionDrawing() {
-            if (reactionComposer) {
-                reactionComposer.setChemObj(null);
-            }
-        }
-
-        async function updateReactionChemfig() {
-            const data = document.getElementById('reactionTextarea').value.trim();
-            if (!data) {
-                showError('reactionError', 'No chemfig code to update!');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE}/reaction/update_chemfig`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ textAreaData: data })
-                });
-
-                const result = await response.json();
-                
-                if (result.pdflink) {
-                    document.getElementById('reactionPDF').src = result.pdflink;
-                }
-                if (result.error) {
-                    showError('reactionError', result.error);
-                }
-            } catch (error) {
-                showError('reactionError', 'Failed to update: ' + error.message);
-            }
-        }
-
-        function applyReactionOptions() {
-            showError('reactionError', 'Reaction options require drawing board integration.');
-        }
-
-        function resetReactionOptions() {
-            OPTIONS.forEach((opt, idx) => {
-                const checkbox = document.getElementById(`rxn_opt_${idx}`);
-                if (checkbox) checkbox.checked = false;
-            });
-            document.getElementById('reactionAngle').value = 0;
-            document.getElementById('reactionIndent').value = 4;
-            document.getElementById('reactionH2').value = 'keep';
-        }
+        // Reaction functions removed (drawing boards disabled)
 
         // Utility functions
         function loadExample(smiles) {
@@ -1580,9 +1421,8 @@ Or paste existing chemfig code"></textarea>
         }
 
         function clearDrawing() {
-            if (moleculeComposer) {
-                moleculeComposer.setChemObj(null);
-            }
+            // Drawing board removed - stub function
+            console.log('Drawing board has been removed');
         }
 
         function copyToClipboard(elementId) {
@@ -1653,12 +1493,8 @@ Or paste existing chemfig code"></textarea>
 
         // Settings functions
         function saveSettings() {
-            localStorage.setItem('setting_intoComposer', document.getElementById('setting_intoComposer').checked);
-            localStorage.setItem('setting_mol_keepOnLeave', document.getElementById('setting_mol_keepOnLeave').checked);
             localStorage.setItem('setting_mol_hideTooltips', document.getElementById('setting_mol_hideTooltips').checked);
-            localStorage.setItem('setting_rxn_keepOnLeave', document.getElementById('setting_rxn_keepOnLeave').checked);
-            localStorage.setItem('setting_rxn_hideTooltips', document.getElementById('setting_rxn_hideTooltips').checked);
-            
+
             const banner = document.getElementById('settingsSaved');
             banner.style.display = 'block';
             setTimeout(() => {
@@ -1667,11 +1503,10 @@ Or paste existing chemfig code"></textarea>
         }
 
         function loadSettings() {
-            document.getElementById('setting_intoComposer').checked = localStorage.getItem('setting_intoComposer') === 'true';
-            document.getElementById('setting_mol_keepOnLeave').checked = localStorage.getItem('setting_mol_keepOnLeave') === 'true';
-            document.getElementById('setting_mol_hideTooltips').checked = localStorage.getItem('setting_mol_hideTooltips') === 'true';
-            document.getElementById('setting_rxn_keepOnLeave').checked = localStorage.getItem('setting_rxn_keepOnLeave') === 'true';
-            document.getElementById('setting_rxn_hideTooltips').checked = localStorage.getItem('setting_rxn_hideTooltips') === 'true';
+            const hideTooltipsEl = document.getElementById('setting_mol_hideTooltips');
+            if (hideTooltipsEl) {
+                hideTooltipsEl.checked = localStorage.getItem('setting_mol_hideTooltips') === 'true';
+            }
         }
 
         function clearSettings() {
@@ -1681,50 +1516,6 @@ Or paste existing chemfig code"></textarea>
                 alert('Settings cleared!');
             }
         }
-
-        // Auto-save on page unload
-        window.addEventListener('beforeunload', () => {
-            if (document.getElementById('setting_mol_keepOnLeave').checked && moleculeComposer) {
-                try {
-                    const mol = moleculeComposer.getChemObj();
-                    if (mol) {
-                        localStorage.setItem('saved_molecule', Kekule.IO.saveFormatData(mol, 'mol'));
-                    }
-                } catch (e) {}
-            }
-            if (document.getElementById('setting_rxn_keepOnLeave').checked && reactionComposer) {
-                try {
-                    const rxn = reactionComposer.getChemObj();
-                    if (rxn) {
-                        localStorage.setItem('saved_reaction', Kekule.IO.saveFormatData(rxn, 'kekule-json'));
-                    }
-                } catch (e) {}
-            }
-        });
-
-        // Restore saved structures
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                if (document.getElementById('setting_mol_keepOnLeave').checked) {
-                    const saved = localStorage.getItem('saved_molecule');
-                    if (saved && moleculeComposer) {
-                        try {
-                            const mol = Kekule.IO.loadFormatData(saved, 'mol');
-                            moleculeComposer.setChemObj(mol);
-                        } catch (e) {}
-                    }
-                }
-                if (document.getElementById('setting_rxn_keepOnLeave').checked) {
-                    const saved = localStorage.getItem('saved_reaction');
-                    if (saved && reactionComposer) {
-                        try {
-                            const rxn = Kekule.IO.loadFormatData(saved, 'kekule-json');
-                            reactionComposer.setChemObj(rxn);
-                        } catch (e) {}
-                    }
-                }
-            }, 500);
-        });
     </script>
 </body>
 </html>

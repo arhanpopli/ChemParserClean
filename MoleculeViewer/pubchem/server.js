@@ -190,23 +190,18 @@ app.get('/health', (req, res) => {
 // ============================================================
 
 /**
- * GET /img/:name - Direct image redirect/info
- * Returns the PubChem image URL or redirects to it
- * Query params:
- *   - type: '2d' or '3d' (default: '2d')
- *   - size: 'small', 'large', or custom like '500x500' (default: 'large')
- *   - redirect: 'true' to redirect to PubChem, 'false' to return JSON (default: 'true')
+ * Image handler - shared logic for /img/:name and /pubchem/img/:name
  */
-app.get('/img/:name', async (req, res) => {
+async function handleImageRequest(req, res, name) {
   try {
-    const name = req.params.name.trim();
     const recordType = req.query.type || '2d';
     const imageSize = req.query.size || 'large';
     const shouldRedirect = req.query.redirect !== 'false';
+    const shouldProxy = req.query.proxy === 'true';
 
     console.log('\n' + '='.repeat(70));
-    console.log(`[PubChem] GET /img/${name}`);
-    console.log(`   Type: ${recordType}, Size: ${imageSize}`);
+    console.log(`[PubChem] Image request: ${name}`);
+    console.log(`   Type: ${recordType}, Size: ${imageSize}, Proxy: ${shouldProxy}`);
 
     // Get CID
     const cid = await getCompoundCid(name);
@@ -227,7 +222,21 @@ app.get('/img/:name', async (req, res) => {
     console.log(`   URL: ${imageUrl}`);
     console.log('='.repeat(70) + '\n');
 
-    if (shouldRedirect) {
+    if (shouldProxy) {
+      // Proxy the image - fetch from PubChem and stream to client
+      try {
+        const imageResponse = await axios.get(imageUrl, {
+          responseType: 'arraybuffer',
+          timeout: 15000
+        });
+        res.set('Content-Type', 'image/png');
+        res.set('Cache-Control', 'public, max-age=86400');
+        res.send(Buffer.from(imageResponse.data));
+      } catch (proxyError) {
+        console.error(`   Proxy error: ${proxyError.message}`);
+        res.status(502).json({ error: 'Failed to fetch image from PubChem' });
+      }
+    } else if (shouldRedirect) {
       // Redirect directly to PubChem image
       res.redirect(imageUrl);
     } else {
@@ -244,6 +253,21 @@ app.get('/img/:name', async (req, res) => {
     console.log('='.repeat(70) + '\n');
     res.status(500).json({ error: error.message });
   }
+}
+
+/**
+ * GET /pubchem/img/:name - Extension-compatible route (with /pubchem prefix)
+ */
+app.get('/pubchem/img/:name', async (req, res) => {
+  await handleImageRequest(req, res, req.params.name.trim());
+});
+
+/**
+ * GET /img/:name - Direct image redirect/info (original route)
+ * Uses shared handler
+ */
+app.get('/img/:name', async (req, res) => {
+  await handleImageRequest(req, res, req.params.name.trim());
 });
 
 // ============================================================

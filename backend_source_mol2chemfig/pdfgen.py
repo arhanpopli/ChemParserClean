@@ -4,14 +4,15 @@ return the result in a string.
 '''
 import os
 import shutil
+import subprocess
 from tempfile import mkdtemp
 
 latexfn = 'molecule.tex'
 pdfname = 'molecule.pdf'
 image_name = "molecule.jpg"
 # imagecmd = "pdf2svg {} {}".format(pdfname, image_name)
-imagecmd = "convert -density 300 {} -quality 100 {}".format(pdfname, image_name)
-latexcmd = 'pdflatex -interaction=nonstopmode %s > /dev/null' % latexfn
+# imagecmd = "convert -density 300 {} -quality 100 {}".format(pdfname, image_name)
+# latexcmd = 'pdflatex -interaction=nonstopmode %s > /dev/null' % latexfn
 
 m2pkg_path = '/usr/src/app/src/mol2chemfig'
 #m2pkg_path = '/usr/src/app/backend/src/mol2chemfig'
@@ -20,7 +21,11 @@ pkg = '/mol2chemfig.sty'
 
 def pdfgen(mol):
     tempdir = mkdtemp()
-    os.symlink(m2pkg_path + pkg, tempdir + pkg)
+    try:
+        os.symlink(m2pkg_path + pkg, tempdir + pkg)
+    except OSError:
+        pass
+
     chemfig = mol.render_server()
     width, height = mol.dimensions()
 
@@ -32,27 +37,40 @@ def pdfgen(mol):
     width_all = width
     height_all = height
     latex = latex_template % locals()
-    curdir = os.getcwd()
-    os.chdir(tempdir)
+    
+    # Write latex file
+    with open(os.path.join(tempdir, latexfn), 'w') as f:
+        f.write(latex)
 
-    open(latexfn, 'w').write(latex)
-    os.system(latexcmd)
-
+    # Run pdflatex in tempdir without changing global CWD
+    cmd = ['pdflatex', '-interaction=nonstopmode', latexfn]
+    
     try:
-        pdfstring = open(pdfname).read()
+        with open(os.devnull, 'w') as devnull:
+            subprocess.call(cmd, cwd=tempdir, stdout=devnull, stderr=devnull)
+            
+        pdf_path = os.path.join(tempdir, pdfname)
+        if os.path.exists(pdf_path):
+            with open(pdf_path, 'rb') as f:
+                pdfstring = f.read()
+            return True, pdfstring
+        else:
+            return False, None
 
-    except IOError:
+    except Exception as e:
+        print("Error in pdfgen: " + str(e))
         return False, None
     finally:
-        os.chdir(curdir)
         shutil.rmtree(tempdir)
-
-    return True, pdfstring
 
 
 def image_gen(mol):
     tempdir = mkdtemp()
-    os.symlink(m2pkg_path + pkg, tempdir + pkg)
+    try:
+        os.symlink(m2pkg_path + pkg, tempdir + pkg)
+    except OSError:
+        pass
+
     chemfig = mol.render_server()
     width, height = mol.dimensions()
 
@@ -64,27 +82,39 @@ def image_gen(mol):
     width_all = width
     height_all = height
     latex = latex_template % locals()
-    curdir = os.getcwd()
-    os.chdir(tempdir)
+    
+    with open(os.path.join(tempdir, latexfn), 'w') as f:
+        f.write(latex)
+        
+    cmd_latex = ['pdflatex', '-interaction=nonstopmode', latexfn]
+    # convert -density 300 molecule.pdf -quality 100 molecule.jpg
+    cmd_convert = ['convert', '-density', '300', pdfname, '-quality', '100', image_name]
 
-    open(latexfn, 'w').write(latex)
-    os.system(latexcmd)
-    os.system(imagecmd)
     try:
-        image_string = open(image_name).read()
-    except IOError:
+        with open(os.devnull, 'w') as devnull:
+            subprocess.call(cmd_latex, cwd=tempdir, stdout=devnull, stderr=devnull)
+            subprocess.call(cmd_convert, cwd=tempdir, stdout=devnull, stderr=devnull)
+            
+        img_path = os.path.join(tempdir, image_name)
+        if os.path.exists(img_path):
+            with open(img_path, 'rb') as f:
+                image_string = f.read()
+            return True, image_string
+        else:
+            return False, None
+    except Exception as e:
+        print("Error in image_gen: " + str(e))
         return False, None
     finally:
-        os.chdir(curdir)
         shutil.rmtree(tempdir)
-
-    return True, image_string
 
 
 def update_pdf(mol):
     tempdir = mkdtemp()
-    # create the symlink to the mol2chemfig package
-    os.symlink(m2pkg_path + pkg, tempdir + pkg)
+    try:
+        os.symlink(m2pkg_path + pkg, tempdir + pkg)
+    except OSError:
+        pass
 
     chemfig = "\chemfig {" + mol + "}"
     atomsep = 16
@@ -93,21 +123,27 @@ def update_pdf(mol):
     height = height_all
     latex = latex_template % locals()
 
-    curdir = os.getcwd()
-    os.chdir(tempdir)
-
-    open(latexfn, 'w').write(latex)
-    os.system(latexcmd)
+    with open(os.path.join(tempdir, latexfn), 'w') as f:
+        f.write(latex)
+        
+    cmd = ['pdflatex', '-interaction=nonstopmode', latexfn]
 
     try:
-        pdfstring = open(pdfname).read()
-    except IOError:
+        with open(os.devnull, 'w') as devnull:
+            subprocess.call(cmd, cwd=tempdir, stdout=devnull, stderr=devnull)
+            
+        pdf_path = os.path.join(tempdir, pdfname)
+        if os.path.exists(pdf_path):
+            with open(pdf_path, 'rb') as f:
+                pdfstring = f.read()
+            return True, pdfstring
+        else:
+            return False, None
+    except Exception as e:
+        print("Error in update_pdf: " + str(e))
         return False, None
     finally:
-        os.chdir(curdir)
         shutil.rmtree(tempdir)
-
-    return True, pdfstring
 
 
 latex_template = r'''

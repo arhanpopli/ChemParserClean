@@ -1,66 +1,105 @@
 # ChemParser Project Context
 
 ## Project Overview
-ChemParser is a chemical structure visualization system with Chrome extension integration. It consists of three main servers:
+ChemParser is a chemical structure visualization system with Chrome extension integration. It replaces `chem:chemicalname:` patterns in web pages with rendered molecular structure images.
 
-1. **MoleculeViewer Server** (Port 5000) - Node.js server for SMILES/nomenclature to SVG conversion
-2. **Mol2ChemFig Server** (Port 5001) - Flask server wrapping mol2chemfig Docker backend for superior rendering
-3. **PubChem Server** (Port 5002) - Flask server for fetching images and 3D models from PubChem
+## Architecture
 
-## Current File Structure
+### Servers (4 total)
+| Server | Port | Technology | Purpose |
+|--------|------|------------|---------|
+| MoleculeViewer | 5000 | Node.js | SMILES/nomenclature to SVG conversion |
+| Mol2ChemFig Flask | 5001 | Python/Flask | Wrapper for Docker backend |
+| Mol2ChemFig Docker | 8000 | Docker | Actual mol2chemfig rendering |
+| PubChem | 5002 | Python/Flask | PubChem images and 3D models |
 
-### Servers
-- `MoleculeViewer/server.js` - Node.js server on port 5000
-- `mol2chemfig_server.py` - Flask server on port 5001
-- `pubchem_server.py` - Flask server on port 5002
+### Key Files
+- `MoleculeViewer/server.js` - Node.js server (port 5000)
+- `mol2chemfig_server.py` - Flask wrapper (port 5001)
+- `pubchem_server.py` - PubChem server (port 5002)
+- `docker-compose.yml` - Docker config for mol2chemfig backend
+- `chem-extension/content.js` - Chrome extension content script
+- `chem-extension/popup.js` - Extension settings popup
 
-### Cache Directories
+### Web Interfaces
+- `http://localhost:5000/unified-interface.html` - Main unified interface with all tabs
+- `http://localhost:5002/static/viewer-3d.html?name=X&embed=true` - 3D viewer page
+
+## Starting the Servers
+
+```bash
+# 1. Start Docker Desktop first (required for mol2chemfig)
+
+# 2. Start Docker backend
+docker-compose up -d
+
+# 3. Start all servers (in separate terminals or use launcher)
+node MoleculeViewer/server.js    # Port 5000
+python mol2chemfig_server.py     # Port 5001
+python pubchem_server.py         # Port 5002
+```
+
+## Extension Configuration
+
+### API Endpoints (in content.js)
+```javascript
+const MOLECULE_VIEWER_API = 'http://localhost:5000';
+const MOL2CHEMFIG_API = 'http://localhost:5001';  // Flask wrapper, NOT 8000
+const PUBCHEM_API = 'http://localhost:5002';
+```
+
+### Rendering Engines (user selectable)
+1. **MoleculeViewer** (default) - Uses `/img/smiles` or `/img/nomenclature`
+2. **mol2chemfig** - Uses `/m2cf/submit` on port 5001
+3. **PubChem** - Uses `/pubchem/img/{compound}`
+
+### 3D Viewer Feature
+- Already implemented in `content.js` function `show3DViewerInline()`
+- Uses MolView.org iframes: `https://embed.molview.org/v1/?mode=balls&smiles=XXX`
+- Enable via popup toggle: "Enable 3D Viewer"
+- Works with PubChem renderer engine
+
+## Cache Directories
 - `MoleculeViewer/cache/moleculeviewer/` - MoleculeViewer cache
 - `cache/mol2chemfig/` - Mol2ChemFig cache
 - `pubchem-cache/` - PubChem cache
 
-### Extension
-- `chem-extension/` - Chrome extension files
-  - `content.js` - Content script for text replacement
-  - `popup.js` - Extension popup
-  - `popup.html` - Extension popup UI
+## Common Issues
 
-## Key Technical Details
+### "Mol2ChemFig Load Failed" Error
+**Cause:** Docker Desktop not running or container not started
+**Fix:**
+1. Start Docker Desktop
+2. Run `docker-compose up -d`
+3. Verify: `curl http://localhost:8000/m2cf/reset -X POST`
 
-### Cache System
-Both servers use hash-based caching:
-- **MoleculeViewer**: MD5 hash of `type:value:widthxheight`
-- **Mol2ChemFig**: SHA256 hash of `smiles:sorted_options`
-- **PubChem**: MD5 hash of `img_cid_size_type`
+### "Error: Load Failed" (MoleculeViewer)
+**Cause:** Server not running on port 5000
+**Fix:** Start `node MoleculeViewer/server.js`
 
-### Docker Backend
-Mol2ChemFig uses Docker container at `http://localhost:8000`:
-- `/m2cf/submit` - Simple SMILES to ChemFig
-- `/m2cf/apply` - SMILES with options
-- `/m2cf/layers` - Layered SVG generation
-- `/m2cf/search` - Name to SMILES lookup
+### "PubChem: Not Found"
+**Cause:** Server not running on port 5002 OR compound doesn't exist
+**Fix:** Start `python pubchem_server.py`
 
-### Extension Integration
-Extension replaces `chem:chemicalname:` patterns with images:
-- Tries MoleculeViewer first
-- Falls back to Mol2ChemFig if needed
-- Can use PubChem for direct image links
+## Health Checks
+```bash
+# Check all servers
+curl http://localhost:5000/health  # MoleculeViewer
+curl http://localhost:5001/health  # mol2chemfig Flask
+curl http://localhost:8000/m2cf/reset -X POST  # Docker backend
+curl http://localhost:5002/health  # PubChem
+```
 
-## Active Issues to Fix
+## Test Files
+- `test_m2cf_full.html` - mol2chemfig testing
+- `test_pubchem.html` - PubChem testing
+- `test_mol2chemfig_fixes.html` - Feature testing
 
-1. **Cache Deduplication** - Same SMILES stored with different cache keys
-2. **Options Persistence** - ChemFig options don't persist across searches
-3. **Cache Link Display** - Links not shown after applying options
-4. **MoleculeViewer Generation** - Not generating new SVGs for some compounds
-5. **3D SMILES Support** - Need to integrate OPSIN for 3D stereochemistry
+## Extension Usage
+Replace chemical names in text with: `chem:ethanol:` or `chem:CCO:` (SMILES)
 
-## Testing Approach
-- Each server should be testable independently
-- Test files available: `test_m2cf_full.html`, `test_pubchem.html`
-- Extension can be tested by loading unpacked extension
-
-## Important Notes
-- All servers already have separate cache folders (DONE)
-- PubChem server already exists (DONE)
-- Focus on fixing bugs and optimizations
-- Maintain backward compatibility with existing cache
+The extension will:
+1. Detect `chem:X:` patterns
+2. Call selected rendering engine
+3. Replace text with molecular structure image
+4. Optionally show 3D viewer (if enabled)

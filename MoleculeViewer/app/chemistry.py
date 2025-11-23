@@ -392,6 +392,11 @@ def smiles_to_svg(smiles, width=600, height=500, options=None):
         
         # Configure drawer
         drawer = MolDraw2DSVG(width, height)
+        
+        # Ensure transparent background
+        opts = drawer.drawOptions()
+        opts.clearBackground = False
+        
         drawer.DrawMolecule(mol_to_draw)
         drawer.FinishDrawing()
         svg = drawer.GetDrawingText()
@@ -421,14 +426,14 @@ def smiles_to_svg(smiles, width=600, height=500, options=None):
         if show_methyls or show_carbons:
             svg = _replace_dummy_atoms_with_carbon_labels(svg, avg_bond_length)
         
-        # Make background transparent
+        # Make background transparent (just in case)
         svg = svg.replace('fill="#FFFFFF"', 'fill="none"')
         svg = svg.replace('fill="#ffffff"', 'fill="none"')
         svg = svg.replace('fill="white"', 'fill="none"')
         
-        # Remove background rectangle
-        svg = re.sub(r'<rect[^>]*style=[\'"]opacity:1\.0;fill:#FFFFFF[^>]*>\s*</rect>', '', svg)
-        svg = re.sub(r'<rect[^>]*style=[\'"]opacity:1\.0;fill:#ffffff[^>]*>\s*</rect>', '', svg)
+        # Remove background rectangle (more robust regex)
+        svg = re.sub(r'<rect[^>]*style=[^>]*fill:#(?:FFFFFF|ffffff|white)[^>]*>\s*</rect>', '', svg)
+        svg = re.sub(r'<rect[^>]*fill=[\'"](?:#FFFFFF|#ffffff|white)[\'"][^>]*>\s*</rect>', '', svg)
         
         # Handle aromatic circles option
         if aromatic_circles and aromatic_rings:

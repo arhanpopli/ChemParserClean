@@ -221,6 +221,169 @@
         .status-offline {
             background: #ef4444;
         }
+
+        /* Flow Diagram Styles */
+        .flow-node {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 15px 20px;
+            min-width: 140px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 3px solid transparent;
+        }
+
+        .flow-node:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .flow-node.highlighted {
+            border-color: #fbbf24;
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
+        }
+
+        .flow-node.dimmed {
+            opacity: 0.3;
+        }
+
+        .node-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .node-title {
+            font-weight: 700;
+            font-size: 14px;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .node-subtitle {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .node-status {
+            margin-top: 8px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .node-status.online {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .node-status.offline {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .node-status.checking {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        /* Node type specific styles */
+        .user-node { border-left: 4px solid #3b82f6; }
+        .page-node { border-left: 4px solid #8b5cf6; }
+        .extension-node {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border: 3px solid #667eea;
+        }
+        .selector-node { border-left: 4px solid #f59e0b; }
+        .server-node {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+            border: 3px solid #10b981;
+        }
+        .docker-node {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.1));
+            border: 3px solid #8b5cf6;
+        }
+        .api-node {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.1));
+            border: 3px solid #f59e0b;
+        }
+        .library-node {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(8, 145, 178, 0.1));
+            border: 3px solid #06b6d4;
+        }
+        .output-node { border-left: 4px solid #10b981; }
+        .process-node { border-left: 4px solid #6366f1; }
+        .options-node { border-left: 4px solid #ec4899; }
+        .cache-node { border-left: 4px solid #14b8a6; }
+        .bridge-node {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15));
+            border: 3px solid #f59e0b;
+        }
+
+        .flow-section {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section-title {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        /* Connection line styles */
+        .flow-line {
+            stroke-width: 2;
+            fill: none;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+
+        .flow-line:hover {
+            stroke-width: 4;
+            opacity: 1;
+        }
+
+        .flow-line.highlighted {
+            stroke-width: 4;
+            opacity: 1;
+            filter: drop-shadow(0 0 6px currentColor);
+        }
+
+        .flow-line.dimmed {
+            opacity: 0.15;
+        }
+
+        .flow-line-label {
+            fill: white;
+            font-size: 10px;
+            font-weight: 600;
+            text-anchor: middle;
+        }
+
+        /* Draggable nodes */
+        .flow-node.draggable {
+            cursor: grab;
+            user-select: none;
+        }
+
+        .flow-node.draggable:active {
+            cursor: grabbing;
+        }
+
+        .flow-node.dragging {
+            opacity: 0.8;
+            z-index: 1000;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -230,6 +393,7 @@
     </div>
 
     <div class="tabs">
+        <button class="tab-button" onclick="switchTab('flow')">🔄 Flow</button>
         <button class="tab-button active" onclick="switchTab('mol2chemfig')">📐 Mol2ChemFig</button>
         <button class="tab-button" onclick="switchTab('moleculeviewer')">🧬 MoleculeViewer</button>
         <button class="tab-button" onclick="switchTab('pubchem')">🌐 PubChem</button>
@@ -237,6 +401,219 @@
         <button class="tab-button" onclick="switchTab('tests')">🧪 Tests</button>
         <button class="tab-button" onclick="switchTab('designs')">🎨 Designs</button>
         <button class="tab-button" onclick="switchTab('control')">🎮 Control Panel</button>
+    </div>
+
+    <!-- Flow Tab -->
+    <div id="flow" class="tab-content">
+        <h2>🔄 ChemParser Data Flow Diagram</h2>
+        <p style="margin-bottom: 20px; color: #666;">
+            Interactive visualization of how data flows through the ChemParser system.
+            Click on nodes to see details. Hover over connections to see data being transferred.
+        </p>
+
+        <!-- Flow Controls -->
+        <div class="control-panel" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+            <div>
+                <label style="font-weight: 600; margin-right: 10px;">Highlight Flow:</label>
+                <select id="flow-select" onchange="highlightFlow(this.value)" style="padding: 8px 12px; border-radius: 6px; border: 2px solid #ddd;">
+                    <option value="all">All Connections</option>
+                    <option value="moleculeviewer">MoleculeViewer Flow</option>
+                    <option value="mol2chemfig">Mol2ChemFig Flow</option>
+                    <option value="pubchem">PubChem Flow</option>
+                </select>
+            </div>
+            <button class="btn" onclick="checkAllServers()">🔍 Check Server Status</button>
+            <button class="btn btn-secondary" onclick="resetFlowView()">Reset View</button>
+        </div>
+
+        <!-- Main Flow Diagram -->
+        <div id="flow-diagram" style="position: relative; width: 100%; height: 750px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 12px; overflow: hidden; margin-top: 20px;">
+
+            <!-- Instructions -->
+            <div style="position: absolute; top: 10px; left: 10px; color: rgba(255,255,255,0.6); font-size: 12px; z-index: 100;">
+                💡 Drag nodes to rearrange • Click for details • Use dropdown to filter flows
+            </div>
+
+            <!-- SVG for connections -->
+            <svg id="flow-connections" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#667eea" />
+                    </marker>
+                </defs>
+            </svg>
+
+            <!-- LAYER 1: Input (Top Left) -->
+            <div class="flow-node page-node draggable" id="node-page" style="left: 30px; top: 80px;" onclick="showNodeDetails('page')">
+                <div class="node-icon">📄</div>
+                <div class="node-title">Web Page</div>
+                <div class="node-subtitle">chem:histamine:</div>
+            </div>
+
+            <div class="flow-node options-node draggable" id="node-options" style="left: 30px; top: 220px;" onclick="showNodeDetails('options')">
+                <div class="node-icon">⚙️</div>
+                <div class="node-title">User Options</div>
+                <div class="node-subtitle">3D? Engine? Settings</div>
+            </div>
+
+            <!-- LAYER 2: Extension -->
+            <div class="flow-node extension-node draggable" id="node-extension" style="left: 220px; top: 150px;" onclick="showNodeDetails('extension')">
+                <div class="node-icon">🧩</div>
+                <div class="node-title">Chrome Extension</div>
+                <div class="node-subtitle">Detects chem:X: patterns</div>
+                <div class="node-status" id="status-extension">Active</div>
+            </div>
+
+            <!-- LAYER 3: SMILES Bridge (Central Hub) -->
+            <div class="flow-node bridge-node draggable" id="node-smiles-bridge" style="left: 450px; top: 150px;" onclick="showNodeDetails('smiles-bridge')">
+                <div class="node-icon">🌉</div>
+                <div class="node-title">SMILES Bridge</div>
+                <div class="node-subtitle">Name → SMILES conversion</div>
+            </div>
+
+            <!-- LAYER 4: SMILES Sources (Behind Bridge) -->
+            <div class="flow-node api-node draggable" id="node-opsin-3d" style="left: 620px; top: 50px;" onclick="showNodeDetails('opsin-3d')">
+                <div class="node-icon">🔮</div>
+                <div class="node-title">OPSIN 3D</div>
+                <div class="node-subtitle">Stereochemistry SMILES</div>
+            </div>
+
+            <div class="flow-node api-node draggable" id="node-opsin" style="left: 620px; top: 170px;" onclick="showNodeDetails('opsin')">
+                <div class="node-icon">🔬</div>
+                <div class="node-title">OPSIN 2D</div>
+                <div class="node-subtitle">ebi.ac.uk API</div>
+            </div>
+
+            <div class="flow-node api-node draggable" id="node-pubchem-api" style="left: 620px; top: 290px;" onclick="showNodeDetails('pubchem-api')">
+                <div class="node-icon">☁️</div>
+                <div class="node-title">PubChem API</div>
+                <div class="node-subtitle">Fallback SMILES</div>
+            </div>
+
+            <!-- LAYER 5: Renderer Selector -->
+            <div class="flow-node selector-node draggable" id="node-selector" style="left: 450px; top: 350px;" onclick="showNodeDetails('selector')">
+                <div class="node-icon">🔀</div>
+                <div class="node-title">Renderer Selector</div>
+                <div class="node-subtitle">Which engine?</div>
+            </div>
+
+            <!-- LAYER 6: Renderers -->
+            <div class="flow-node server-node draggable" id="node-moleculeviewer" style="left: 620px; top: 420px;" onclick="showNodeDetails('moleculeviewer')">
+                <div class="node-icon">🧬</div>
+                <div class="node-title">MoleculeViewer</div>
+                <div class="node-subtitle">:5000 + RDKit</div>
+                <div class="node-status" id="status-moleculeviewer">Checking...</div>
+            </div>
+
+            <div class="flow-node server-node draggable" id="node-mol2chemfig" style="left: 800px; top: 420px;" onclick="showNodeDetails('mol2chemfig')">
+                <div class="node-icon">📐</div>
+                <div class="node-title">Mol2ChemFig</div>
+                <div class="node-subtitle">:5001 + Docker</div>
+                <div class="node-status" id="status-mol2chemfig">Checking...</div>
+            </div>
+
+            <div class="flow-node server-node draggable" id="node-pubchem-local" style="left: 980px; top: 420px;" onclick="showNodeDetails('pubchem-local')">
+                <div class="node-icon">🌐</div>
+                <div class="node-title">PubChem Renderer</div>
+                <div class="node-subtitle">:5002 Images</div>
+                <div class="node-status" id="status-pubchem">Checking...</div>
+            </div>
+
+            <!-- LAYER 7: Backend Processing -->
+            <div class="flow-node library-node draggable" id="node-rdkit" style="left: 620px; top: 550px;" onclick="showNodeDetails('rdkit')">
+                <div class="node-icon">⚗️</div>
+                <div class="node-title">RDKit</div>
+                <div class="node-subtitle">SMILES→SVG</div>
+            </div>
+
+            <div class="flow-node docker-node draggable" id="node-docker" style="left: 800px; top: 550px;" onclick="showNodeDetails('docker')">
+                <div class="node-icon">🐳</div>
+                <div class="node-title">Docker :8000</div>
+                <div class="node-subtitle">LaTeX→PDF→SVG</div>
+                <div class="node-status" id="status-docker">Checking...</div>
+            </div>
+
+            <div class="flow-node api-node draggable" id="node-molview" style="left: 980px; top: 550px;" onclick="showNodeDetails('molview')">
+                <div class="node-icon">🎮</div>
+                <div class="node-title">MolView.org</div>
+                <div class="node-subtitle">3D Viewer (iframe)</div>
+            </div>
+
+            <!-- LAYER 8: Cache -->
+            <div class="flow-node cache-node draggable" id="node-cache" style="left: 710px; top: 670px;" onclick="showNodeDetails('cache')">
+                <div class="node-icon">💾</div>
+                <div class="node-title">Cache</div>
+                <div class="node-subtitle">SVG URLs stored</div>
+            </div>
+
+            <!-- LAYER 9: Output -->
+            <div class="flow-node output-node draggable" id="node-output" style="left: 220px; top: 420px;" onclick="showNodeDetails('output')">
+                <div class="node-icon">🖼️</div>
+                <div class="node-title">SVG/PNG Image</div>
+                <div class="node-subtitle">Cached URL</div>
+            </div>
+
+            <div class="flow-node process-node draggable" id="node-darkmode" style="left: 220px; top: 550px;" onclick="showNodeDetails('darkmode')">
+                <div class="node-icon">🌙</div>
+                <div class="node-title">Dark Mode</div>
+                <div class="node-subtitle">Invert colors</div>
+            </div>
+
+        </div>
+
+        <!-- Node Details Panel -->
+        <div id="node-details" style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; display: none;">
+            <h3 id="details-title" style="margin-bottom: 15px; color: #333;"></h3>
+            <div id="details-content"></div>
+        </div>
+
+        <!-- Legend -->
+        <div style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+            <h3 style="margin-bottom: 15px; color: #333;">📖 Legend</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 4px;"></div>
+                    <span>Extension</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #f59e0b, #fbbf24); border-radius: 4px;"></div>
+                    <span>SMILES Bridge (Shared)</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 4px;"></div>
+                    <span>Local Servers</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 4px;"></div>
+                    <span>External APIs</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 4px;"></div>
+                    <span>Docker</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #06b6d4, #0891b2); border-radius: 4px;"></div>
+                    <span>Libraries</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #14b8a6, #0d9488); border-radius: 4px;"></div>
+                    <span>Cache</span>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 20px; margin-bottom: 10px; color: #333;">📝 Correct Data Flow:</h4>
+            <div style="background: #1a1a2e; color: #e2e8f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.8;">
+                <div>1️⃣ <span style="color: #8b5cf6;">Page</span> has <code>chem:histamine:</code> pattern</div>
+                <div>2️⃣ <span style="color: #667eea;">Extension</span> detects it, reads <span style="color: #ec4899;">User Options</span> (3D? which engine?)</div>
+                <div>3️⃣ <span style="color: #fbbf24;">SMILES Bridge</span> converts "histamine" → "NCCC1=CN=CN1"</div>
+                <div style="padding-left: 20px; color: #9ca3af;">↳ Tries: OPSIN 3D (if enabled) → OPSIN 2D → PubChem API</div>
+                <div>4️⃣ <span style="color: #f59e0b;">Renderer Selector</span> picks engine based on user choice</div>
+                <div>5️⃣ <span style="color: #10b981;">Server</span> (MoleculeViewer/Mol2ChemFig/PubChem) generates image</div>
+                <div>6️⃣ <span style="color: #14b8a6;">Cache</span> stores SVG, returns URL</div>
+                <div>7️⃣ <span style="color: #6366f1;">Dark Mode</span> inverts colors if needed (client-side)</div>
+                <div>8️⃣ <span style="color: #10b981;">Image</span> replaces original text on page</div>
+            </div>
+        </div>
     </div>
 
     <!-- Mol2ChemFig Tab -->
@@ -613,6 +990,618 @@
         window.addEventListener('load', () => {
             checkPubChemStatus();
             setInterval(checkPubChemStatus, 10000); // Check every 10 seconds
+            drawFlowConnections();
+            checkAllServers();
+        });
+
+        // ========================================
+        // FLOW DIAGRAM FUNCTIONS
+        // ========================================
+
+        // Connection definitions with data flow information
+        // ACCURATE FLOW based on actual code analysis
+        const flowConnections = [
+            // === INPUT STAGE ===
+            { from: 'page', to: 'extension', label: '"histamine"', color: '#8b5cf6', flow: 'all' },
+            { from: 'options', to: 'extension', label: '3D? Engine?', color: '#ec4899', flow: 'all' },
+
+            // === EXTENSION TO BRIDGE ===
+            { from: 'extension', to: 'smiles-bridge', label: 'Name + Options', color: '#667eea', flow: 'all' },
+
+            // === SMILES BRIDGE TO SOURCES (Priority Order) ===
+            { from: 'smiles-bridge', to: 'opsin-3d', label: 'If 3D enabled', color: '#f59e0b', flow: 'all' },
+            { from: 'smiles-bridge', to: 'opsin', label: 'Try first', color: '#f59e0b', flow: 'all' },
+            { from: 'smiles-bridge', to: 'pubchem-api', label: 'Fallback', color: '#f59e0b', flow: 'all' },
+
+            // === BRIDGE TO SELECTOR (with SMILES) ===
+            { from: 'smiles-bridge', to: 'selector', label: 'SMILES string', color: '#fbbf24', flow: 'all' },
+
+            // === SELECTOR TO RENDERERS ===
+            { from: 'selector', to: 'moleculeviewer', label: 'SMILES', color: '#10b981', flow: 'moleculeviewer' },
+            { from: 'selector', to: 'mol2chemfig', label: 'SMILES+opts', color: '#10b981', flow: 'mol2chemfig' },
+            { from: 'selector', to: 'pubchem-local', label: 'Name/CID', color: '#10b981', flow: 'pubchem' },
+
+            // === RENDERER TO BACKEND ===
+            { from: 'moleculeviewer', to: 'rdkit', label: 'Generate', color: '#06b6d4', flow: 'moleculeviewer' },
+            { from: 'mol2chemfig', to: 'docker', label: 'ChemFig', color: '#8b5cf6', flow: 'mol2chemfig' },
+            { from: 'pubchem-local', to: 'molview', label: '3D View', color: '#f59e0b', flow: 'pubchem' },
+
+            // === BACKEND TO CACHE ===
+            { from: 'rdkit', to: 'cache', label: 'SVG', color: '#14b8a6', flow: 'moleculeviewer' },
+            { from: 'docker', to: 'cache', label: 'SVG', color: '#14b8a6', flow: 'mol2chemfig' },
+
+            // === CACHE/RENDERER TO OUTPUT ===
+            { from: 'cache', to: 'output', label: 'URL', color: '#10b981', flow: 'all' },
+            { from: 'pubchem-local', to: 'output', label: 'PNG', color: '#10b981', flow: 'pubchem' },
+
+            // === OUTPUT PROCESSING ===
+            { from: 'output', to: 'darkmode', label: 'If dark', color: '#6366f1', flow: 'all' },
+
+            // === BACK TO PAGE ===
+            { from: 'darkmode', to: 'extension', label: 'Final image', color: '#8b5cf6', flow: 'all' },
+            { from: 'output', to: 'extension', label: 'Final image', color: '#10b981', flow: 'all' },
+        ];
+
+        // Node details information
+        const nodeDetails = {
+            'page': {
+                title: '📄 Web Page',
+                content: `
+                    <p><strong>Role:</strong> Contains text with chemical notation patterns that trigger rendering.</p>
+                    <h4>Supported Patterns:</h4>
+                    <ul>
+                        <li><code>chem:ethanol:</code> - Chemical name</li>
+                        <li><code>chem:CCO:</code> - Direct SMILES notation</li>
+                        <li><code>\\chemfig{C-C-O}</code> - ChemFig LaTeX</li>
+                    </ul>
+                    <p><strong>Output:</strong> Patterns are replaced with rendered molecular structure images.</p>
+                `
+            },
+            'options': {
+                title: '⚙️ User Options',
+                content: `
+                    <p><strong>File:</strong> <code>popup.js</code> + <code>popup.html</code></p>
+                    <h4>Key Settings:</h4>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <tr style="background: #e5e7eb;"><th style="padding: 8px; text-align: left;">Setting</th><th style="padding: 8px; text-align: left;">Effect</th></tr>
+                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>use3DSmiles</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">Routes to OPSIN 3D for stereochemistry</td></tr>
+                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>rendererEngine</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">moleculeviewer / mol2chemfig / pubchem</td></tr>
+                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>m2cfAromatic</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">Show aromatic rings as circles</td></tr>
+                        <tr><td style="padding: 8px;"><strong>m2cfShowMethyl</strong></td><td style="padding: 8px;">Display CH3 groups</td></tr>
+                    </table>
+                `
+            },
+            'extension': {
+                title: '🧩 Chrome Extension',
+                content: `
+                    <p><strong>Role:</strong> Central hub - detects patterns, reads user options, coordinates all requests.</p>
+                    <h4>Key Files:</h4>
+                    <ul>
+                        <li><code>content.js</code> - Pattern detection, API calls, DOM manipulation</li>
+                        <li><code>background.js</code> - CSP bypass for cross-origin requests</li>
+                        <li><code>popup.js</code> - Settings UI</li>
+                    </ul>
+                    <h4>Main Functions:</h4>
+                    <ul>
+                        <li><code>loadMoleculeViewerImage()</code></li>
+                        <li><code>loadMol2chemfigImage()</code></li>
+                        <li><code>loadPubChemImage()</code></li>
+                        <li><code>invertSvgForDarkMode()</code></li>
+                    </ul>
+                `
+            },
+            'smiles-bridge': {
+                title: '🌉 SMILES Bridge (Common Node)',
+                content: `
+                    <p><strong>Role:</strong> Central conversion hub shared by ALL renderers. Converts chemical names to SMILES strings.</p>
+                    <h4>Priority Order:</h4>
+                    <ol>
+                        <li><strong>OPSIN 3D</strong> (if user enabled 3D SMILES) - Preserves stereochemistry</li>
+                        <li><strong>OPSIN 2D</strong> - Fast, reliable IUPAC name conversion</li>
+                        <li><strong>PubChem API</strong> - Fallback for common names</li>
+                    </ol>
+                    <h4>Why This Node Exists:</h4>
+                    <p>Both MoleculeViewer and Mol2ChemFig need SMILES strings. Instead of each server implementing name→SMILES conversion separately, this bridge handles it centrally.</p>
+                    <pre style="background: #1a1a2e; color: #fbbf24; padding: 10px; border-radius: 6px; font-size: 12px;">
+"histamine" → SMILES Bridge → "NCCC1=CN=CN1"
+                ↓
+    [OPSIN 3D] → [OPSIN 2D] → [PubChem]
+         (priority order, fallback chain)</pre>
+                `
+            },
+            'opsin-3d': {
+                title: '🔮 OPSIN 3D (Stereochemistry)',
+                content: `
+                    <p><strong>Purpose:</strong> Generate SMILES with 3D stereochemistry information (E/Z isomers, R/S chirality).</p>
+                    <h4>When Used:</h4>
+                    <p>Only when user enables "3D SMILES" option in extension settings.</p>
+                    <h4>Endpoint:</h4>
+                    <pre style="background: #1a1a2e; color: #10b981; padding: 10px; border-radius: 6px;">
+GET ${MOL2CHEMFIG_API}/m2cf/opsin-3d?name=glucose
+→ { "smiles": "OC[C@H]1...", "has_stereochemistry": true }</pre>
+                    <h4>Example:</h4>
+                    <ul>
+                        <li>Input: "glucose"</li>
+                        <li>Output: <code>OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O</code></li>
+                        <li>The @ symbols indicate stereochemistry!</li>
+                    </ul>
+                `
+            },
+            'opsin': {
+                title: '🔬 OPSIN 2D (Standard)',
+                content: `
+                    <p><strong>URL:</strong> <code>https://www.ebi.ac.uk/opsin/ws/{name}.smi</code></p>
+                    <h4>Purpose:</h4>
+                    <p>Convert IUPAC chemical names to canonical SMILES (without stereochemistry).</p>
+                    <h4>Usage:</h4>
+                    <pre style="background: #1a1a2e; color: #10b981; padding: 10px; border-radius: 6px;">
+GET https://www.ebi.ac.uk/opsin/ws/ethanol.smi
+→ "CCO"</pre>
+                    <h4>Advantages:</h4>
+                    <ul>
+                        <li>Fast response</li>
+                        <li>Handles complex IUPAC names</li>
+                        <li>No API key needed</li>
+                    </ul>
+                `
+            },
+            'pubchem-api': {
+                title: '☁️ PubChem API (Fallback)',
+                content: `
+                    <p><strong>URL:</strong> <code>https://pubchem.ncbi.nlm.nih.gov/rest/pug/</code></p>
+                    <h4>Used When:</h4>
+                    <p>OPSIN fails (common names like "aspirin" that aren't strict IUPAC).</p>
+                    <h4>Endpoints Used:</h4>
+                    <ul>
+                        <li><code>/compound/name/{name}/property/CanonicalSMILES/JSON</code></li>
+                        <li><code>/compound/name/{name}/cids/JSON</code></li>
+                        <li><code>/compound/cid/{cid}/PNG</code></li>
+                    </ul>
+                    <h4>Rate Limit:</h4>
+                    <p>5 requests/second - handled by local caching</p>
+                `
+            },
+            'selector': {
+                title: '🔀 Renderer Selector',
+                content: `
+                    <p><strong>Role:</strong> Routes the SMILES to the appropriate rendering engine based on user's choice.</p>
+                    <h4>Selection Logic:</h4>
+                    <pre style="background: #1a1a2e; color: #10b981; padding: 10px; border-radius: 6px; overflow-x: auto;">
+if (settings.rendererEngine === 'mol2chemfig') {
+    loadMol2chemfigImage(smiles);
+} else if (settings.rendererEngine === 'pubchem') {
+    loadPubChemImage(name); // Uses name, not SMILES
+} else {
+    loadMoleculeViewerImage(smiles);
+}</pre>
+                    <p><strong>Note:</strong> PubChem renderer uses the original name, not SMILES, because PubChem has its own image database.</p>
+                `
+            },
+            'moleculeviewer': {
+                title: '🧬 MoleculeViewer Server',
+                content: `
+                    <p><strong>Port:</strong> 5000 (Node.js/Express)</p>
+                    <p><strong>File:</strong> <code>MoleculeViewer/server.js</code></p>
+                    <h4>Endpoints:</h4>
+                    <ul>
+                        <li><code>GET /img/smiles?smiles=CCO</code> - SMILES to SVG</li>
+                        <li><code>GET /img/nomenclature?name=ethanol</code> - Name to SVG</li>
+                        <li><code>GET /cache/{hash}.svg</code> - Serve cached SVGs</li>
+                    </ul>
+                    <h4>Backend:</h4>
+                    <p>Uses <strong>RDKit</strong> (Python) for SMILES→SVG rendering</p>
+                    <h4>Caching:</h4>
+                    <p>✅ YES - SVGs cached in <code>MoleculeViewer/cache/moleculeviewer/</code></p>
+                `
+            },
+            'mol2chemfig': {
+                title: '📐 Mol2ChemFig Server',
+                content: `
+                    <p><strong>Port:</strong> 5001 (Python/Flask)</p>
+                    <p><strong>File:</strong> <code>mol2chemfig_server.py</code></p>
+                    <h4>Endpoints:</h4>
+                    <ul>
+                        <li><code>POST /m2cf/submit</code> - SMILES + options → SVG</li>
+                        <li><code>GET /m2cf/search</code> - Search compounds</li>
+                        <li><code>GET /images/{hash}.svg</code> - Serve cached SVGs</li>
+                    </ul>
+                    <h4>Backend:</h4>
+                    <p>Uses <strong>Docker :8000</strong> for LaTeX→PDF→SVG conversion</p>
+                    <h4>Caching:</h4>
+                    <p>✅ YES - SVGs cached in <code>cache/mol2chemfig/</code></p>
+                `
+            },
+            'pubchem-local': {
+                title: '🌐 PubChem Renderer Server',
+                content: `
+                    <p><strong>Port:</strong> 5002 (Python/Flask)</p>
+                    <p><strong>File:</strong> <code>pubchem_server.py</code></p>
+                    <h4>Endpoints:</h4>
+                    <ul>
+                        <li><code>GET /pubchem/img/{name}</code> - Get 2D image (PNG)</li>
+                        <li><code>GET /pubchem/3d-model</code> - Get 3D conformer data</li>
+                    </ul>
+                    <h4>3D Viewer:</h4>
+                    <p>Uses <strong>MolView.org</strong> iframe for interactive 3D viewing</p>
+                    <h4>Caching:</h4>
+                    <p>✅ YES - Images cached in <code>pubchem-cache/</code></p>
+                `
+            },
+            'docker': {
+                title: '🐳 Docker Backend',
+                content: `
+                    <p><strong>Port:</strong> 8000 (Docker container)</p>
+                    <p><strong>Config:</strong> <code>docker-compose.yml</code></p>
+                    <h4>Process:</h4>
+                    <ol>
+                        <li>Receive SMILES + chemfig options</li>
+                        <li>Generate ChemFig LaTeX code</li>
+                        <li>Compile with <code>pdflatex</code></li>
+                        <li>Convert PDF→SVG with <code>dvisvgm</code></li>
+                        <li>Return SVG + PDF base64</li>
+                    </ol>
+                    <p style="color: #dc2626;"><strong>⚠️ Requires Docker Desktop running!</strong></p>
+                `
+            },
+            'rdkit': {
+                title: '⚗️ RDKit Library',
+                content: `
+                    <p><strong>Location:</strong> Python subprocess in MoleculeViewer</p>
+                    <h4>Key Functions:</h4>
+                    <ul>
+                        <li><code>Chem.MolFromSmiles()</code> - Parse SMILES</li>
+                        <li><code>Draw.MolToSVG()</code> - Render to SVG</li>
+                        <li><code>Chem.CanonSmiles()</code> - Canonicalize for caching</li>
+                    </ul>
+                    <h4>Why RDKit?</h4>
+                    <ul>
+                        <li>Fast, local rendering (no network latency)</li>
+                        <li>Customizable colors/sizes</li>
+                        <li>No external API dependency</li>
+                    </ul>
+                `
+            },
+            'molview': {
+                title: '🎮 MolView.org (3D Viewer)',
+                content: `
+                    <p><strong>URL:</strong> <code>https://embed.molview.org/v1/</code></p>
+                    <h4>How It's Used:</h4>
+                    <p>When user wants 3D view, we embed MolView.org as an iframe:</p>
+                    <pre style="background: #1a1a2e; color: #10b981; padding: 10px; border-radius: 6px; font-size: 11px;">
+https://embed.molview.org/v1/?mode=balls&smiles=NCCC1=CN=CN1</pre>
+                    <h4>Features:</h4>
+                    <ul>
+                        <li>Interactive 3D rotation</li>
+                        <li>Ball-and-stick model</li>
+                        <li>No server needed - client-side WebGL</li>
+                    </ul>
+                    <h4>Used By:</h4>
+                    <p>PubChem renderer's "Enable 3D Viewer" option</p>
+                `
+            },
+            'output': {
+                title: '🖼️ Rendered Output',
+                content: `
+                    <p><strong>Role:</strong> Final rendered image ready for display.</p>
+                    <h4>Output Formats:</h4>
+                    <ul>
+                        <li><strong>MoleculeViewer:</strong> Inline SVG (data URI)</li>
+                        <li><strong>Mol2ChemFig:</strong> SVG URL (cached on server)</li>
+                        <li><strong>PubChem:</strong> PNG image (proxied)</li>
+                    </ul>
+                    <h4>Post-Processing:</h4>
+                    <ul>
+                        <li>Dark mode color inversion (if enabled)</li>
+                        <li>Size controls wrapper</li>
+                        <li>Click handlers for zoom/download</li>
+                    </ul>
+                `
+            },
+            'darkmode': {
+                title: '🌙 Dark Mode Handler',
+                content: `
+                    <p><strong>Location:</strong> <code>content.js</code> - <code>invertSvgForDarkMode()</code></p>
+                    <h4>Detection Methods:</h4>
+                    <ol>
+                        <li><code>prefers-color-scheme: dark</code> media query</li>
+                        <li>Page background luminance check</li>
+                        <li>Dark mode CSS classes (.dark, .dark-mode)</li>
+                    </ol>
+                    <h4>Color Replacements:</h4>
+                    <ul>
+                        <li><code>#000000</code> → <code>#FFFFFF</code></li>
+                        <li><code>stroke: black</code> → <code>stroke: white</code></li>
+                        <li><code>fill: black</code> → <code>fill: white</code></li>
+                        <li>CSS style blocks in SVG</li>
+                        <li>Text elements without explicit fill</li>
+                    </ul>
+                `
+            },
+            'options': {
+                title: '⚙️ User Options',
+                content: `
+                    <p><strong>File:</strong> <code>popup.js</code> + <code>popup.html</code></p>
+                    <h4>Available Settings:</h4>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <tr style="background: #e5e7eb;"><th style="padding: 8px; text-align: left;">Setting</th><th style="padding: 8px; text-align: left;">Values</th></tr>
+                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">Renderer Engine</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">moleculeviewer, mol2chemfig, pubchem</td></tr>
+                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">3D SMILES</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">true/false</td></tr>
+                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">M2CF: Aromatic Circles</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">true/false (-o flag)</td></tr>
+                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">M2CF: Fancy Bonds</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">true/false (-f flag)</td></tr>
+                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">M2CF: Show Carbons</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">true/false (-c flag)</td></tr>
+                        <tr><td style="padding: 8px;">M2CF: Show Methyls</td><td style="padding: 8px;">true/false (-m flag)</td></tr>
+                    </table>
+                `
+            },
+            'cache': {
+                title: '💾 Cache System',
+                content: `
+                    <p><strong>Purpose:</strong> Store rendered images to avoid re-rendering.</p>
+                    <h4>Cache Locations:</h4>
+                    <ul>
+                        <li><code>MoleculeViewer/cache/</code> - MoleculeViewer SVGs</li>
+                        <li><code>cache/mol2chemfig/</code> - Mol2ChemFig SVGs</li>
+                        <li><code>pubchem-cache/</code> - PubChem images</li>
+                    </ul>
+                    <h4>Cache Key:</h4>
+                    <p>SHA256 hash of canonicalized SMILES + rendering options</p>
+                    <h4>Benefits:</h4>
+                    <ul>
+                        <li>Faster repeat requests</li>
+                        <li>Reduced API calls</li>
+                        <li>Persistent URLs for sharing</li>
+                    </ul>
+                `
+            }
+        };
+
+        // Draw flow connections
+        function drawFlowConnections() {
+            const svg = document.getElementById('flow-connections');
+            const diagram = document.getElementById('flow-diagram');
+
+            // Clear existing lines
+            svg.querySelectorAll('path, text').forEach(el => el.remove());
+
+            flowConnections.forEach((conn, index) => {
+                const fromNode = document.getElementById(`node-${conn.from}`);
+                const toNode = document.getElementById(`node-${conn.to}`);
+
+                if (!fromNode || !toNode) return;
+
+                const fromRect = fromNode.getBoundingClientRect();
+                const toRect = toNode.getBoundingClientRect();
+                const diagramRect = diagram.getBoundingClientRect();
+
+                // Calculate center points relative to diagram
+                const x1 = fromRect.left + fromRect.width / 2 - diagramRect.left;
+                const y1 = fromRect.top + fromRect.height / 2 - diagramRect.top;
+                const x2 = toRect.left + toRect.width / 2 - diagramRect.left;
+                const y2 = toRect.top + toRect.height / 2 - diagramRect.top;
+
+                // Create curved path
+                const midX = (x1 + x2) / 2;
+                const midY = (y1 + y2) / 2;
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+
+                // Control point offset for curve
+                const offset = Math.min(Math.abs(dx), Math.abs(dy)) * 0.3;
+                const cx = midX + (dy > 0 ? offset : -offset);
+                const cy = midY + (dx > 0 ? -offset : offset);
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
+                path.setAttribute('stroke', conn.color);
+                path.setAttribute('class', `flow-line flow-${conn.flow}`);
+                path.setAttribute('marker-end', `url(#arrowhead)`);
+
+                if (conn.dashed) {
+                    path.setAttribute('stroke-dasharray', '5,5');
+                }
+
+                path.style.pointerEvents = 'stroke';
+                svg.appendChild(path);
+
+                // Add label
+                if (conn.label) {
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', cx);
+                    text.setAttribute('y', cy - 5);
+                    text.setAttribute('class', `flow-line-label flow-${conn.flow}`);
+                    text.textContent = conn.label;
+                    svg.appendChild(text);
+                }
+            });
+        }
+
+        // Highlight specific flow
+        function highlightFlow(flowType) {
+            const nodes = document.querySelectorAll('.flow-node');
+            const lines = document.querySelectorAll('.flow-line');
+            const labels = document.querySelectorAll('.flow-line-label');
+
+            if (flowType === 'all') {
+                nodes.forEach(n => { n.classList.remove('dimmed', 'highlighted'); });
+                lines.forEach(l => { l.classList.remove('dimmed', 'highlighted'); });
+                labels.forEach(l => { l.classList.remove('dimmed'); });
+            } else {
+                lines.forEach(l => {
+                    if (l.classList.contains(`flow-${flowType}`) || l.classList.contains('flow-all')) {
+                        l.classList.add('highlighted');
+                        l.classList.remove('dimmed');
+                    } else {
+                        l.classList.add('dimmed');
+                        l.classList.remove('highlighted');
+                    }
+                });
+                labels.forEach(l => {
+                    if (l.classList.contains(`flow-${flowType}`) || l.classList.contains('flow-all')) {
+                        l.classList.remove('dimmed');
+                    } else {
+                        l.classList.add('dimmed');
+                    }
+                });
+            }
+        }
+
+        // Show node details
+        function showNodeDetails(nodeId) {
+            const details = nodeDetails[nodeId];
+            if (!details) return;
+
+            const panel = document.getElementById('node-details');
+            const title = document.getElementById('details-title');
+            const content = document.getElementById('details-content');
+
+            title.textContent = details.title;
+            content.innerHTML = details.content;
+            panel.style.display = 'block';
+
+            // Scroll to details
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Check all server statuses
+        async function checkAllServers() {
+            const servers = [
+                { id: 'moleculeviewer', url: 'http://localhost:5000/health' },
+                { id: 'mol2chemfig', url: 'http://localhost:5001/health' },
+                { id: 'pubchem', url: 'http://localhost:5002/health' },
+                { id: 'docker', url: 'http://localhost:8000/m2cf/reset', method: 'POST' }
+            ];
+
+            for (const server of servers) {
+                const statusEl = document.getElementById(`status-${server.id}`);
+                if (!statusEl) continue;
+
+                statusEl.textContent = 'Checking...';
+                statusEl.className = 'node-status checking';
+
+                try {
+                    const response = await fetch(server.url, {
+                        method: server.method || 'GET',
+                        mode: 'cors'
+                    });
+
+                    if (response.ok) {
+                        statusEl.textContent = 'Online';
+                        statusEl.className = 'node-status online';
+                    } else {
+                        throw new Error('Not OK');
+                    }
+                } catch (e) {
+                    statusEl.textContent = 'Offline';
+                    statusEl.className = 'node-status offline';
+                }
+            }
+        }
+
+        // Reset flow view
+        function resetFlowView() {
+            document.getElementById('flow-select').value = 'all';
+            highlightFlow('all');
+            document.getElementById('node-details').style.display = 'none';
+        }
+
+        // Redraw connections on window resize
+        window.addEventListener('resize', () => {
+            drawFlowConnections();
+        });
+
+        // ========================================
+        // DRAG AND DROP FUNCTIONALITY
+        // ========================================
+        let draggedNode = null;
+        let dragOffset = { x: 0, y: 0 };
+        let isDragging = false;
+
+        function initDraggable() {
+            const nodes = document.querySelectorAll('.flow-node.draggable');
+            const diagram = document.getElementById('flow-diagram');
+
+            nodes.forEach(node => {
+                node.addEventListener('mousedown', startDrag);
+                node.addEventListener('touchstart', startDrag, { passive: false });
+            });
+
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('touchmove', drag, { passive: false });
+            document.addEventListener('mouseup', stopDrag);
+            document.addEventListener('touchend', stopDrag);
+        }
+
+        function startDrag(e) {
+            if (e.target.closest('.node-status')) return; // Don't drag when clicking status
+
+            draggedNode = e.currentTarget;
+            isDragging = false;
+
+            const diagram = document.getElementById('flow-diagram');
+            const diagramRect = diagram.getBoundingClientRect();
+            const nodeRect = draggedNode.getBoundingClientRect();
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            dragOffset.x = clientX - nodeRect.left;
+            dragOffset.y = clientY - nodeRect.top;
+
+            draggedNode.classList.add('dragging');
+
+            if (e.touches) {
+                e.preventDefault();
+            }
+        }
+
+        function drag(e) {
+            if (!draggedNode) return;
+
+            isDragging = true;
+
+            const diagram = document.getElementById('flow-diagram');
+            const diagramRect = diagram.getBoundingClientRect();
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            let newX = clientX - diagramRect.left - dragOffset.x;
+            let newY = clientY - diagramRect.top - dragOffset.y;
+
+            // Keep within bounds
+            const nodeRect = draggedNode.getBoundingClientRect();
+            newX = Math.max(0, Math.min(newX, diagramRect.width - nodeRect.width));
+            newY = Math.max(0, Math.min(newY, diagramRect.height - nodeRect.height));
+
+            draggedNode.style.left = newX + 'px';
+            draggedNode.style.top = newY + 'px';
+
+            // Redraw connections while dragging
+            drawFlowConnections();
+
+            if (e.touches) {
+                e.preventDefault();
+            }
+        }
+
+        function stopDrag(e) {
+            if (draggedNode) {
+                draggedNode.classList.remove('dragging');
+
+                // If we didn't drag much, treat it as a click
+                if (!isDragging) {
+                    const nodeId = draggedNode.id.replace('node-', '');
+                    showNodeDetails(nodeId);
+                }
+
+                draggedNode = null;
+                isDragging = false;
+            }
+        }
+
+        // Initialize draggable on load
+        window.addEventListener('load', () => {
+            initDraggable();
         });
     </script>
 </body>

@@ -12,6 +12,7 @@ services:
     volumes:
       - ./backend_data:/app/data
       - ./m2cf_fixed.py:/usr/src/app/src/m2cf.py
+      - ./backend_source_mol2chemfig/pdfgen.py:/usr/src/app/src/mol2chemfig/pdfgen.py
 
   frontend:
     image: pychemist/m2cf_web_frontend:latest

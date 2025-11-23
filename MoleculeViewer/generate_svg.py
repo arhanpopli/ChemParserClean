@@ -14,7 +14,7 @@ try:
     from rdkit.Chem import Draw
     import re
 
-    def smiles_to_svg(smiles, width=300, height=200, options=None):
+    def smiles_to_svg(smiles, options=None):
         """Convert SMILES to SVG using RDKit"""
         if options is None:
             options = {}
@@ -35,7 +35,7 @@ try:
             AllChem.Compute2DCoords(mol)
 
             # Draw molecule to SVG with options
-            drawer = Draw.MolDraw2DSVG(width, height)
+            drawer = Draw.MolDraw2DSVG(-1, -1)
 
             # Apply drawing options if available
             try:
@@ -116,8 +116,6 @@ try:
         input_data = json.loads(sys.argv[1])
         result = smiles_to_svg(
             input_data['smiles'],
-            input_data.get('width', 300),
-            input_data.get('height', 200),
             input_data.get('options', {})
         )
         print(json.dumps(result))

@@ -39,14 +39,12 @@ console.log(`📁 Cache directory: ${CACHE_DIR}`);
 /**
  * Call Python chemistry module to generate SVG
  */
-async function generateSvgViaPython(smiles, width = 300, height = 200, options = {}) {
+async function generateSvgViaPython(smiles, options = {}) {
   return new Promise((resolve, reject) => {
     const pythonProcess = spawn('python', [
       path.join(__dirname, 'generate_svg.py'),
       JSON.stringify({
         smiles: smiles,
-        width: width,
-        height: height,
         options: options
       })
     ]);
@@ -171,9 +169,9 @@ async function canonicalizeSmiles(smiles) {
  * Generate cache key for SVG
  * NOTE: For SMILES-based keys, use generateCacheKeyFromSmiles instead
  */
-function generateCacheKey(type, value, width, height) {
+function generateCacheKey(type, value) {
   const crypto = require('crypto');
-  const key = `${type}:${value}:${width}x${height}`;
+  const key = `${type}:${value}`;
   return crypto.createHash('md5').update(key).digest('hex') + '.svg';
 }
 
@@ -181,9 +179,9 @@ function generateCacheKey(type, value, width, height) {
  * Generate cache key from canonical SMILES
  * This ensures the same molecule always gets the same cache key
  */
-function generateCacheKeyFromSmiles(canonicalSmiles, width, height) {
+function generateCacheKeyFromSmiles(canonicalSmiles) {
   const crypto = require('crypto');
-  const key = `smiles:${canonicalSmiles}:${width}x${height}`;
+  const key = `smiles:${canonicalSmiles}`;
   return crypto.createHash('md5').update(key).digest('hex') + '.svg';
 }
 
@@ -217,21 +215,18 @@ function cacheSvg(cacheKey, svgContent) {
 app.get('/img/smiles', async (req, res) => {
   try {
     const smiles = req.query.smiles?.trim();
-    const width = parseInt(req.query.width) || 300;
-    const height = parseInt(req.query.height) || 200;
     const wantJson = req.query.json === 'true';
 
     if (!smiles) {
       if (wantJson) {
         return res.json({ success: false, error: 'SMILES required' });
       }
-      return res.status(400).send(createErrorSvg('SMILES required', width, height));
+      return res.status(400).send(createErrorSvg('SMILES required'));
     }
 
     console.log(`\n${'='.repeat(70)}`);
     console.log(`📥 [MoleculeViewer] GET /img/smiles`);
     console.log(`   SMILES: ${smiles}`);
-    console.log(`   Size: ${width}x${height}px`);
     console.log(`   JSON mode: ${wantJson}`);
 
     // Canonicalize SMILES to prevent duplicate cache entries
@@ -245,7 +240,7 @@ app.get('/img/smiles', async (req, res) => {
     }
 
     // Check cache using canonical SMILES
-    const cacheKey = generateCacheKeyFromSmiles(canonicalSmiles, width, height);
+    const cacheKey = generateCacheKeyFromSmiles(canonicalSmiles);
     let svg = getCachedSvg(cacheKey);
 
     if (svg) {
@@ -265,7 +260,7 @@ app.get('/img/smiles', async (req, res) => {
     }
 
     // Generate SVG using canonical SMILES
-    svg = await generateSvgViaPython(canonicalSmiles, width, height, {
+    svg = await generateSvgViaPython(canonicalSmiles, {
       aromaticCircles: true,
       fancyBonds: true
     });
@@ -295,7 +290,7 @@ app.get('/img/smiles', async (req, res) => {
       return res.json({ success: false, error: error.message });
     }
     res.set('Content-Type', 'image/svg+xml');
-    res.send(createErrorSvg(error.message, 300, 200));
+    res.send(createErrorSvg(error.message));
   }
 });
 
@@ -307,21 +302,18 @@ app.get('/img/smiles', async (req, res) => {
 app.get('/img/nomenclature', async (req, res) => {
   try {
     const nomenclature = req.query.nomenclature?.trim();
-    const width = parseInt(req.query.width) || 300;
-    const height = parseInt(req.query.height) || 200;
     const wantJson = req.query.json === 'true';
 
     if (!nomenclature) {
       if (wantJson) {
         return res.json({ success: false, error: 'Nomenclature required' });
       }
-      return res.status(400).send(createErrorSvg('Nomenclature required', width, height));
+      return res.status(400).send(createErrorSvg('Nomenclature required'));
     }
 
     console.log(`\n${'='.repeat(70)}`);
     console.log(`📥 [MoleculeViewer] GET /img/nomenclature`);
     console.log(`   Nomenclature: ${nomenclature}`);
-    console.log(`   Size: ${width}x${height}px`);
     console.log(`   JSON mode: ${wantJson}`);
 
     // Step 1: Convert nomenclature to SMILES
@@ -340,7 +332,7 @@ app.get('/img/nomenclature', async (req, res) => {
     }
 
     // Step 3: Check cache using canonical SMILES
-    const cacheKey = generateCacheKeyFromSmiles(canonicalSmiles, width, height);
+    const cacheKey = generateCacheKeyFromSmiles(canonicalSmiles);
     let svg = getCachedSvg(cacheKey);
 
     if (svg) {
@@ -360,7 +352,7 @@ app.get('/img/nomenclature', async (req, res) => {
     }
 
     // Step 4: Generate SVG from canonical SMILES
-    svg = await generateSvgViaPython(canonicalSmiles, width, height, {
+    svg = await generateSvgViaPython(canonicalSmiles, {
       aromaticCircles: true,
       fancyBonds: true
     });
@@ -390,7 +382,7 @@ app.get('/img/nomenclature', async (req, res) => {
       return res.json({ success: false, error: error.message });
     }
     res.set('Content-Type', 'image/svg+xml');
-    res.send(createErrorSvg(`Not found: ${error.message}`, 300, 200));
+    res.send(createErrorSvg(`Not found: ${error.message}`));
   }
 });
 
@@ -509,7 +501,9 @@ app.delete('/clear-cache', (req, res) => {
 /**
  * Create error SVG for display
  */
-function createErrorSvg(message, width = 300, height = 200) {
+function createErrorSvg(message) {
+  const width = 300;
+  const height = 200;
   return `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
     <rect width="${width}" height="${height}" fill="#f0f0f0"/>
     <text x="${width / 2}" y="50" text-anchor="middle" font-family="monospace" font-size="14" fill="#d00" font-weight="bold">Error</text>

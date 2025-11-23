@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mol2chemfig - Complete Interface</title>
-    
-    
+
+
     <style>
         * {
             margin: 0;
@@ -24,7 +25,7 @@
             background: linear-gradient(135deg, #1f6feb 0%, #0d419d 100%);
             padding: 20px;
             text-align: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         .header h1 {
@@ -104,8 +105,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .section {
@@ -273,7 +281,7 @@
             white-space: nowrap;
             z-index: 1000;
             font-size: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         .controls-grid {
@@ -405,8 +413,13 @@
         }
 
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .badge {
@@ -421,6 +434,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1>🧪 Mol2chemfig - Complete Interface</h1>
@@ -502,8 +516,10 @@ Or paste existing chemfig code"></textarea>
 
                     <!-- Options -->
                     <div class="section">
-                        <div class="section-title">⚙️ Chemfig Options <span class="badge" id="activeOptionsBadge" style="display:none;">0 active</span></div>
-                        <div style="background: #0d1117; border-left: 3px solid #58a6ff; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
+                        <div class="section-title">⚙️ Chemfig Options <span class="badge" id="activeOptionsBadge"
+                                style="display:none;">0 active</span></div>
+                        <div
+                            style="background: #0d1117; border-left: 3px solid #58a6ff; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
                             <strong style="color: #58a6ff;">💡 How to use:</strong>
                             <ol style="margin: 8px 0 0 20px; color: #8b949e; font-size: 13px;">
                                 <li>Generate a chemfig (Search or paste SMILES)</li>
@@ -519,11 +535,13 @@ Or paste existing chemfig code"></textarea>
                         <div class="controls-grid">
                             <div class="input-group">
                                 <label>Rotation Angle (°)</label>
-                                <input type="number" id="moleculeAngle" value="0" min="-360" max="360" onchange="updateActiveOptions()">
+                                <input type="number" id="moleculeAngle" value="0" min="-360" max="360"
+                                    onchange="updateActiveOptions()">
                             </div>
                             <div class="input-group">
                                 <label>Indentation</label>
-                                <input type="number" id="moleculeIndent" value="4" min="0" max="20" onchange="updateActiveOptions()">
+                                <input type="number" id="moleculeIndent" value="4" min="0" max="20"
+                                    onchange="updateActiveOptions()">
                             </div>
                             <div class="input-group">
                                 <label>H₂ Treatment</label>
@@ -543,10 +561,12 @@ Or paste existing chemfig code"></textarea>
                                 🔄 Reset to Default (no options)
                             </button>
                         </div>
-                        
-                        <div id="optionsPreview" style="display:none; margin-top: 15px; padding: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px;">
+
+                        <div id="optionsPreview"
+                            style="display:none; margin-top: 15px; padding: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px;">
                             <strong style="color: #58a6ff;">Current Options to Apply:</strong>
-                            <div id="optionsPreviewText" style="margin-top: 5px; font-family: monospace; font-size: 12px; color: #8b949e;"></div>
+                            <div id="optionsPreviewText"
+                                style="margin-top: 5px; font-family: monospace; font-size: 12px; color: #8b949e;"></div>
                         </div>
                     </div>
                 </div>
@@ -565,7 +585,8 @@ Or paste existing chemfig code"></textarea>
                     <div class="section">
                         <div class="section-title">
                             📄 Structure Preview
-                            <select id="viewerType" onchange="switchViewer()" style="float:right; padding:4px 8px; background:#0d1117; border:1px solid #30363d; color:#c9d1d9; border-radius:4px;">
+                            <select id="viewerType" onchange="switchViewer()"
+                                style="float:right; padding:4px 8px; background:#0d1117; border:1px solid #30363d; color:#c9d1d9; border-radius:4px;">
                                 <option value="svg">SVG (Vector)</option>
                                 <option value="layered">SVG (Layered) ⚡</option>
                                 <option value="pdf">PDF (Embed)</option>
@@ -617,7 +638,8 @@ Or paste existing chemfig code"></textarea>
             <div class="section">
                 <div class="section-title">ℹ️ About</div>
                 <p style="line-height: 1.6; color: #8b949e;">
-                    <strong style="color: #c9d1d9;">Mol2chemfig</strong> - Chemical structure to LaTeX chemfig converter<br><br>
+                    <strong style="color: #c9d1d9;">Mol2chemfig</strong> - Chemical structure to LaTeX chemfig
+                    converter<br><br>
                     <strong>Features:</strong><br>
                     • SMILES and MOL format support<br>
                     • Chemical name search (PubChem + common names)<br>
@@ -634,7 +656,7 @@ Or paste existing chemfig code"></textarea>
 
     <script>
         const API_BASE = 'http://localhost:5001/m2cf';  // Flask wrapper -> Docker backend
-        
+
         // Chemfig options (same for molecule and reaction)
         const OPTIONS = [
             { label: 'compact view', value: '-z', tooltip: 'A more compact chemfig format' },
@@ -775,6 +797,8 @@ Or paste existing chemfig code"></textarea>
         // Handles both: URL paths like /images/xxx.svg AND inline SVG content starting with <?xml
         async function displaySVG(svgData) {
             const svgDiv = document.getElementById('moleculeSVG');
+            const viewerTypeSelect = document.getElementById('viewerType');
+
             if (svgData) {
                 // Check if it's inline SVG content (starts with <?xml or <svg)
                 if (svgData.trim().startsWith('<?xml') || svgData.trim().startsWith('<svg')) {
@@ -802,6 +826,13 @@ Or paste existing chemfig code"></textarea>
                         svgDiv.innerHTML = `<img src="${fullUrl}" alt="Molecule SVG" style="max-width:100%; height:auto;">`;
                     }
                 }
+
+                // Automatically switch to SVG viewer if not already showing SVG
+                if (viewerTypeSelect.value !== 'svg') {
+                    console.log('🔄 Switching to SVG viewer');
+                    viewerTypeSelect.value = 'svg';
+                    switchViewer();
+                }
             } else {
                 svgDiv.innerHTML = `
                     <div style="text-align:center; padding:40px; color:#8b949e;">
@@ -817,11 +848,11 @@ Or paste existing chemfig code"></textarea>
 
         // Display layered SVG with individual option layers
         let currentLayers = null; // Store layers globally for instant toggling
-        
+
         function displayLayeredSVG(layers) {
             const layeredDiv = document.getElementById('moleculeLayered');
             currentLayers = layers; // Store for instant option toggling
-            
+
             if (!layers || !layers.base) {
                 layeredDiv.innerHTML = `
                     <div style="text-align:center; padding:40px; color:#8b949e;">
@@ -831,7 +862,7 @@ Or paste existing chemfig code"></textarea>
                 `;
                 return;
             }
-            
+
             // Create container for stacked layers
             // STRATEGY: Each layer is a FULL molecule rendering
             // We show ONLY ONE layer at a time (the one matching current options)
@@ -845,9 +876,9 @@ Or paste existing chemfig code"></textarea>
                     <!-- Layers will be added here -->
                 </div>
             `;
-            
+
             const stackDiv = document.getElementById('svgLayerStack');
-            
+
             // Helper to create layer wrapper
             // ALL layers (including base) are positioned absolutely within the container
             const createLayer = (svgContent, layerId) => {
@@ -863,12 +894,12 @@ Or paste existing chemfig code"></textarea>
                 wrapper.innerHTML = svgContent;
                 return wrapper;
             };
-            
+
             // Add BASE layer (shown when NO options selected)
             const baseLayer = createLayer(layers.base, 'base');
             baseLayer.style.display = 'block'; // Show base by default
             stackDiv.appendChild(baseLayer);
-            
+
             // Add single option layers (each is FULL molecule with that option)
             const optionLayers = [
                 { key: 'aromatic', flag: '-o' },
@@ -878,7 +909,7 @@ Or paste existing chemfig code"></textarea>
                 { key: 'fancy', flag: '-f' },
                 { key: 'compact', flag: '-z' }
             ];
-            
+
             optionLayers.forEach((opt) => {
                 if (layers[opt.key]) {
                     const layer = createLayer(layers[opt.key], opt.key);
@@ -887,13 +918,13 @@ Or paste existing chemfig code"></textarea>
                     console.log(`  ✅ Added full layer: ${opt.key} (${opt.flag})`);
                 }
             });
-            
+
             console.log('✅ Layered SVG ready - showing base (no options)');
-            
+
             // Update visibility based on currently checked options
             updateLayerVisibility();
         }
-        
+
         // Toggle layer visibility based on active options (instant, no backend call!)
         // STRATEGY: Show ONLY the layer matching the active option(s)
         // For single option: show that option's layer
@@ -903,10 +934,10 @@ Or paste existing chemfig code"></textarea>
                 console.log('⚠️ No layers loaded yet');
                 return;
             }
-            
+
             const activeOptions = getSelectedOptions('mol'); // Get checked options from molecule tab
             console.log('🎨 Updating layer visibility, active:', activeOptions);
-            
+
             // Map option flags to layer IDs and display names
             const flagToLayer = {
                 '-o': 'aromatic',
@@ -916,7 +947,7 @@ Or paste existing chemfig code"></textarea>
                 '-f': 'fancy',
                 '-z': 'compact'
             };
-            
+
             const layerDisplayNames = {
                 'aromatic': 'Aromatic Circles',
                 'carbon': 'Show Carbon',
@@ -925,10 +956,10 @@ Or paste existing chemfig code"></textarea>
                 'fancy': 'Fancy Bonds',
                 'compact': 'Compact View'
             };
-            
+
             const baseLayer = document.getElementById('layer-base');
             const statusBadge = document.getElementById('layerStatus');
-            
+
             if (activeOptions.length === 0) {
                 // NO options selected: Show ONLY base
                 if (baseLayer) baseLayer.style.display = 'block';
@@ -944,10 +975,10 @@ Or paste existing chemfig code"></textarea>
             } else if (activeOptions.length === 1) {
                 // SINGLE option: Hide base, show that option's full layer
                 if (baseLayer) baseLayer.style.display = 'none';
-                
+
                 const activeFlag = activeOptions[0];
                 const activeLayerId = flagToLayer[activeFlag];
-                
+
                 Object.entries(flagToLayer).forEach(([flag, layerId]) => {
                     const layer = document.getElementById(`layer-${layerId}`);
                     if (layer) {
@@ -972,7 +1003,7 @@ Or paste existing chemfig code"></textarea>
                     statusBadge.style.background = '#f78166';
                 }
                 console.log('  ⚠️ Multiple options selected - click "Apply Options" for combined view');
-                
+
                 // Show info message
                 showMessage('Multiple options selected. Click "Apply Options" to generate combined view.', 'info');
             }
@@ -1002,7 +1033,7 @@ Or paste existing chemfig code"></textarea>
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ textAreaData: 'C' })
                 });
-                
+
                 if (response.ok) {
                     statusDiv.className = 'status online';
                     statusDiv.textContent = '✅ Backend Online';
@@ -1057,7 +1088,7 @@ Or paste existing chemfig code"></textarea>
             const angle = document.getElementById('moleculeAngle').value;
             const indent = document.getElementById('moleculeIndent').value;
             const h2 = document.getElementById('moleculeH2').value;
-            
+
             const badge = document.getElementById('activeOptionsBadge');
             if (selections.length > 0) {
                 badge.style.display = 'inline-block';
@@ -1065,13 +1096,13 @@ Or paste existing chemfig code"></textarea>
             } else {
                 badge.style.display = 'none';
             }
-            
+
             const preview = document.getElementById('optionsPreview');
             const previewText = document.getElementById('optionsPreviewText');
             if (selections.length > 0 || angle != 0 || indent != 4 || h2 != 'keep') {
                 preview.style.display = 'block';
-                let text = 'Options: ' + (selections.length > 0 ? selections.join(' ') : 'none') + 
-                           ', Angle: ' + angle + '°, Indent: ' + indent + ', H₂: ' + h2;
+                let text = 'Options: ' + (selections.length > 0 ? selections.join(' ') : 'none') +
+                    ', Angle: ' + angle + '°, Indent: ' + indent + ', H₂: ' + h2;
                 previewText.textContent = text;
             } else {
                 preview.style.display = 'none';
@@ -1113,7 +1144,7 @@ Or paste existing chemfig code"></textarea>
         async function searchChemical() {
             const searchTerm = document.getElementById('searchTerm').value.trim();
             const btn = document.getElementById('searchBtn');
-            
+
             if (!searchTerm) {
                 showError('moleculeError', 'Please enter a chemical name!');
                 return;
@@ -1126,7 +1157,7 @@ Or paste existing chemfig code"></textarea>
             try {
                 const response = await fetch(`${API_BASE}/search?searchTerm=${encodeURIComponent(searchTerm)}`);
                 const data = await response.json();
-                
+
                 if (data.error) {
                     showError('moleculeError', data.error);
                 } else if (data.smiles) {
@@ -1153,14 +1184,14 @@ Or paste existing chemfig code"></textarea>
                 const response = await fetch(`${API_BASE}/layers`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         chem_data: chem_data,
                         chem_format: chem_format
                     })
                 });
 
                 const result = await response.json();
-                
+
                 if (result.error) {
                     console.error('Layer generation error:', result.error);
                 } else if (result.layers) {
@@ -1394,7 +1425,7 @@ Or paste existing chemfig code"></textarea>
                 });
 
                 const result = await response.json();
-                
+
                 if (result.error) {
                     showError('moleculeError', result.error);
                 } else {
@@ -1429,7 +1460,7 @@ Or paste existing chemfig code"></textarea>
             const element = document.getElementById(elementId);
             element.select();
             document.execCommand('copy');
-            
+
             // Show temporary success message
             const parent = element.parentElement;
             const successMsg = document.createElement('div');
@@ -1437,7 +1468,7 @@ Or paste existing chemfig code"></textarea>
             successMsg.textContent = '✅ Copied to clipboard!';
             successMsg.style.marginTop = '10px';
             parent.appendChild(successMsg);
-            
+
             setTimeout(() => {
                 successMsg.remove();
             }, 2000);
@@ -1518,4 +1549,5 @@ Or paste existing chemfig code"></textarea>
         }
     </script>
 </body>
+
 </html>

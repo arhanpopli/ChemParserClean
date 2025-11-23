@@ -38,9 +38,9 @@ STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 image_cache = {}  # key: hash -> {svg: path, pdf: path, chemfig: str, timestamp}
 
 
-def get_content_hash(smiles, options=None):
+def get_content_hash(smiles, options=None, h2=None):
     """
-    Generate unique hash for SMILES + options combination
+    Generate unique hash for SMILES + options + h2 combination
     Uses canonical SMILES to prevent duplicates
     """
     canonical = canonicalize_smiles(smiles)
@@ -49,7 +49,8 @@ def get_content_hash(smiles, options=None):
         canonical = smiles
 
     options_str = json.dumps(sorted(options or []))
-    content = f"{canonical}:{options_str}"
+    h2_str = h2 or 'keep'  # Include h2 parameter in hash
+    content = f"{canonical}:{options_str}:{h2_str}"
     return hashlib.sha256(content.encode()).hexdigest()[:16]
 
 
@@ -416,10 +417,13 @@ def m2cf_submit():
         # Handle 'h2' option locally if set to 'on' or 'add'
         # Docker backend often fails with -h option, so we do it here with RDKit
         h2_option = data.get('h2', 'keep')
+        original_h2 = h2_option  # Store original value for hash calculation
         added_hydrogens_locally = False
         if h2_option in ['on', 'add']:
             print(f"[MOL2CHEMFIG] Adding hydrogens locally via RDKit...")
+            print(f"[DEBUG] BEFORE adding H: {text_area_data}")
             text_area_data = add_hydrogens_to_structure(text_area_data)
+            print(f"[DEBUG] AFTER adding H: {text_area_data}")
             data['textAreaData'] = text_area_data
             # Set h2 to 'keep' so Docker backend doesn't try to add them again
             data['h2'] = 'keep'
@@ -440,7 +444,8 @@ def m2cf_submit():
         # Docker returns inline SVG in svglink - save it to cache
         if result.get('svglink') and result['svglink'].startswith('<?xml'):
             svg_content = result['svglink']
-            content_hash = get_content_hash(text_area_data, data.get('selections', []))
+            content_hash = get_content_hash(text_area_data, data.get('selections', []), original_h2)
+            print(f"[DEBUG] Hash calculation: SMILES={text_area_data}, selections={data.get('selections', [])}, h2={original_h2}, hash={content_hash}")
 
             # Save SVG to cache
             filename = save_svg_content(svg_content, content_hash)
@@ -462,7 +467,7 @@ def m2cf_submit():
             print("[MOL2CHEMFIG] Docker backend didn't return SVG with hydrogens, converting PDF to SVG locally...")
             try:
                 svg_content = convert_pdf_to_svg(result['pdflink'])
-                content_hash = get_content_hash(text_area_data, data.get('selections', []))
+                content_hash = get_content_hash(text_area_data, data.get('selections', []), original_h2)
                 
                 filename = save_svg_content(svg_content, content_hash)
                 result['svglink'] = f"/images/{filename}"
@@ -482,7 +487,7 @@ def m2cf_submit():
             print("[DOCKER] No SVG returned, converting PDF to SVG...")
             try:
                 svg_content = convert_pdf_to_svg(result['pdflink'])
-                content_hash = get_content_hash(text_area_data, data.get('selections', []))
+                content_hash = get_content_hash(text_area_data, data.get('selections', []), original_h2)
                 
                 filename = save_svg_content(svg_content, content_hash)
                 result['svglink'] = f"/images/{filename}"
@@ -609,7 +614,7 @@ def m2cf_search():
                 if result.get('svglink') and result['svglink'].startswith('<?xml'):
                     svg_content = result['svglink']
                     smiles = result.get('smiles', search_term)
-                    content_hash = get_content_hash(smiles, [])
+                    content_hash = get_content_hash(smiles, [], 'keep')
 
                     filename = save_svg_content(svg_content, content_hash)
                     result['svglink'] = f"/images/{filename}"
@@ -644,6 +649,7 @@ def m2cf_apply():
 
         # Handle 'h2' option locally if set to 'on' or 'add'
         h2_option = data.get('h2', 'keep')
+        original_h2 = h2_option  # Store original value for hash calculation
         added_hydrogens_locally = False
         if h2_option in ['on', 'add']:
             print(f"[MOL2CHEMFIG] Adding hydrogens locally via RDKit (Apply)...")
@@ -668,7 +674,7 @@ def m2cf_apply():
             svg_content = result['svglink']
             chem_data = data.get('chem_data', '')
             selections = data.get('selections', [])
-            content_hash = get_content_hash(chem_data, selections)
+            content_hash = get_content_hash(chem_data, selections, original_h2)
 
             filename = save_svg_content(svg_content, content_hash)
             result['svglink'] = f"/images/{filename}"
@@ -682,7 +688,7 @@ def m2cf_apply():
                 svg_content = convert_pdf_to_svg(result['pdflink'])
                 chem_data = data.get('chem_data', '')
                 selections = data.get('selections', [])
-                content_hash = get_content_hash(chem_data, selections)
+                content_hash = get_content_hash(chem_data, selections, original_h2)
                 
                 filename = save_svg_content(svg_content, content_hash)
                 result['svglink'] = f"/images/{filename}"

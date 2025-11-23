@@ -550,8 +550,9 @@ def submit():
     h2 = data.get('h2', 'keep')
 
     # If options are provided, handle them properly
+    # IMPORTANT: Also build args if h2 is not 'keep' (e.g., 'add' or 'delete')
     args = None
-    if selections:
+    if selections or h2 != 'keep':
         angle = str(data.get('angle', 0))
         indentation = str(data.get('indentation', 4))
         args = combine_args(selections, angle, indentation, h2)

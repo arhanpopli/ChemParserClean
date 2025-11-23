@@ -401,9 +401,12 @@ def m2cf_submit():
 
         print(f"[MOL2CHEMFIG] Processing: {text_area_data[:50]}...")
 
+        # Check if input is a MOL block
+        is_mol_block = "M  END" in text_area_data or "V2000" in text_area_data
+
         # Check if input is nomenclature (not SMILES) and convert it
         original_input = text_area_data
-        if not is_smiles(text_area_data):
+        if not is_mol_block and not is_smiles(text_area_data):
             print(f"[MOL2CHEMFIG] Input looks like nomenclature, converting to SMILES...")
             smiles, source = convert_nomenclature_to_smiles(text_area_data)
             if smiles:
@@ -414,22 +417,19 @@ def m2cf_submit():
                 # Conversion failed
                 return jsonify({"error": source}), 400
 
-        # Handle 'h2' option locally if set to 'on' or 'add'
-        # Docker backend often fails with -h option, so we do it here with RDKit
+        # Handle 'h2' option
+        # We rely on Docker to generate the PDF with hydrogens (using -h option)
+        # But Docker often fails to generate the SVG correctly with hydrogens.
+        # So we will force PDF-to-SVG conversion if h2 is enabled.
         h2_option = data.get('h2', 'keep')
         original_h2 = h2_option  # Store original value for hash calculation
-        added_hydrogens_locally = False
-        if h2_option in ['on', 'add']:
-            print(f"[MOL2CHEMFIG] Adding hydrogens locally via RDKit...")
-            print(f"[DEBUG] BEFORE adding H: {text_area_data}")
-            text_area_data = add_hydrogens_to_structure(text_area_data)
-            print(f"[DEBUG] AFTER adding H: {text_area_data}")
-            data['textAreaData'] = text_area_data
-            # Set h2 to 'keep' so Docker backend doesn't try to add them again
-            data['h2'] = 'keep'
-            added_hydrogens_locally = True
+        h2_enabled = h2_option in ['on', 'add']
+        
+        if h2_enabled:
+            print(f"[MOL2CHEMFIG] H2 enabled ({h2_option}), will force PDF-to-SVG conversion...")
 
         # Call Docker backend
+        print(f"[DEBUG] Sending to Docker: textAreaData={data.get('textAreaData')}, h2={data.get('h2')}")
         response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/submit", json=data, timeout=30)
 
         if response.status_code != 200:
@@ -437,12 +437,15 @@ def m2cf_submit():
             return jsonify({"error": f"Docker backend returned status {response.status_code}: {response.text}"}), 500
 
         result = response.json()
+        print(f"[DEBUG] Docker Response: chem_data={result.get('chem_data')}, svglink={result.get('svglink') is not None}, pdflink={result.get('pdflink') is not None}")
 
         if result.get('error'):
             return jsonify({"error": result['error']}), 400
 
         # Docker returns inline SVG in svglink - save it to cache
-        if result.get('svglink') and result['svglink'].startswith('<?xml'):
+        # BUT if we enabled hydrogens, we ignore the Docker SVG because it often lacks the hydrogens
+        # and prefer to convert the PDF (which usually has them) to SVG ourselves.
+        if result.get('svglink') and result['svglink'].startswith('<?xml') and not h2_enabled:
             svg_content = result['svglink']
             content_hash = get_content_hash(text_area_data, data.get('selections', []), original_h2)
             print(f"[DEBUG] Hash calculation: SMILES={text_area_data}, selections={data.get('selections', [])}, h2={original_h2}, hash={content_hash}")
@@ -462,8 +465,8 @@ def m2cf_submit():
 
             print(f"[DOCKER] Saved SVG to cache: {filename}")
         
-        # Fallback: If we added hydrogens locally and Docker didn't return SVG, convert PDF to SVG
-        elif added_hydrogens_locally and result.get('pdflink') and not result.get('svglink'):
+        # Fallback: If we enabled hydrogens and Docker didn't return SVG (or we ignored it), convert PDF to SVG
+        elif h2_enabled and result.get('pdflink'):
             print("[MOL2CHEMFIG] Docker backend didn't return SVG with hydrogens, converting PDF to SVG locally...")
             try:
                 svg_content = convert_pdf_to_svg(result['pdflink'])
@@ -647,19 +650,13 @@ def m2cf_apply():
     try:
         data = request.get_json()
 
-        # Handle 'h2' option locally if set to 'on' or 'add'
+        # Handle 'h2' option
         h2_option = data.get('h2', 'keep')
         original_h2 = h2_option  # Store original value for hash calculation
-        added_hydrogens_locally = False
-        if h2_option in ['on', 'add']:
-            print(f"[MOL2CHEMFIG] Adding hydrogens locally via RDKit (Apply)...")
-            chem_data = data.get('chem_data', '')
-            if chem_data:
-                chem_data = add_hydrogens_to_structure(chem_data)
-                data['chem_data'] = chem_data
-                # Set h2 to 'keep' so Docker backend doesn't try to add them again
-                data['h2'] = 'keep'
-                added_hydrogens_locally = True
+        h2_enabled = h2_option in ['on', 'add']
+        
+        if h2_enabled:
+            print(f"[MOL2CHEMFIG] H2 enabled ({h2_option}) in Apply, will force PDF-to-SVG conversion...")
 
         print(f"[DOCKER] Applying options...")
         response = requests.post(f"{MOL2CHEMFIG_BACKEND}/m2cf/apply", json=data, timeout=30)
@@ -670,7 +667,7 @@ def m2cf_apply():
         result = response.json()
 
         # If Docker returned inline SVG, save it to cache
-        if result.get('svglink') and result['svglink'].startswith('<?xml'):
+        if result.get('svglink') and result['svglink'].startswith('<?xml') and not h2_enabled:
             svg_content = result['svglink']
             chem_data = data.get('chem_data', '')
             selections = data.get('selections', [])
@@ -681,8 +678,8 @@ def m2cf_apply():
 
             print(f"[DOCKER] Saved apply result SVG: {filename}")
         
-        # Fallback: If we added hydrogens locally and Docker didn't return SVG, convert PDF to SVG
-        elif added_hydrogens_locally and result.get('pdflink') and not result.get('svglink'):
+        # Fallback: If we enabled hydrogens and Docker didn't return SVG (or we ignored it), convert PDF to SVG
+        elif h2_enabled and result.get('pdflink'):
             print("[MOL2CHEMFIG] Docker backend didn't return SVG with hydrogens (Apply), converting PDF to SVG locally...")
             try:
                 svg_content = convert_pdf_to_svg(result['pdflink'])

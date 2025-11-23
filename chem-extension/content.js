@@ -523,8 +523,8 @@ window.chemRendererPerformance = {
 const SIZE_STEP = 20;
 const MIN_SIZE = 100;
 const MAX_SIZE = 800;
-const DEFAULT_WIDTH = 300;
-const DEFAULT_HEIGHT = 200;
+const DEFAULT_WIDTH = 400;
+const DEFAULT_HEIGHT = 350;
 
 function getImageKey(moleculeData) {
   if (!moleculeData) return null;
@@ -542,9 +542,9 @@ function getPageImageKey(moleculeData, pageUrl) {
 async function loadImageSize(moleculeData, pageUrl, settings) {
   try {
     const imageKey = getImageKey(moleculeData);
-    if (!imageKey) return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+    if (!imageKey) return { scale: 1.5 }; // Default to 1.5x scale
     if (!settings.saveSizePerImage && !settings.saveSizeBySMILES) {
-      return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+      return { scale: 1.5 };
     }
     let storageKey;
     if (settings.saveSizePerImage && !settings.saveSizeBySMILES) {
@@ -552,19 +552,26 @@ async function loadImageSize(moleculeData, pageUrl, settings) {
     } else {
       storageKey = imageKey;
     }
-    if (!storageKey) return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+    if (!storageKey) return { scale: 1.5 };
     return new Promise((resolve) => {
       chrome.storage.local.get([storageKey], (result) => {
         if (result[storageKey]) {
-          resolve(result[storageKey]);
+          // Support both old format (width/height) and new format (scale)
+          if (result[storageKey].scale) {
+            resolve(result[storageKey]);
+          } else {
+            // Legacy: convert old width/height to scale (assume default was 400x350)
+            const scale = result[storageKey].width ? result[storageKey].width / DEFAULT_WIDTH : 1.5;
+            resolve({ scale });
+          }
         } else {
-          resolve({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT });
+          resolve({ scale: 1.5 });
         }
       });
     });
   } catch (error) {
     console.error('Error loading image size:', error);
-    return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+    return { scale: 1.5 };
   }
 }
 
@@ -660,21 +667,39 @@ function createSizeControls(container, svgImg, moleculeData, settings) {
 }
 
 function adjustImageSize(container, svgImg, moleculeData, delta, settings) {
-  const currentWidth = parseInt(svgImg.style.maxWidth) || DEFAULT_WIDTH;
-  const currentHeight = parseInt(svgImg.style.maxHeight) || DEFAULT_HEIGHT;
-  let newWidth = currentWidth + delta;
-  let newHeight = currentHeight + Math.round(delta * (currentHeight / currentWidth));
-  newWidth = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newWidth));
-  newHeight = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newHeight));
-  svgImg.style.maxWidth = `${newWidth}px`;
-  svgImg.style.maxHeight = `${newHeight}px`;
-  // FORCE width/height to override SVG attributes (fixes mol2chemfig size issue)
+  // Get current scale (default to 1.5 for a good starting size)
+  let currentScale = parseFloat(svgImg.dataset.scale) || 1.5;
+
+  // Adjust scale by delta (convert pixel delta to scale delta)
+  const scaleDelta = delta / 100; // 20px = 0.2 scale change
+  let newScale = currentScale + scaleDelta;
+
+  // Constrain scale between 0.5x and 5x
+  newScale = Math.max(0.5, Math.min(5, newScale));
+
+  // Get the SVG's intrinsic width
+  const intrinsicWidth = svgImg.naturalWidth || svgImg.width || 300;
+
+  console.log(`Intrinsic width: ${intrinsicWidth}px`);
+
+  // Calculate new width based on scale
+  const newWidth = Math.round(intrinsicWidth * newScale);
+
+  // Only set width, let height: auto maintain aspect ratio
   svgImg.style.width = `${newWidth}px`;
-  svgImg.style.height = `${newHeight}px`;
+  svgImg.style.height = 'auto';
+  svgImg.style.maxWidth = 'none';
+  svgImg.style.maxHeight = 'none';
+
+  // Store scale in dataset for future adjustments
+  svgImg.dataset.scale = newScale.toString();
+
+  // Save scale preference
   const pageUrl = window.location.href;
-  const size = { width: newWidth, height: newHeight };
+  const size = { scale: newScale };
   saveImageSize(moleculeData, pageUrl, size, settings);
-  console.log(`Adjusted size: ${newWidth}x${newHeight}`);
+
+  console.log(`Adjusted scale: ${newScale.toFixed(2)}x (width: ${newWidth}px, height: auto, was ${currentScale.toFixed(2)}x)`);
 }
 
 async function wrapImageWithSizeControls(svgImg, originalImg, moleculeData, settings) {
@@ -691,8 +716,18 @@ async function wrapImageWithSizeControls(svgImg, originalImg, moleculeData, sett
     `;
     const pageUrl = window.location.href;
     const savedSize = await loadImageSize(moleculeData, pageUrl, settings);
-    svgImg.style.maxWidth = `${savedSize.width}px`;
-    svgImg.style.maxHeight = `${savedSize.height}px`;
+
+    // Apply scale by calculating actual dimensions from intrinsic size
+    const scale = savedSize.scale || 1.5;
+    svgImg.dataset.scale = scale.toString();
+
+    // Wait for image to load to get natural dimensions
+    if (svgImg.complete) {
+      applyScaleToImage(svgImg, scale);
+    } else {
+      svgImg.onload = () => applyScaleToImage(svgImg, scale);
+    }
+
     if (moleculeData) {
       svgImg.dataset.moleculeData = JSON.stringify(moleculeData);
     }
@@ -702,13 +737,26 @@ async function wrapImageWithSizeControls(svgImg, originalImg, moleculeData, sett
     container.appendChild(controls);
     originalImg.remove();
 
-    console.log('✅ Size controls wrapper created successfully');
+    console.log('✅ Size controls wrapper created successfully with scale:', scale);
     return container;
   } catch (error) {
     console.error('❌ Error wrapping image with size controls:', error);
     originalImg.parentNode.replaceChild(svgImg, originalImg);
     return svgImg;
   }
+}
+
+function applyScaleToImage(svgImg, scale) {
+  const intrinsicWidth = svgImg.naturalWidth || svgImg.width || 300;
+  const newWidth = Math.round(intrinsicWidth * scale);
+
+  // Only set width, let height: auto maintain aspect ratio
+  svgImg.style.width = `${newWidth}px`;
+  svgImg.style.height = 'auto';
+  svgImg.style.maxWidth = 'none';
+  svgImg.style.maxHeight = 'none';
+
+  console.log(`Applied scale ${scale}x: intrinsic width ${intrinsicWidth}px → ${newWidth}px (height: auto)`);
 }
 
 // Create debug interface EARLY so it's always available
@@ -1481,8 +1529,9 @@ function setupLazyLoading() {
 
           svgImg.style.cssText = `
             display: inline-block;
-            max-width: 300px;
-            max-height: 200px;
+            max-width: 800px;
+            max-height: 600px;
+            height: auto;
             margin: 0 12px 8px 0;
             vertical-align: middle;
             cursor: pointer;
@@ -1910,31 +1959,53 @@ function setupLazyLoading() {
       console.log('%c🌐 Fetching from mol2chemfig backend...', 'color: #00AAFF; font-weight: bold;');
 
       // Build selections array for mol2chemfig API
-      // mol2chemfig uses command-line style flags: -o, -c, -m, -f, -n, -z
+      // mol2chemfig uses command-line style flags: -o, -c, -m, -n, -p (flip h), -q (flip v)
       const selections = [];
       if (settings.m2cfAromaticCircles) selections.push('-o');  // Aromatic circles
       if (settings.m2cfShowCarbons) selections.push('-c');       // Show carbon labels
       if (settings.m2cfShowMethyls) selections.push('-m');       // Show methyl labels
-      if (settings.m2cfFancyBonds) selections.push('-f');        // Fancy bonds
       if (settings.m2cfAtomNumbers) selections.push('-n');       // Atom numbers
-      if (settings.m2cfCompact) selections.push('-z');           // Compact structure
+
+      // Smart flip logic: Determine if we need server-side or client-side flipping
+      // Asymmetrical text (C, CH3, numbers) looks wrong when CSS-flipped, so use server flags
+      // Symmetrical elements (H, aromatic circles) look fine CSS-flipped
+      const hasAsymmetricalText = settings.m2cfShowCarbons || settings.m2cfShowMethyls || settings.m2cfAtomNumbers;
+
+      // If asymmetrical text is shown, use server-side flip flags (-p for horizontal, -q for vertical)
+      // Otherwise, we'll use CSS transforms (handled later when creating the image)
+      let useServerFlipH = false;
+      let useServerFlipV = false;
+
+      if (hasAsymmetricalText) {
+        if (settings.m2cfFlipHorizontal) {
+          selections.push('-p');  // Server-side horizontal flip
+          useServerFlipH = true;
+        }
+        if (settings.m2cfFlipVertical) {
+          selections.push('-q');  // Server-side vertical flip
+          useServerFlipV = true;
+        }
+      }
 
       // Log mol2chemfig options being used
       console.log('%c⚙️ mol2chemfig Rendering Options:', 'color: #FF6B00; font-weight: bold;', {
         aromaticCircles: settings.m2cfAromaticCircles,
         showCarbons: settings.m2cfShowCarbons,
         showMethyls: settings.m2cfShowMethyls,
-        fancyBonds: settings.m2cfFancyBonds,
         atomNumbers: settings.m2cfAtomNumbers,
-        compact: settings.m2cfCompact,
         hydrogensMode: settings.m2cfHydrogensMode,
+        flipHorizontal: settings.m2cfFlipHorizontal,
+        flipVertical: settings.m2cfFlipVertical,
+        hasAsymmetricalText: hasAsymmetricalText,
+        useServerFlipH: useServerFlipH,
+        useServerFlipV: useServerFlipV,
         selectionsArray: selections
       });
 
       const requestBody = {
         textAreaData: inputData,
         selections: selections,
-        h2: settings.m2cfAddH2 ? 'on' : (settings.m2cfHydrogensMode || 'keep')
+        h2: settings.m2cfAddH2 ? 'add' : (settings.m2cfHydrogensMode || 'keep')
       };
       console.log('%c📤 POST Body:', 'color: #9B59B6; font-weight: bold;', requestBody);
 
@@ -1966,9 +2037,11 @@ function setupLazyLoading() {
                 svgImg.alt = 'chemfig (fallback)';
                 svgImg.className = 'chemfig-diagram';
 
-                // Apply transforms
+                // Apply transforms - only CSS flip if no asymmetrical text (server handles it otherwise)
+                const hasAsymText1 = settings.m2cfShowCarbons || settings.m2cfShowMethyls || settings.m2cfAtomNumbers;
                 let transform = '';
-                if (settings.m2cfFlipHorizontal) transform += 'scaleX(-1) ';
+                if (settings.m2cfFlipHorizontal && !hasAsymText1) transform += 'scaleX(-1) ';
+                if (settings.m2cfFlipVertical && !hasAsymText1) transform += 'scaleY(-1) ';
                 if (settings.m2cfRotate) transform += `rotate(${settings.m2cfRotate}deg) `;
 
                 let filter = '';
@@ -2007,9 +2080,11 @@ function setupLazyLoading() {
                 svgImg.alt = 'mol2chemfig PDF result';
                 svgImg.className = 'chemfig-diagram';
 
-                // Apply transforms
+                // Apply transforms - only CSS flip if no asymmetrical text (server handles it otherwise)
+                const hasAsymText2 = settings.m2cfShowCarbons || settings.m2cfShowMethyls || settings.m2cfAtomNumbers;
                 let transform = '';
-                if (settings.m2cfFlipHorizontal) transform += 'scaleX(-1) ';
+                if (settings.m2cfFlipHorizontal && !hasAsymText2) transform += 'scaleX(-1) ';
+                if (settings.m2cfFlipVertical && !hasAsymText2) transform += 'scaleY(-1) ';
                 if (settings.m2cfRotate) transform += `rotate(${settings.m2cfRotate}deg) `;
 
                 let filter = '';
@@ -2093,20 +2168,19 @@ function setupLazyLoading() {
               svgImg.className = 'chemfig-diagram';
 
               // Apply client-side flip transforms and invert filter for mol2chemfig
+              // Only use CSS flip if server didn't handle it (i.e., no asymmetrical text like C, CH3, numbers)
+              const hasAsymText = settings.m2cfShowCarbons || settings.m2cfShowMethyls || settings.m2cfAtomNumbers;
               let transform = '';
-              if (settings.m2cfFlipHorizontal) transform += 'scaleX(-1) ';
-              if (settings.m2cfFlipVertical) transform += 'scaleY(-1) ';
+              if (settings.m2cfFlipHorizontal && !hasAsymText) transform += 'scaleX(-1) ';
+              if (settings.m2cfFlipVertical && !hasAsymText) transform += 'scaleY(-1) ';
 
               let filter = '';
               if (settings.m2cfInvert) filter += 'invert(1) ';
 
               svgImg.style.cssText = `
             display: inline-block;
-            display: inline-block;
-            width: 500px;
-            height: 400px;
-            max-width: 800px;
-            max-height: 600px;
+            max-width: 400px;
+            max-height: 350px;
             margin: 0 12px 8px 0;
             vertical-align: middle;
             cursor: pointer;
@@ -2146,17 +2220,19 @@ function setupLazyLoading() {
               svgImg.className = 'chemfig-diagram';
 
               // Apply client-side flip transforms and invert filter for mol2chemfig
+              // Only use CSS flip if no asymmetrical text (server handles it otherwise)
+              const hasAsymText3 = settings.m2cfShowCarbons || settings.m2cfShowMethyls || settings.m2cfAtomNumbers;
               let transform = '';
-              if (settings.m2cfFlipHorizontal) transform += 'scaleX(-1) ';
-              if (settings.m2cfFlipVertical) transform += 'scaleY(-1) ';
+              if (settings.m2cfFlipHorizontal && !hasAsymText3) transform += 'scaleX(-1) ';
+              if (settings.m2cfFlipVertical && !hasAsymText3) transform += 'scaleY(-1) ';
 
               let filter = '';
               if (settings.m2cfInvert) filter += 'invert(1) ';
 
               svgImg.style.cssText = `
             display: inline-block;
-            max-width: 350px;
-            max-height: 300px;
+            max-width: 400px;
+            max-height: 350px;
             margin: 0 12px 8px 0;
             vertical-align: middle;
             cursor: pointer;
@@ -2211,20 +2287,20 @@ function setupLazyLoading() {
           svgImg.className = 'chemfig-diagram';
 
           // Apply client-side flip transforms and invert filter for mol2chemfig
+          // Only use CSS flip if no asymmetrical text (server handles it otherwise)
+          const hasAsymText4 = settings.m2cfShowCarbons || settings.m2cfShowMethyls || settings.m2cfAtomNumbers;
           let transform = '';
-          if (settings.m2cfFlipHorizontal) transform += 'scaleX(-1) ';
-          if (settings.m2cfFlipVertical) transform += 'scaleY(-1) ';
+          if (settings.m2cfFlipHorizontal && !hasAsymText4) transform += 'scaleX(-1) ';
+          if (settings.m2cfFlipVertical && !hasAsymText4) transform += 'scaleY(-1) ';
 
           let filter = '';
           if (settings.m2cfInvert) filter += 'invert(1) ';
 
           svgImg.style.cssText = `
             display: inline-block;
-            display: inline-block;
-            width: 500px;
-            height: 400px;
-            max-width: 800px;
-            max-height: 600px;
+            max-width: 1000px;
+            max-height: 800px;
+            height: auto;
             margin: 0 12px 8px 0;
             vertical-align: middle;
             cursor: pointer;
@@ -3141,7 +3217,7 @@ function wrapChemicalFormulas(text) {
         };
 
         const encoded = btoa(JSON.stringify(pubchemData));
-        const converted = `<img src="" alt="chem" class="chemfig-diagram chemfig-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" style="display: inline-block; max-width: 300px; max-height: 200px; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
+        const converted = `<img src="" alt="chem" class="chemfig-diagram chemfig-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`
 
         log.debug(`  📤 Sending ${isSMILES ? 'SMILES' : 'nomenclature'} to PubChem (3D: ${settings.enable3DViewer}): ${content_trimmed}`);
         return converted;
@@ -3165,7 +3241,7 @@ function wrapChemicalFormulas(text) {
       };
 
       const encoded = btoa(JSON.stringify(moleculeViewerData));
-      const converted = `<img src="" alt="chem" class="chemfig-diagram chemfig-molecule-viewer" data-molecule-viewer="${encoded}" data-loaded="false" data-rotation="0" style="display: inline-block; max-width: 300px; max-height: 200px; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
+      const converted = `<img src="" alt="chem" class="chemfig-diagram chemfig-molecule-viewer" data-molecule-viewer="${encoded}" data-loaded="false" data-rotation="0" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
 
       log.debug(`  📤 Sending ${isSMILES ? 'SMILES' : 'nomenclature'} to MoleculeViewer: ${content_trimmed}`);
       return converted;

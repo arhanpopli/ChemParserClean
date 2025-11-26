@@ -1,0 +1,9 @@
+/node_modules
+/bower_components
+/img
+/build
+/jmol
+/project
+/*.png
+favicon.ico
+.directory

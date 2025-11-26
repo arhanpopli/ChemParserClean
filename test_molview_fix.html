@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test MolView Fix for CID 166177218</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .viewer-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            margin: 20px 0;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .test-buttons {
+            margin: 20px 0;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Test MolView Fix for CID 166177218</h1>
+        <p>Testing different MolView URL approaches to resolve the "Cannot read properties of undefined" error.</p>
+        
+        <div class="test-buttons">
+            <button class="btn" onclick="loadMolViewEmbed()">Test Embed Version</button>
+            <button class="btn" onclick="loadMolViewDirect()">Test Direct Version</button>
+            <button class="btn" onclick="loadMolViewWithSMILES()">Test with SMILES (if available)</button>
+        </div>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <h3>Viewer:</h3>
+        <div id="viewer-container" class="viewer-container">
+            <p>Click a button above to load MolView</p>
+        </div>
+    </div>
+
+    <script>
+        const testCid = '166177218';
+        const testSmiles = 'CN1C=NC2=C1C(=O)N(C(=O)N2C)C'; // Caffeine SMILES as a fallback
+        
+        function showStatus(message, isSuccess = true) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${isSuccess ? 'success' : 'error'}`;
+            statusDiv.style.display = 'block';
+        }
+        
+        async function loadMolViewEmbed() {
+            showStatus('Loading embed.molview.org with CID...');
+            try {
+                const viewerContainer = document.getElementById('viewer-container');
+                viewerContainer.innerHTML = `<iframe src="https://embed.molview.org/v1/?mode=balls&cid=${testCid}"></iframe>`;
+                showStatus('Embed version loaded. Check if it works without the "replace" error.');
+            } catch (error) {
+                showStatus(`Error loading embed version: ${error.message}`, false);
+            }
+        }
+        
+        async function loadMolViewDirect() {
+            // For large CIDs like 166177218, recommend direct URL since embed has CORS issues, even in new tabs
+            const isLargeCompound = parseInt(testCid) > 100000;
+            let recommendedUrl;
+
+            if (isLargeCompound) {
+                recommendedUrl = `https://molview.org/?cid=${testCid}`;
+                showStatus(`Recommended direct URL for large compound (CID: ${testCid}) - this will work in new tab but may be blocked in iframe...`);
+            } else {
+                recommendedUrl = `https://embed.molview.org/v1/?mode=balls&cid=${testCid}`;
+                showStatus('Recommended embed version (works in iframes and new tabs for smaller compounds)...');
+            }
+
+            // Show the user the recommended URL with a link to open in new tab
+            const viewerContainer = document.getElementById('viewer-container');
+            viewerContainer.innerHTML = `
+                <div style="padding: 20px; text-align: center; background: #f8f9fa; border-radius: 8px;">
+                    <h3>Recommended MolView URL:</h3>
+                    <p style="word-break: break-all; margin: 15px 0; color: #333;">${recommendedUrl}</p>
+                    <a href="${recommendedUrl}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 10px;">
+                        Open in New Tab
+                    </a>
+                    <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                        ${isLargeCompound ? 'Large compounds work better with direct URL in a new tab due to CORS restrictions.' : 'Embed version works well in both iframes and new tabs for smaller compounds.'}
+                    </p>
+                </div>
+            `;
+        }
+
+        async function loadMolViewWithSMILES() {
+            showStatus('First fetching SMILES for CID...');
+            try {
+                // Try to get SMILES for the CID
+                const smilesUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${testCid}/property/CanonicalSMILES/JSON`;
+                const response = await fetch(smilesUrl);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.PropertyTable && data.PropertyTable.Properties && data.PropertyTable.Properties[0]) {
+                        const smiles = data.PropertyTable.Properties[0].CanonicalSMILES;
+                        showStatus(`Got SMILES: ${smiles}. Generating recommended URL...`);
+
+                        // For large compounds, recommend direct URL due to CORS issues
+                        const isLargeCompound = parseInt(testCid) > 100000;
+                        let recommendedUrl;
+
+                        if (isLargeCompound) {
+                            recommendedUrl = `https://molview.org/?smiles=${encodeURIComponent(smiles)}`;
+                            showStatus(`Recommended direct URL for large compound (CID: ${testCid})...`);
+                        } else {
+                            recommendedUrl = `https://embed.molview.org/v1/?mode=balls&smiles=${encodeURIComponent(smiles)}`;
+                            showStatus('Recommended embed version for smaller compound...');
+                        }
+
+                        const viewerContainer = document.getElementById('viewer-container');
+                        viewerContainer.innerHTML = `
+                            <div style="padding: 20px; text-align: center; background: #f8f9fa; border-radius: 8px;">
+                                <h3>Recommended MolView URL:</h3>
+                                <p style="word-break: break-all; margin: 15px 0; color: #333;">${recommendedUrl}</p>
+                                <a href="${recommendedUrl}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 10px;">
+                                    Open in New Tab
+                                </a>
+                                <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                                    ${isLargeCompound ? 'Large compounds work better with direct URL in a new tab due to CORS restrictions.' : 'Embed version works well in both iframes and new tabs for smaller compounds.'}
+                                </p>
+                            </div>
+                        `;
+                    } else {
+                        showStatus('Could not get SMILES, using fallback...', false);
+                        // Fallback logic with size detection
+                        const isLargeCompound = parseInt(testCid) > 100000;
+                        const recommendedUrl = isLargeCompound ?
+                            `https://molview.org/?cid=${testCid}` :
+                            `https://embed.molview.org/v1/?mode=balls&cid=${testCid}`;
+
+                        const viewerContainer = document.getElementById('viewer-container');
+                        viewerContainer.innerHTML = `
+                            <div style="padding: 20px; text-align: center; background: #f8f9fa; border-radius: 8px;">
+                                <h3>Recommended MolView URL:</h3>
+                                <p style="word-break: break-all; margin: 15px 0; color: #333;">${recommendedUrl}</p>
+                                <a href="${recommendedUrl}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 10px;">
+                                    Open in New Tab
+                                </a>
+                                <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                                    ${isLargeCompound ? 'Large compounds work better with direct URL in a new tab due to CORS restrictions.' : 'Embed version works well in both iframes and new tabs for smaller compounds.'}
+                                </p>
+                            </div>
+                        `;
+                    }
+                } else {
+                    throw new Error('Could not fetch SMILES from PubChem API');
+                }
+            } catch (error) {
+                showStatus(`Error getting SMILES: ${error.message}`, false);
+                // Fallback with size detection
+                const isLargeCompound = parseInt(testCid) > 100000;
+                const recommendedUrl = isLargeCompound ?
+                    `https://molview.org/?cid=${testCid}` :
+                    `https://embed.molview.org/v1/?mode=balls&cid=${testCid}`;
+
+                const viewerContainer = document.getElementById('viewer-container');
+                viewerContainer.innerHTML = `
+                    <div style="padding: 20px; text-align: center; background: #f8f9fa; border-radius: 8px;">
+                        <h3>Recommended MolView URL:</h3>
+                        <p style="word-break: break-all; margin: 15px 0; color: #333;">${recommendedUrl}</p>
+                        <a href="${recommendedUrl}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; margin: 10px;">
+                            Open in New Tab
+                        </a>
+                        <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                            ${isLargeCompound ? 'Large compounds work better with direct URL in a new tab due to CORS restrictions.' : 'Embed version works well in both iframes and new tabs for smaller compounds.'}
+                        </p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

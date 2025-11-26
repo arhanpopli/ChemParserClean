@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Complex Molecules - Size Controls & 3D Viewer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    h1 {
+      text-align: center;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .info {
+      background: rgba(255, 255, 255, 0.95);
+      color: #333;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .info h3 {
+      margin-top: 0;
+      color: #667eea;
+    }
+    .test-section {
+      background: rgba(255, 255, 255, 0.9);
+      color: #333;
+      padding: 25px;
+      margin: 20px 0;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .test-section h2 {
+      margin-top: 0;
+      color: #764ba2;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .molecule-line {
+      line-height: 2.5;
+      margin: 15px 0;
+      padding: 10px;
+      background: rgba(102, 126, 234, 0.05);
+      border-radius: 6px;
+    }
+    .molecule-line strong {
+      color: #764ba2;
+    }
+    .success {
+      background: rgba(76, 175, 80, 0.1);
+      border-left: 4px solid #4CAF50;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .feature-list {
+      list-style: none;
+      padding: 0;
+    }
+    .feature-list li {
+      padding: 8px 0;
+      padding-left: 30px;
+      position: relative;
+    }
+    .feature-list li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #4CAF50;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .warning {
+      background: rgba(255, 152, 0, 0.1);
+      border-left: 4px solid #FF9800;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Complex Molecules Test Suite</h1>
+
+  <div class="info">
+    <h3>🎯 What This Tests</h3>
+    <ul class="feature-list">
+      <li>Size adjustment buttons (▲▼) working for complex molecules</li>
+      <li>3D viewer button loading complex structures from PubChem</li>
+      <li>PubChem SMILES lookup for lipids, proteins, and large molecules</li>
+      <li>All rendering engines (Client-Side, MoleculeViewer, mol2chemfig)</li>
+    </ul>
+  </div>
+
+  <div class="success">
+    <strong>✅ Fixed Issues:</strong>
+    <ul>
+      <li>Size buttons now use <code>offsetWidth</code> instead of <code>naturalWidth</code></li>
+      <li>Works correctly with SVG data URLs from client-side rendering</li>
+      <li>All renderers now use PubChem for SMILES lookup (superior coverage)</li>
+    </ul>
+  </div>
+
+  <div class="test-section">
+    <h2>🧬 Complex Lipids</h2>
+    <p>These molecules previously failed to render or couldn't be resized. They should now work perfectly.</p>
+
+    <div class="molecule-line">
+      <strong>Phosphatidylcholine:</strong> chem:phosphatidylcholine:
+    </div>
+
+    <div class="molecule-line">
+      <strong>Sphingomyelin:</strong> chem:sphingomyelin:
+    </div>
+
+    <div class="molecule-line">
+      <strong>Cardiolipin:</strong> chem:cardiolipin:
+    </div>
+
+    <div class="warning">
+      <strong>Test Instructions:</strong>
+      <ol>
+        <li>Hover over the molecule images above</li>
+        <li>Click the <strong>▲</strong> button multiple times - size should increase each time</li>
+        <li>Click the <strong>▼</strong> button - size should decrease</li>
+        <li>Click the <strong>3D</strong> button - should open 3D viewer</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>🧬 Proteins & Peptides</h2>
+
+    <div class="molecule-line">
+      <strong>Insulin:</strong> chem:insulin:
+    </div>
+
+    <div class="molecule-line">
+      <strong>Glutathione:</strong> chem:glutathione:
+    </div>
+
+    <div class="warning">
+      <strong>Note:</strong> Insulin is extremely large (51 amino acids). Size adjustment should still work, but rendering may take longer.
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>⚗️ Stereoisomers (3D Stereochemistry)</h2>
+    <p>Enable "Use 3D Stereochemistry" in the extension popup to get IsomericSMILES.</p>
+
+    <div class="molecule-line">
+      <strong>L-Alanine:</strong> chem:L-alanine:
+    </div>
+
+    <div class="molecule-line">
+      <strong>D-Glucose:</strong> chem:D-glucose:
+    </div>
+
+    <div class="molecule-line">
+      <strong>(R)-Limonene:</strong> chem:(R)-limonene:
+    </div>
+
+    <div class="molecule-line">
+      <strong>(S)-Ibuprofen:</strong> chem:(S)-ibuprofen:
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>💊 Drug Molecules</h2>
+
+    <div class="molecule-line">
+      <strong>Aspirin:</strong> chem:aspirin:
+    </div>
+
+    <div class="molecule-line">
+      <strong>Caffeine:</strong> chem:caffeine:
+    </div>
+
+    <div class="molecule-line">
+      <strong>Dopamine:</strong> chem:dopamine:
+    </div>
+
+    <div class="molecule-line">
+      <strong>Morphine:</strong> chem:morphine:
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>🔬 Test All Rendering Engines</h2>
+    <p>Switch between rendering engines in the extension popup and verify all work correctly:</p>
+
+    <div class="molecule-line">
+      <strong>Test Molecule:</strong> chem:phosphatidylcholine:
+    </div>
+
+    <ol>
+      <li><strong>Client-Side:</strong> Should render and allow size adjustment ✅</li>
+      <li><strong>MoleculeViewer:</strong> Should render and allow size adjustment ✅</li>
+      <li><strong>mol2chemfig:</strong> Should render and allow size adjustment ✅</li>
+      <li><strong>PubChem:</strong> Should fetch image from PubChem ✅</li>
+    </ol>
+  </div>
+
+  <div class="info">
+    <h3>🔍 How PubChem Lookup Works</h3>
+    <p><strong>All renderers now use PubChem</strong> for converting chemical names to SMILES:</p>
+    <ol>
+      <li><strong>Priority 1:</strong> Direct PubChem name lookup</li>
+      <li><strong>Priority 2:</strong> PubChem autocomplete (for class names like "sphingomyelin")</li>
+      <li><strong>Priority 3:</strong> CID-based lookup</li>
+    </ol>
+    <p><strong>IsomericSMILES:</strong> Used when "Use 3D Stereochemistry" is enabled (includes chiral info)</p>
+    <p><strong>CanonicalSMILES:</strong> Used by default (2D structure only)</p>
+  </div>
+
+  <div class="success">
+    <h3>✅ Expected Results</h3>
+    <ul class="feature-list">
+      <li>All molecules render successfully (PubChem has great coverage)</li>
+      <li>Hover controls appear on all molecules</li>
+      <li>Size buttons (▲▼) work on first click</li>
+      <li>Size changes are smooth and proportional (20% per click)</li>
+      <li>3D button opens interactive 3D viewer</li>
+      <li>Molecule name shows in bottom-right corner</li>
+    </ul>
+  </div>
+
+  <div class="info" style="background: rgba(255, 87, 34, 0.95); color: white;">
+    <h3>🐛 If Something Doesn't Work</h3>
+    <ol>
+      <li>Open browser DevTools (F12) → Console tab</li>
+      <li>Look for error messages (red text)</li>
+      <li>Check if PubChem API is responding (network tab)</li>
+      <li>Verify extension is loaded and enabled</li>
+      <li>Reload the extension if you just made changes</li>
+    </ol>
+  </div>
+</body>
+</html>

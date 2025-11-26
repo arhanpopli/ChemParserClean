@@ -17,7 +17,8 @@ const moleculeViewerOptions = document.getElementById('moleculeViewerOptions');
 const mvUse3DSmilesToggle = document.getElementById('mvUse3DSmilesToggle');
 const flipHorizontalToggle = document.getElementById('flipHorizontalToggle');
 const flipVerticalToggle = document.getElementById('flipVerticalToggle');
-const mvInvertToggle = document.getElementById('mvInvertToggle');
+const mvAutoInvertToggle = document.getElementById('mvAutoInvertToggle');
+const mvInvertModeSelect = document.getElementById('mvInvertModeSelect');
 const mvRotateSlider = document.getElementById('mvRotateSlider');
 const mvRotateValue = document.getElementById('mvRotateValue');
 
@@ -39,6 +40,16 @@ const pubchemOptions = document.getElementById('pubchemOptions');
 const pubchemImageSizeSelect = document.getElementById('pubchemImageSizeSelect');
 const pubchem3DToggle = document.getElementById('pubchem3DToggle');
 const pubchemRecordTypeSelect = document.getElementById('pubchemRecordTypeSelect');
+const pubchemDirectFetchToggle = document.getElementById('pubchemDirectFetchToggle');
+const pubchemRemoveBgToggle = document.getElementById('pubchemRemoveBgToggle');
+const pubchemSharpenToggle = document.getElementById('pubchemSharpenToggle');
+const aiMolecularControlToggle = document.getElementById('aiMolecularControlToggle');
+
+// 3D Viewer Settings section
+const viewer3DSettings = document.getElementById('viewer3DSettings');
+const viewer3DSourceSelect = document.getElementById('viewer3DSourceSelect');
+const viewer3DSizeSelect = document.getElementById('viewer3DSizeSelect');
+const viewer3DBgColorSelect = document.getElementById('viewer3DBgColorSelect');
 
 // Image size control options
 const saveSizePerImageToggle = document.getElementById('saveSizePerImageToggle');
@@ -47,6 +58,10 @@ const saveSizeBySMILESToggle = document.getElementById('saveSizeBySMILESToggle')
 // 3D Viewer options
 const enable3DViewerToggle = document.getElementById('enable3DViewerToggle');
 const default3DViewSelect = document.getElementById('default3DViewSelect');
+const viewer3DStyleSelect = document.getElementById('viewer3DStyleSelect');
+const viewer3DStickRadiusSelect = document.getElementById('viewer3DStickRadiusSelect');
+const viewer3DSphereRadiusSelect = document.getElementById('viewer3DSphereRadiusSelect');
+const viewer3DAutoRotateToggle = document.getElementById('viewer3DAutoRotateToggle');
 
 // Safe selector function
 function safeGetElement(id) {
@@ -67,7 +82,8 @@ chrome.storage.sync.get({
   mvUse3DSmiles: false,  // Use OPSIN 3D for stereochemistry
   flipHorizontal: false,
   flipVertical: false,
-  mvInvert: false,  // Invert colors for MoleculeViewer
+  mvAutoInvert: false,  // Auto-apply invert in dark mode for MoleculeViewer - disabled by default to prevent double inversion
+  mvInvertMode: 'full',  // 'full' or 'bw' (black & white only)
   mvRotate: 0,  // Rotation angle for MoleculeViewer
   // mol2chemfig options
   m2cfShowCarbons: false,
@@ -81,7 +97,8 @@ chrome.storage.sync.get({
   m2cfHydrogensMode: 'keep',
   use3DSmiles: false,
   m2cfAddH2: false,
-  m2cfInvert: false,
+  m2cfAutoInvert: true,  // Auto-apply invert in dark mode for mol2chemfig
+  m2cfInvertMode: 'full',  // 'full' or 'bw' (black & white only)
   m2cfRotate: 0,
   // Image size controls
   saveSizePerImage: false,
@@ -90,9 +107,28 @@ chrome.storage.sync.get({
   pubchemImageSize: 'large',
   pubchem3DEnabled: true,
   pubchemRecordType: '2d',
+  pubchemDirectFetch: true,  // Default to direct fetch from PubChem (no local server needed)
+  pubchemRemoveBg: false,
+  pubchemSharpenImages: true,
   // 3D Viewer options
   enable3DViewer: false,
-  default3DView: '2d'
+  default3DView: '2d',
+  viewer3DSource: '3dmol',
+  viewer3DStyle: 'stick:sphere',
+  viewer3DAutoRotate: true,
+  viewer3DSize: 'normal',
+  viewer3DBgColor: '#1a1a2e',  // Default dark blue background
+  // Per-style settings for stick and sphere radius
+  viewer3DStyleSettings: {
+    'stick': { stickRadius: '0.15' },
+    'line': {},
+    'cross': {},
+    'sphere': { sphereRadius: '0.7' },  // Default to larger for CPK
+    'stick:sphere': { stickRadius: '0.15', sphereRadius: '0.3' },
+    'cartoon': {}
+  },
+  // AI Molecular Control
+  enableAIMolecularControl: false
 }, (settings) => {
   enabledToggle.checked = settings.enabled;
   mhchemToggle.checked = settings.renderMhchem;
@@ -104,7 +140,8 @@ chrome.storage.sync.get({
   if (mvUse3DSmilesToggle) mvUse3DSmilesToggle.checked = settings.mvUse3DSmiles;
   if (flipHorizontalToggle) flipHorizontalToggle.checked = settings.flipHorizontal;
   if (flipVerticalToggle) flipVerticalToggle.checked = settings.flipVertical;
-  if (mvInvertToggle) mvInvertToggle.checked = settings.mvInvert;
+  if (mvAutoInvertToggle) mvAutoInvertToggle.checked = settings.mvAutoInvert !== false;
+  if (mvInvertModeSelect) mvInvertModeSelect.value = settings.mvInvertMode || 'full';
   if (mvRotateSlider) {
     mvRotateSlider.value = settings.mvRotate;
     if (mvRotateValue) mvRotateValue.textContent = settings.mvRotate + '°';
@@ -125,7 +162,8 @@ chrome.storage.sync.get({
   // New controls
   if (m2cfAddH2Toggle) m2cfAddH2Toggle.checked = settings.m2cfAddH2;
   if (m2cfFlipToggle) m2cfFlipToggle.checked = settings.m2cfFlipHorizontal; // Reuse existing setting
-  if (m2cfInvertToggle) m2cfInvertToggle.checked = settings.m2cfInvert;
+  if (m2cfAutoInvertToggle) m2cfAutoInvertToggle.checked = settings.m2cfAutoInvert !== false;
+  if (m2cfInvertModeSelect) m2cfInvertModeSelect.value = settings.m2cfInvertMode || 'full';
   if (m2cfRotateSlider) {
     m2cfRotateSlider.value = settings.m2cfRotate;
     if (m2cfRotateValue) m2cfRotateValue.textContent = settings.m2cfRotate + '°';
@@ -135,6 +173,10 @@ chrome.storage.sync.get({
   if (pubchemImageSizeSelect) pubchemImageSizeSelect.value = settings.pubchemImageSize;
   if (pubchem3DToggle) pubchem3DToggle.checked = settings.pubchem3DEnabled;
   if (pubchemRecordTypeSelect) pubchemRecordTypeSelect.value = settings.pubchemRecordType;
+  if (pubchemDirectFetchToggle) pubchemDirectFetchToggle.checked = settings.pubchemDirectFetch;
+  if (pubchemRemoveBgToggle) pubchemRemoveBgToggle.checked = settings.pubchemRemoveBg;
+  if (pubchemSharpenToggle) pubchemSharpenToggle.checked = settings.pubchemSharpenImages !== false;
+  if (aiMolecularControlToggle) aiMolecularControlToggle.checked = settings.enableAIMolecularControl;
 
   // Load image size control options
   if (saveSizePerImageToggle) saveSizePerImageToggle.checked = settings.saveSizePerImage;
@@ -143,6 +185,23 @@ chrome.storage.sync.get({
   // Load 3D Viewer options
   if (enable3DViewerToggle) enable3DViewerToggle.checked = settings.enable3DViewer;
   if (default3DViewSelect) default3DViewSelect.value = settings.default3DView;
+  if (viewer3DSourceSelect) viewer3DSourceSelect.value = settings.viewer3DSource || '3dmol';
+  if (viewer3DStyleSelect) viewer3DStyleSelect.value = settings.viewer3DStyle || 'stick:sphere';
+  if (viewer3DAutoRotateToggle) viewer3DAutoRotateToggle.checked = settings.viewer3DAutoRotate !== false;
+  if (viewer3DSizeSelect) viewer3DSizeSelect.value = settings.viewer3DSize || 'normal';
+  if (viewer3DBgColorSelect) viewer3DBgColorSelect.value = settings.viewer3DBgColor || '#1a1a2e';
+
+  // Load per-style settings for the current style
+  const currentStyle = settings.viewer3DStyle || 'stick:sphere';
+  const styleSettings = settings.viewer3DStyleSettings || {};
+  const currentStyleSettings = styleSettings[currentStyle] || {};
+
+  if (viewer3DStickRadiusSelect) {
+    viewer3DStickRadiusSelect.value = currentStyleSettings.stickRadius || '0.15';
+  }
+  if (viewer3DSphereRadiusSelect) {
+    viewer3DSphereRadiusSelect.value = currentStyleSettings.sphereRadius || '0.3';
+  }
 
   // Set rendering engine radio button
   const engineRadios = document.querySelectorAll('input[name="renderingEngine"]');
@@ -155,11 +214,24 @@ chrome.storage.sync.get({
     moleculeViewerOptions.style.display = (settings.rendererEngine === 'moleculeviewer') ? 'block' : 'none';
   }
   if (mol2chemfigOptions) {
-    mol2chemfigOptions.style.display = (settings.rendererEngine === 'mol2chemfig') ? 'block' : 'none';
+    // Show mol2chemfig options for both mol2chemfig AND client-side engines (rendering settings apply to both)
+    mol2chemfigOptions.style.display = (settings.rendererEngine === 'mol2chemfig' || settings.rendererEngine === 'client-side') ? 'block' : 'none';
   }
   if (pubchemOptions) {
     pubchemOptions.style.display = (settings.rendererEngine === 'pubchem') ? 'block' : 'none';
   }
+  // Show 3D Viewer Settings section for ALL engines (always visible)
+  if (viewer3DSettings) {
+    viewer3DSettings.style.display = 'block';
+  }
+  
+  // Update client-side note visibility on initialization
+  // Use setTimeout to ensure function is defined (it's declared later in the file)
+  setTimeout(() => {
+    if (typeof updateClientSideNote === 'function') {
+      updateClientSideNote(settings.rendererEngine === 'client-side');
+    }
+  }, 0);
 });
 
 mhchemToggle.addEventListener('change', (e) => {
@@ -229,10 +301,19 @@ if (flipVerticalToggle) {
   });
 }
 
-if (mvInvertToggle) {
-  mvInvertToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ mvInvert: e.target.checked }, () => {
-      showStatus('Invert colors ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+if (mvAutoInvertToggle) {
+  mvAutoInvertToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ mvAutoInvert: e.target.checked }, () => {
+      showStatus('Auto invert in dark mode ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (mvInvertModeSelect) {
+  mvInvertModeSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ mvInvertMode: e.target.value }, () => {
+      const modeName = e.target.value === 'full' ? 'Full Invert' : 'Black & White Only';
+      showStatus('Invert mode set to ' + modeName + '. Reload page to apply.', 'success');
     });
   });
 }
@@ -317,7 +398,8 @@ if (m2cfFlipVerticalToggle) {
 // New mol2chemfig controls
 const m2cfAddH2Toggle = document.getElementById('m2cfAddH2Toggle');
 const m2cfFlipToggle = document.getElementById('m2cfFlipToggle');
-const m2cfInvertToggle = document.getElementById('m2cfInvertToggle');
+const m2cfAutoInvertToggle = document.getElementById('m2cfAutoInvertToggle');
+const m2cfInvertModeSelect = document.getElementById('m2cfInvertModeSelect');
 const m2cfRotateSlider = document.getElementById('m2cfRotateSlider');
 const m2cfRotateValue = document.getElementById('m2cfRotateValue');
 
@@ -354,10 +436,19 @@ if (m2cfFlipToggle) {
   });
 }
 
-if (m2cfInvertToggle) {
-  m2cfInvertToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfInvert: e.target.checked }, () => {
-      showStatus('Invert Colors ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+if (m2cfAutoInvertToggle) {
+  m2cfAutoInvertToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ m2cfAutoInvert: e.target.checked }, () => {
+      showStatus('Auto invert in dark mode ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (m2cfInvertModeSelect) {
+  m2cfInvertModeSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ m2cfInvertMode: e.target.value }, () => {
+      const modeName = e.target.value === 'full' ? 'Full Invert' : 'Black & White Only';
+      showStatus('Invert mode set to ' + modeName + '. Reload page to apply.', 'success');
     });
   });
 }
@@ -399,6 +490,42 @@ if (pubchemRecordTypeSelect) {
   });
 }
 
+// PubChem Direct Fetch toggle
+if (pubchemDirectFetchToggle) {
+  pubchemDirectFetchToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ pubchemDirectFetch: e.target.checked }, () => {
+      showStatus('Direct fetch from PubChem ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+// PubChem Remove Background toggle
+if (pubchemRemoveBgToggle) {
+  pubchemRemoveBgToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ pubchemRemoveBg: e.target.checked }, () => {
+      showStatus('Background removal ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+// PubChem Sharpen Images toggle
+if (pubchemSharpenToggle) {
+  pubchemSharpenToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ pubchemSharpenImages: e.target.checked }, () => {
+      showStatus('Image sharpening ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+// AI Molecular Control event listener
+if (aiMolecularControlToggle) {
+  aiMolecularControlToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ enableAIMolecularControl: e.target.checked }, () => {
+      showStatus('AI molecular control ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
 // 3D Viewer event listeners
 if (enable3DViewerToggle) {
   enable3DViewerToggle.addEventListener('change', (e) => {
@@ -408,10 +535,126 @@ if (enable3DViewerToggle) {
   });
 }
 
+if (viewer3DSourceSelect) {
+  viewer3DSourceSelect.addEventListener('change', (e) => {
+    const newValue = e.target.value;
+    console.log('Saving viewer3DSource:', newValue);
+    chrome.storage.sync.set({ viewer3DSource: newValue }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Error saving viewer3DSource:', chrome.runtime.lastError);
+        showStatus('Error saving setting: ' + chrome.runtime.lastError.message, 'error');
+        return;
+      }
+      const sourceNames = {
+        '3dmol': '3Dmol.js',
+        'pubchem': 'PubChem Official'
+      };
+      console.log('Successfully saved viewer3DSource:', newValue);
+      showStatus('3D viewer source set to ' + sourceNames[newValue] + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
 if (default3DViewSelect) {
   default3DViewSelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ default3DView: e.target.value }, () => {
       showStatus('Default view set to ' + e.target.value + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (viewer3DStyleSelect) {
+  viewer3DStyleSelect.addEventListener('change', (e) => {
+    const newStyle = e.target.value;
+
+    // Load settings for the new style
+    chrome.storage.sync.get(['viewer3DStyleSettings'], (result) => {
+      const styleSettings = result.viewer3DStyleSettings || {};
+      const newStyleSettings = styleSettings[newStyle] || {};
+
+      // Update the UI with the saved settings for this style
+      if (viewer3DStickRadiusSelect) {
+        viewer3DStickRadiusSelect.value = newStyleSettings.stickRadius || '0.15';
+      }
+      if (viewer3DSphereRadiusSelect) {
+        viewer3DSphereRadiusSelect.value = newStyleSettings.sphereRadius || '0.3';
+      }
+
+      // Save the new style selection
+      chrome.storage.sync.set({ viewer3DStyle: newStyle }, () => {
+        showStatus('3D style updated. Reload page to apply.', 'success');
+      });
+    });
+  });
+}
+
+if (viewer3DStickRadiusSelect) {
+  viewer3DStickRadiusSelect.addEventListener('change', (e) => {
+    const newValue = e.target.value;
+
+    // Get current style and update its settings
+    chrome.storage.sync.get(['viewer3DStyle', 'viewer3DStyleSettings'], (result) => {
+      const currentStyle = result.viewer3DStyle || 'stick:sphere';
+      const styleSettings = result.viewer3DStyleSettings || {};
+
+      // Update the settings for the current style
+      if (!styleSettings[currentStyle]) {
+        styleSettings[currentStyle] = {};
+      }
+      styleSettings[currentStyle].stickRadius = newValue;
+
+      // Save back to storage
+      chrome.storage.sync.set({ viewer3DStyleSettings: styleSettings }, () => {
+        showStatus('Stick thickness updated. Reload page to apply.', 'success');
+      });
+    });
+  });
+}
+
+if (viewer3DSphereRadiusSelect) {
+  viewer3DSphereRadiusSelect.addEventListener('change', (e) => {
+    const newValue = e.target.value;
+
+    // Get current style and update its settings
+    chrome.storage.sync.get(['viewer3DStyle', 'viewer3DStyleSettings'], (result) => {
+      const currentStyle = result.viewer3DStyle || 'stick:sphere';
+      const styleSettings = result.viewer3DStyleSettings || {};
+
+      // Update the settings for the current style
+      if (!styleSettings[currentStyle]) {
+        styleSettings[currentStyle] = {};
+      }
+      styleSettings[currentStyle].sphereRadius = newValue;
+
+      // Save back to storage
+      chrome.storage.sync.set({ viewer3DStyleSettings: styleSettings }, () => {
+        showStatus('Sphere size updated. Reload page to apply.', 'success');
+      });
+    });
+  });
+}
+
+if (viewer3DAutoRotateToggle) {
+  viewer3DAutoRotateToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ viewer3DAutoRotate: e.target.checked }, () => {
+      showStatus('Auto-rotate ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (viewer3DSizeSelect) {
+  viewer3DSizeSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ viewer3DSize: e.target.value }, () => {
+      showStatus('3D viewer size set to ' + e.target.value + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (viewer3DBgColorSelect) {
+  viewer3DBgColorSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ viewer3DBgColor: e.target.value }, () => {
+      const colorName = e.target.options[e.target.selectedIndex].text;
+      showStatus('3D background color set to ' + colorName + '. Reload page to apply.', 'success');
     });
   });
 }
@@ -427,7 +670,8 @@ engineRadios.forEach(radio => {
         const engineNames = {
           'moleculeviewer': 'MoleculeViewer',
           'mol2chemfig': 'mol2chemfig',
-          'pubchem': 'PubChem'
+          'pubchem': 'PubChem',
+          'client-side': 'Client-Side'
         };
         showStatus(`Switched to ${engineNames[engine]}. Reload page to apply.`, 'success');
       });
@@ -444,17 +688,77 @@ function updateEngineInfo(engine) {
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'block';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
     if (pubchemOptions) pubchemOptions.style.display = 'none';
+    if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
+    updateClientSideNote(false);
   } else if (engine === 'mol2chemfig') {
     if (engineInfo) engineInfo.textContent = '📐 mol2chemfig Server (localhost:8000)';
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'block';
     if (pubchemOptions) pubchemOptions.style.display = 'none';
+    if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
+    updateClientSideNote(false);
   } else if (engine === 'pubchem') {
     if (engineInfo) engineInfo.textContent = '🌐 PubChem Server (localhost:5002)';
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
     if (pubchemOptions) pubchemOptions.style.display = 'block';
+    if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
+    updateClientSideNote(false);
+  } else if (engine === 'client-side') {
+    if (engineInfo) engineInfo.textContent = '💻 Client-Side (SmilesDrawer SVG) - No Server Required!';
+    if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
+    if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'block'; // Show mol2chemfig options for rendering settings
+    if (pubchemOptions) pubchemOptions.style.display = 'none';
+    if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
+    updateClientSideNote(true); // Show client-side limitations note
   }
+}
+
+/**
+ * Update the client-side note visibility and badge styling
+ */
+function updateClientSideNote(isClientSide) {
+  const clientSideNote = document.getElementById('clientSideNote');
+  const clientSideRendererSection = document.getElementById('clientSideRendererSection');
+  const m2cfOnlyBadges = document.querySelectorAll('.m2cf-only-badge');
+  
+  if (clientSideNote) {
+    clientSideNote.style.display = isClientSide ? 'block' : 'none';
+  }
+  
+  // Show renderer selection only in client-side mode
+  if (clientSideRendererSection) {
+    clientSideRendererSection.style.display = isClientSide ? 'block' : 'none';
+  }
+  
+  // Gray out m2cf-only options when in client-side mode
+  m2cfOnlyBadges.forEach(badge => {
+    const option = badge.closest('.option');
+    if (option) {
+      if (isClientSide) {
+        option.style.opacity = '0.5';
+      } else {
+        option.style.opacity = '1';
+        badge.style.display = 'none'; // Hide badges in mol2chemfig mode
+      }
+    }
+  });
+}
+
+// Client-side renderer selection handler
+const clientSideRendererSelect = document.getElementById('clientSideRendererSelect');
+if (clientSideRendererSelect) {
+  // Load current setting
+  chrome.storage.sync.get(['clientSideRenderer'], (result) => {
+    clientSideRendererSelect.value = result.clientSideRenderer || 'smilesdrawer';
+  });
+  
+  // Save on change
+  clientSideRendererSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ clientSideRenderer: e.target.value }, () => {
+      showStatus(`Client-side renderer: ${e.target.value === 'kekule' ? 'Kekule.js' : 'SmilesDrawer'}. Reload page to apply.`, 'success');
+    });
+  });
 }
 
 /**

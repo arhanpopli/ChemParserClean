@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated MolView Local Server</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #a5b4fc;
+            margin-bottom: 30px;
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #e0e7ff;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #4f46e5;
+            border-radius: 8px;
+            background: rgba(15, 15, 30, 0.9);
+            color: white;
+            font-size: 16px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+        }
+
+        .viewer-container {
+            width: 100%;
+            height: 600px;
+            background: #1a1a2e;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 20px 0;
+            border: 2px solid #4f46e5;
+        }
+
+        .viewer-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+            display: none;
+        }
+
+        .status.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .server-info {
+            background: rgba(59, 130, 246, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .test-compounds {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .test-btn {
+            padding: 12px;
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid #4f46e5;
+            border-radius: 8px;
+            color: #c7d2fe;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .test-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Integrated MolView Server</h1>
+        <p class="subtitle">Local molecular viewer with 3D visualization capabilities</p>
+
+        <div class="server-info">
+            <h3>📊 Server Status</h3>
+            <p id="server-status">Checking server status...</p>
+        </div>
+
+        <div class="control-panel">
+            <div class="input-group">
+                <label for="compound-input">Compound Identifier (Name, CID, SMILES, PDB ID, etc.):</label>
+                <input type="text" id="compound-input" placeholder="e.g., water, 2244, caffeine, 1CRN, CC(N)C(O)=O" value="water">
+            </div>
+
+            <div class="input-group">
+                <label for="input-type">Input Type:</label>
+                <select id="input-type">
+                    <option value="auto">Auto-detect</option>
+                    <option value="name">Name</option>
+                    <option value="cid">CID (PubChem ID)</option>
+                    <option value="smiles">SMILES</option>
+                    <option value="pdbid">PDB ID</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="representation">3D Representation:</label>
+                <select id="representation">
+                    <option value="ball-and-stick">Ball & Stick</option>
+                    <option value="stick">Stick</option>
+                    <option value="van-der-waals">Van der Waals Spheres</option>
+                    <option value="wireframe">Wireframe</option>
+                    <option value="line">Line</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="background">Background:</label>
+                <select id="background">
+                    <option value="black">Black</option>
+                    <option value="gray">Gray</option>
+                    <option value="white">White</option>
+                </select>
+            </div>
+
+            <button class="btn" onclick="loadCompound()">🔍 Load Compound</button>
+            <button class="btn btn-secondary" onclick="clearViewer()">🧹 Clear Viewer</button>
+            <button class="btn btn-secondary" onclick="checkServer()">🔄 Check Server</button>
+        </div>
+
+        <div id="status-message" class="status"></div>
+
+        <div class="viewer-container">
+            <iframe id="molview-iframe" style="display: none;"></iframe>
+            <div id="viewer-placeholder" style="display: flex; align-items: center; justify-content: center; height: 100%; color: #a5b4fc; font-size: 18px;">
+                Enter a compound and click "Load Compound" to view in 3D
+            </div>
+        </div>
+
+        <div>
+            <h3>🧪 Quick Test Compounds:</h3>
+            <div class="test-compounds">
+                <div class="test-btn" onclick="loadTestCompound('water', 'name')">Water</div>
+                <div class="test-btn" onclick="loadTestCompound('2244', 'cid')">Aspirin (CID:2244)</div>
+                <div class="test-btn" onclick="loadTestCompound('1CRN', 'pdbid')">Protein (1CRN)</div>
+                <div class="test-btn" onclick="loadTestCompound('Caffeine', 'name')">Caffeine</div>
+                <div class="test-btn" onclick="loadTestCompound('248', 'cid')">Ethanol (CID:248)</div>
+                <div class="test-btn" onclick="loadTestCompound('1ABC', 'pdbid')">Sample Protein</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let molviewIframe = null;
+
+        // Check if local MolView server is running
+        async function checkServer() {
+            const statusEl = document.getElementById('server-status');
+            const msgEl = document.getElementById('status-message');
+            
+            try {
+                const response = await fetch('http://localhost:5000/health', { timeout: 5000 });
+                if (response.ok) {
+                    statusEl.textContent = '✅ Local MolView server is running at http://localhost:5000';
+                    statusEl.style.color = '#10b981';
+                    showMessage('Server connection successful!', 'success');
+                } else {
+                    statusEl.textContent = '❌ Local MolView server is not running';
+                    statusEl.style.color = '#ef4444';
+                    showMessage('Server not accessible. Make sure Python server is running on port 5000.', 'error');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ Local MolView server is not running';
+                statusEl.style.color = '#ef4444';
+                showMessage('Server connection failed. Start the Python server first.', 'error');
+            }
+        }
+
+        // Load a compound
+        async function loadCompound() {
+            const input = document.getElementById('compound-input').value.trim();
+            const inputType = document.getElementById('input-type').value;
+            const representation = document.getElementById('representation').value;
+            const background = document.getElementById('background').value;
+
+            if (!input) {
+                showMessage('Please enter a compound identifier', 'error');
+                return;
+            }
+
+            if (molviewIframe === null) {
+                molviewIframe = document.getElementById('molview-iframe');
+            }
+
+            // Show loading state
+            document.getElementById('viewer-placeholder').style.display = 'none';
+            molviewIframe.style.display = 'block';
+            showMessage(`Loading ${input}...`, 'success');
+
+            try {
+                // Check if server is available
+                const serverCheck = await fetch('http://localhost:5000/', { method: 'HEAD' });
+                if (!serverCheck.ok) {
+                    throw new Error('MolView server not available');
+                }
+
+                // Construct MolView URL with parameters
+                let molviewUrl = `http://localhost:5000/?`;
+                
+                if (inputType === 'cid' || (inputType === 'auto' && /^\d+$/.test(input))) {
+                    // If it's a number or CID type, treat as CID
+                    const cid = inputType === 'auto' ? input : document.getElementById('compound-input').value;
+                    molviewUrl += `cid=${cid}`;
+                } else if (inputType === 'pdbid' || (inputType === 'auto' && input.length === 4 && /^[1-9][A-Za-z0-9]{3}$/.test(input))) {
+                    // If it looks like a PDB ID (4 chars, starts with number)
+                    const pdbId = inputType === 'auto' ? input : document.getElementById('compound-input').value;
+                    molviewUrl += `pdbid=${pdbId}`;
+                } else if (inputType === 'smiles' || (input.includes('C') && input.includes('O'))) {
+                    // If it looks like SMILES (contains common organic elements)
+                    molviewUrl += `smiles=${encodeURIComponent(input)}`;
+                } else {
+                    // Default to name search
+                    molviewUrl += `q=${encodeURIComponent(input)}`;
+                }
+
+                // Add representation and background if specified
+                if (representation) {
+                    molviewUrl += `&representation=${representation}`;
+                }
+                if (background && background !== 'black') {
+                    molviewUrl += `&bg=${background}`;
+                }
+
+                // Load the URL in the iframe
+                molviewIframe.src = molviewUrl;
+
+                molviewIframe.onload = function() {
+                    showMessage(`Successfully loaded ${input} in 3D viewer`, 'success');
+                };
+
+                molviewIframe.onerror = function() {
+                    showMessage(`Error loading ${input} in viewer`, 'error');
+                };
+
+            } catch (error) {
+                showMessage(`Error loading compound: ${error.message}`, 'error');
+                document.getElementById('viewer-placeholder').style.display = 'flex';
+                molviewIframe.style.display = 'none';
+            }
+        }
+
+        // Load a test compound
+        function loadTestCompound(identifier, type) {
+            document.getElementById('compound-input').value = identifier;
+            document.getElementById('input-type').value = type;
+            loadCompound();
+        }
+
+        // Clear the viewer
+        function clearViewer() {
+            if (molviewIframe) {
+                molviewIframe.src = '';
+            }
+            document.getElementById('viewer-placeholder').style.display = 'flex';
+            molviewIframe.style.display = 'none';
+            showMessage('Viewer cleared', 'success');
+        }
+
+        // Show status message
+        function showMessage(message, type) {
+            const msgEl = document.getElementById('status-message');
+            msgEl.textContent = message;
+            msgEl.className = `status ${type}`;
+            msgEl.style.display = 'block';
+            
+            // Clear message after delay
+            setTimeout(() => {
+                msgEl.style.display = 'none';
+            }, 5000);
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            checkServer();
+            
+            // Check server periodically
+            setInterval(checkServer, 30000); // Every 30 seconds
+        };
+
+        // Handle timeout for fetch requests
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            const [resource, config = {}] = args;
+            
+            // Set default timeout of 10 seconds if not already set
+            if (!config.timeout) {
+                config.timeout = 10000;
+            }
+
+            return Promise.race([
+                originalFetch(resource, config),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Request timeout')), config.timeout)
+                )
+            ]);
+        };
+    </script>
+</body>
+</html>

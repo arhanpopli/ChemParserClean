@@ -714,13 +714,409 @@ def get_compound_info():
         'local_endpoints': {
             'image': f"http://localhost:{PORT}/pubchem/img/{name or cid}",
             '3d_model': f"http://localhost:{PORT}/pubchem/3d-model?cid={cid}",
-            '3d_viewer': f"http://localhost:{PORT}/pubchem/3d-viewer?cid={cid}"
+            '3d_viewer': f"http://localhost:{PORT}/pubchem/3d-viewer?cid={cid}",
+            'molview_viewer': f"http://localhost:{PORT}/pubchem/molview?cid={cid}"
         }
     })
 
 
-# ============================================================
-# CACHE MANAGEMENT
+@app.route('/pubchem/molview', methods=['GET'])
+def get_molview():
+    """
+    Direct MolView integration as an alternative 3D viewer
+    Query params:
+        - name: chemical name
+        - cid: PubChem compound ID
+        - smiles: SMILES string (alternative to name/cid)
+        - embed: 'true' to return embeddable HTML, 'false' to redirect to MolView
+    """
+    name = request.args.get('name', '').strip()
+    cid = request.args.get('cid', '').strip()
+    smiles = request.args.get('smiles', '').strip()
+    embed = request.args.get('embed', 'false').lower() == 'true'
+
+    # Try to get the chemical identifier
+    if not name and not cid and not smiles:
+        return jsonify({'error': 'Missing required parameter: name, cid, or smiles'}), 400
+
+    # Get SMILES if we have name or CID
+    if not smiles:
+        try:
+            if not cid:
+                cid = get_compound_cid(name)
+                if not cid:
+                    return jsonify({'error': f'Compound not found: {name}'}), 404
+
+            # Fetch SMILES from PubChem
+            smiles_url = f"{PUBCHEM_BASE}/compound/cid/{cid}/property/CanonicalSMILES/JSON"
+            response = requests.get(smiles_url, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('PropertyTable', {}).get('Properties', [{}])[0].get('CanonicalSMILES'):
+                    smiles = data['PropertyTable']['Properties'][0]['CanonicalSMILES']
+        except Exception as e:
+            print(f"⚠️ Error fetching SMILES: {e}")
+            # Continue with CID if SMILES fetch fails
+
+    # Determine the parameter to use
+    param = None
+    param_value = None
+
+    if smiles:
+        param = 'smiles'
+        param_value = smiles
+    elif cid:
+        param = 'cid'
+        param_value = cid
+    else:
+        return jsonify({'error': 'Could not determine valid parameter for MolView'}), 400
+
+    if embed:
+        # Use our new direct database access viewer that bypasses MolView entirely
+        # This creates a local 3D viewer that accesses source databases directly
+
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Direct Database 3D Viewer - {name or cid or smiles}</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                * {{
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }}
+                body {{
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                    background: #0f0f1e;
+                    color: #fff;
+                    overflow: hidden;
+                }}
+                .container {{
+                    width: 100vw;
+                    height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                }}
+                .header {{
+                    background: rgba(15, 15, 30, 0.95);
+                    padding: 10px 15px;
+                    border-bottom: 2px solid #667eea;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+                    z-index: 10;
+                    flex-shrink: 0;
+                }}
+                .header h1 {{
+                    font-size: 16px;
+                    color: #667eea;
+                    margin-bottom: 3px;
+                }}
+                .compound-info {{
+                    font-size: 12px;
+                    color: #aaa;
+                }}
+                .viewer-container {{
+                    flex: 1;
+                    position: relative;
+                    background: #1a1a2e;
+                }}
+                .loading {{
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    text-align: center;
+                    z-index: 5;
+                }}
+                .loading-spinner {{
+                    width: 40px;
+                    height: 40px;
+                    border: 3px solid #2a2a4e;
+                    border-top-color: #667eea;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin: 0 auto 15px;
+                }}
+                @keyframes spin {{
+                    to {{ transform: rotate(360deg); }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🔬 Direct Database 3D Viewer</h1>
+                    <div class="compound-info">
+                        <strong>{name or 'Unknown'}</strong> • {param.upper()}: {param_value}
+                    </div>
+                </div>
+
+                <div id="viewer-container" class="viewer-container">
+                    <div class="loading" id="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Connecting to source databases...</p>
+                        <p>Accessing PubChem/RCSB/COD directly</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Load required libraries -->
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+
+            <!-- Load our custom modules -->
+            <script>
+                // In a real implementation, these would be served from your local server
+                // For now, we'll dynamically load them
+                function loadScript(src) {{
+                    return new Promise((resolve, reject) => {{
+                        const script = document.createElement('script');
+                        script.src = src;
+                        script.onload = resolve;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    }});
+                }}
+
+                // Load our custom modules and then initialize
+                Promise.all([
+                    loadScript('http://localhost:{PORT}/static/direct_database_access.js'),
+                    loadScript('http://localhost:{PORT}/static/direct_molview_renderer.js')
+                ]).then(() => {{
+                    // Initialize the direct renderer after scripts load
+                    initDirectViewer();
+                }}).catch(error => {{
+                    document.getElementById('loading').innerHTML = `
+                        <div style="text-align: center; color: #ef4444;">
+                            <h3>Error Loading Components</h3>
+                            <p>Could not load required 3D rendering libraries</p>
+                            <p>${{error.message}}</p>
+                        </div>
+                    `;
+                }});
+
+                async function initDirectViewer() {{
+                    try {{
+                        // Get parameters from the server data
+                        const paramType = '{param}';
+                        const paramValue = '{param_value}';
+
+                        // Create a new instance of the direct renderer
+                        const directRenderer = new DirectMolViewRenderer();
+
+                        // Render the molecule directly from source databases
+                        const success = await directRenderer.renderDirectMolecule(
+                            paramType,
+                            paramValue,
+                            'viewer-container'
+                        );
+
+                        if (success) {{
+                            console.log(`Direct 3D rendering successful for ${{paramType}}=${{paramValue}}`);
+                        }} else {{
+                            throw new Error('Rendering failed');
+                        }}
+                    }} catch (error) {{
+                        console.error('Error with direct 3D rendering:', error);
+                        document.getElementById('loading').innerHTML = `
+                            <div style="text-align: center; color: #ef4444;">
+                                <h3>Error Loading 3D Structure</h3>
+                                <p>${{error.message}}</p>
+                                <p>Could not fetch data from source databases</p>
+                                <button onclick="location.reload()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 4px; margin-top: 15px; cursor: pointer;">Retry</button>
+                            </div>
+                        `;
+                    }}
+                }}
+            </script>
+        </body>
+        </html>
+        """
+        return Response(html, mimetype='text/html')
+    else:
+        # Redirect based on compound size to avoid CORS issues
+        is_large_compound = cid and int(cid) > 100000 if cid and cid.isdigit() else False
+        is_cod_or_pdb = 'codid=' in str(param_value) or 'pdbid=' in str(param_value) or name and ('protein' in name.lower() or 'enzyme' in name.lower())
+
+        if is_large_compound or is_cod_or_pdb:
+            # Use direct URL for large compounds to avoid embed CORS issues
+            molview_url = f"https://molview.org/?{param}={param_value}"
+        else:
+            # Use embed version for smaller compounds
+            molview_url = f"https://embed.molview.org/v1/?mode=balls&{param}={param_value}"
+
+        return redirect(molview_url)
+
+
+@app.route('/pubchem/local-3d-viewer', methods=['GET'])
+def get_local_3d_viewer():
+    """
+    Serve the local 3D viewer HTML page
+    Query params:
+        - cid: PubChem compound ID
+        - smiles: SMILES string
+        - name: Compound name
+    """
+    cid = request.args.get('cid')
+    smiles = request.args.get('smiles')
+    name = request.args.get('name')
+
+    # Read the local 3D viewer HTML file
+    viewer_path = os.path.join(os.path.dirname(__file__), 'local_3d_viewer.html')
+
+    try:
+        with open(viewer_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+
+        # Add a script tag to define initial parameters
+        script_content = "null"
+        if cid:
+            script_content = f'cid: "{cid}", name: null, smiles: null'
+        elif smiles:
+            script_content = f'cid: null, name: null, smiles: "{smiles}"'
+        elif name:
+            script_content = f'cid: null, name: "{name}", smiles: null'
+        else:
+            script_content = 'cid: null, name: null, smiles: null'
+
+        # Insert a small script to set the params before the main script
+        params_script = f'<script>var initialParams = {{{script_content}}};</script>'
+        html_content = html_content.replace('<script src="molview_3d_extractor.js"></script>',
+                                          f'{params_script}<script src="molview_3d_extractor.js"></script>')
+
+        response = Response(html_content, mimetype='text/html')
+        return response
+    except FileNotFoundError:
+        return jsonify({'error': 'Local 3D viewer not found'}), 404
+    except Exception as e:
+        print(f"Error serving local 3D viewer: {e}")
+        return jsonify({'error': 'Could not load 3D viewer'}), 500
+
+
+@app.route('/pubchem/molecule-data', methods=['GET'])
+def get_molecule_data():
+    """
+    Get raw molecule data in various formats (SDF, PDB, CIF) for direct use in molecular viewers
+    Query params:
+        - cid: PubChem compound ID
+        - pdbid: PDB ID
+        - codid: COD ID
+        - format: 'sdf', 'pdb', 'cif' (default: 'sdf')
+    """
+    cid = request.args.get('cid')
+    pdbid = request.args.get('pdbid')
+    codid = request.args.get('codid')
+    mol_format = request.args.get('format', 'sdf')  # Default to SDF
+
+    try:
+        if cid:
+            # Get from PubChem
+            url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/{mol_format}?record_type=3d"
+            response = requests.get(url, timeout=15)
+            if response.status_code == 200:
+                return Response(response.content, mimetype=f'chemical/x-{mol_format}', headers={
+                    'Content-Disposition': f'inline; filename="{cid}.{mol_format}"'
+                })
+        elif pdbid:
+            # Get from RCSB PDB
+            url = f"https://files.rcsb.org/download/{pdbid}.pdb"
+            response = requests.get(url, timeout=15)
+            if response.status_code == 200:
+                return Response(response.content, mimetype='chemical/x-pdb', headers={
+                    'Content-Disposition': f'inline; filename="{pdbid}.pdb"'
+                })
+        elif codid:
+            # Get from Crystallography Open Database
+            url = f"https://www.crystallography.net/cod/{codid}.cif"
+            response = requests.get(url, timeout=15)
+            if response.status_code == 200:
+                return Response(response.content, mimetype='chemical/x-cif', headers={
+                    'Content-Disposition': f'inline; filename="{codid}.cif"'
+                })
+        else:
+            return jsonify({'error': 'Missing required parameter: cid, pdbid, or codid'}), 400
+
+        # If we reach here, the request failed
+        return jsonify({'error': f'Failed to fetch data from source - status: {response.status_code}'}), response.status_code
+
+    except Exception as e:
+        print(f"Error fetching molecule data: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/pubchem/local-3d-viewer', methods=['GET'])
+def get_local_3d_viewer():
+    """
+    Serve the local 3D viewer HTML page
+    Query params:
+        - cid: PubChem compound ID
+        - smiles: SMILES string
+        - name: Compound name
+    """
+    cid = request.args.get('cid')
+    smiles = request.args.get('smiles')
+    name = request.args.get('name')
+
+    # Read the local 3D viewer HTML file
+    viewer_path = os.path.join(os.path.dirname(__file__), 'local_3d_viewer.html')
+
+    try:
+        with open(viewer_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+
+        # Add a script tag to define initial parameters
+        script_content = "null"
+        if cid:
+            script_content = f'cid: "{cid}", name: null, smiles: null'
+        elif smiles:
+            script_content = f'cid: null, name: null, smiles: "{smiles}"'
+        elif name:
+            script_content = f'cid: null, name: "{name}", smiles: null'
+        else:
+            script_content = 'cid: null, name: null, smiles: null'
+
+        # Insert a small script to set the params before the main script
+        params_script = f'<script>var initialParams = {{{script_content}}};</script>'
+        html_content = html_content.replace('<script src="molview_3d_extractor.js"></script>',
+                                          f'{params_script}<script src="molview_3d_extractor.js"></script>')
+
+        response = Response(html_content, mimetype='text/html')
+        return response
+    except FileNotFoundError:
+        return jsonify({'error': 'Local 3D viewer not found'}), 404
+    except Exception as e:
+        print(f"Error serving local 3D viewer: {e}")
+        return jsonify({'error': 'Could not load 3D viewer'}), 500
+
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    """
+    Serve static files like JS libraries
+    """
+    import os
+    from flask import send_file
+
+    # Define the file paths
+    static_files = {
+        'direct_database_access.js': os.path.join(os.path.dirname(__file__), '../direct_database_access.js'),
+        'direct_molview_renderer.js': os.path.join(os.path.dirname(__file__), '../direct_molview_renderer.js'),
+        'molview_3d_extractor.js': os.path.join(os.path.dirname(__file__), '../molview_3d_extractor.js'),
+        'advanced_molviewer_3dmol.js': os.path.join(os.path.dirname(__file__), '../advanced_molviewer_3dmol.js')
+    }
+
+    if filename in static_files:
+        file_path = static_files[filename]
+        if os.path.exists(file_path):
+            return send_file(file_path)
+        else:
+            return jsonify({'error': f'Static file {filename} not found'}), 404
+
+    return jsonify({'error': f'Static file {filename} not available'}), 404
+
+
 # ============================================================
 
 @app.route('/cache-info', methods=['GET'])

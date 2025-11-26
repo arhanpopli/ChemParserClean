@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct Chemical Database Access Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f0f1e;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .controls {
+            background: rgba(15, 15, 30, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #aaa;
+        }
+
+        .input-group input {
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #1a1a2e;
+            color: white;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #5a6fd8;
+        }
+
+        .viewer-container {
+            width: 100%;
+            height: 600px;
+            background: #1a1a2e;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #2a2a4e;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .status.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .examples {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .example-btn {
+            padding: 8px 12px;
+            background: rgba(102, 126, 234, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .example-btn:hover {
+            background: rgba(102, 126, 234, 0.3);
+        }
+
+        .compound-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 Direct Chemical Database Access Test</h1>
+        
+        <div class="controls">
+            <div class="input-group">
+                <div style="flex: 2;">
+                    <label for="identifier">Compound Identifier (CID, PDB ID, Name, etc.):</label>
+                    <input type="text" id="identifier" placeholder="e.g., 2244, 1CRN, caffeine, DNA, deoxyribo, etc." value="2244">
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <label for="id-type">Identifier Type:</label>
+                    <select id="id-type" style="width: 100%; padding: 10px; border: 1px solid #444; border-radius: 4px; background: #1a1a2e; color: white;">
+                        <option value="auto">Auto-detect</option>
+                        <option value="cid">CID (PubChem)</option>
+                        <option value="pdbid">PDB ID (Protein)</option>
+                        <option value="codid">COD ID (Crystal)</option>
+                        <option value="name">Name</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <div style="flex: 1; min-width: 150px;">
+                    <label for="representation">Representation:</label>
+                    <select id="representation" style="width: 100%; padding: 10px; border: 1px solid #444; border-radius: 4px; background: #1a1a2e; color: white;">
+                        <option value="bonds">Balls & Sticks</option>
+                        <option value="ribbon">Ribbon (Proteins)</option>
+                        <option value="cartoon">Cartoon (Proteins)</option>
+                        <option value="cylinders">Cylinders & Plates</option>
+                        <option value="trace">C-Alpha Trace</option>
+                    </select>
+                </div>
+
+                <div style="flex: 1; min-width: 150px;">
+                    <label for="color-scheme">Color Scheme:</label>
+                    <select id="color-scheme" style="width: 100%; padding: 10px; border: 1px solid #444; border-radius: 4px; background: #1a1a2e; color: white;">
+                        <option value="secondary">Secondary Structure</option>
+                        <option value="spectrum">Spectrum (Rainbow)</option>
+                        <option value="chain">Chain</option>
+                        <option value="residue">Residue</option>
+                        <option value="polarity">Polarity</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn" id="render-btn">Render 3D Structure</button>
+            <button class="btn" id="clear-btn" style="background: #764ba2;">Clear Viewer</button>
+            
+            <div id="status" class="status" style="display: none;"></div>
+            <div id="compound-info" class="compound-info" style="display: none;"></div>
+        </div>
+        
+        <div class="examples">
+            <button class="example-btn" onclick="loadExample('2244', 'CID')">Caffeine (2244)</button>
+            <button class="example-btn" onclick="loadExample('5962', 'CID')">Aspirin (5962)</button>
+            <button class="example-btn" onclick="loadExample('1CRN', 'PDB')">Protein 1CRN</button>
+            <button class="example-btn" onclick="loadExample('caffeine', 'name')">Caffeine (name)</button>
+            <button class="example-btn" onclick="loadExample('water', 'name')">Water</button>
+            <button class="example-btn" onclick="loadExample('ethanol', 'name')">Ethanol</button>
+        </div>
+        
+        <div id="viewer-container" class="viewer-container">
+            <div class="loading" id="loading">
+                <div class="loading-spinner"></div>
+                <p>Load a compound to see 3D visualization</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load required libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="direct_database_access.js"></script>
+    <script src="direct_molview_renderer.js"></script>
+
+    <script>
+        // DOM elements
+        const identifierInput = document.getElementById('identifier');
+        const idTypeSelect = document.getElementById('id-type');
+        const renderBtn = document.getElementById('render-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const loadingDiv = document.getElementById('loading');
+        const viewerContainer = document.getElementById('viewer-container');
+        const statusDiv = document.getElementById('status');
+        const compoundInfoDiv = document.getElementById('compound-info');
+
+        // Create renderer instance
+        let directRenderer = null;
+
+        // Initialize
+        async function init() {
+            try {
+                directRenderer = new DirectMolViewRenderer();
+                showStatus('Direct chemical database renderer loaded', 'success');
+            } catch (error) {
+                showStatus(`Error initializing renderer: ${error.message}`, 'error');
+            }
+        }
+
+        // Render compound
+        async function renderCompound() {
+            const identifier = identifierInput.value.trim();
+            const type = idTypeSelect.value;
+            const representation = document.getElementById('representation').value;
+            const colorScheme = document.getElementById('color-scheme').value;
+
+            if (!identifier) {
+                showStatus('Please enter a compound identifier', 'error');
+                return;
+            }
+
+            // Show loading
+            loadingDiv.innerHTML = `
+                <div class="loading-spinner"></div>
+                <p>Fetching data for: ${identifier} (${type})</p>
+                <p>Representation: ${representation}, Color: ${colorScheme}</p>
+                <p>Accessing source databases directly...</p>
+            `;
+            loadingDiv.style.display = 'block';
+            statusDiv.style.display = 'none';
+            compoundInfoDiv.style.display = 'none';
+
+            try {
+                console.log(`Rendering compound: ${identifier} (type: ${type}, repr: ${representation})`);
+
+                // Use the direct renderer to get and display the molecule with options
+                const success = await directRenderer.renderDirectMolecule(
+                    type,
+                    identifier,
+                    'viewer-container',
+                    {
+                        representation: representation,
+                        colorScheme: colorScheme
+                    }
+                );
+
+                if (success) {
+                    showStatus(`Successfully rendered ${identifier} with ${representation} representation`, 'success');
+                    compoundInfoDiv.textContent = `Rendered: ${type.toUpperCase()}=${identifier} (${representation} view) using direct database access`;
+                    compoundInfoDiv.style.display = 'block';
+                } else {
+                    throw new Error('Rendering failed');
+                }
+            } catch (error) {
+                console.error('Error rendering compound:', error);
+                loadingDiv.innerHTML = `
+                    <div style="text-align: center; color: #ef4444;">
+                        <h3>Error Rendering Compound</h3>
+                        <p>${error.message}</p>
+                        <button onclick="location.reload()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; margin-top: 10px; cursor: pointer;">Retry</button>
+                    </div>
+                `;
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Clear viewer
+        function clearViewer() {
+            viewerContainer.innerHTML = `
+                <div class="loading" id="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Load a compound to see 3D visualization</p>
+                </div>
+            `;
+            document.getElementById('loading').style.display = 'block';
+            statusDiv.style.display = 'none';
+            compoundInfoDiv.style.display = 'none';
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+
+        // Load example
+        function loadExample(identifier, type) {
+            identifierInput.value = identifier;
+            idTypeSelect.value = type;
+            renderCompound();
+        }
+
+        // Event listeners
+        renderBtn.addEventListener('click', renderCompound);
+        clearBtn.addEventListener('click', clearViewer);
+
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', init);
+
+        // Allow Enter key to trigger render
+        identifierInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                renderCompound();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -110,6 +110,11 @@
             display: none;
         }
     </style>
+    <!-- Load Three.js first -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Load our custom database access and rendering modules -->
+    <script src="../../../direct_database_access.js"></script>
+    <script src="../../../direct_molview_renderer.js"></script>
 </head>
 <body>
     <div class="container" id="container">
@@ -170,24 +175,207 @@
                         `<strong>${compoundName}</strong> • CID: ${cid}`;
                 }
                 
-                // Load PubChem's 3D viewer iframe
+                // Load MolView's 3D viewer iframe
                 const iframe = document.getElementById('pubchem-iframe');
-                
-                // PubChem's 3D conformer viewer URL
-                iframe.src = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/PNG?image_size=large&record_type=3d`;
-                
-                // Actually, use the proper 3D viewer widget
-                iframe.src = `https://embed.molview.org/v1/?mode=balls&cid=${cid}`;
-                
-                iframe.onload = () => {
-                    document.getElementById('loading').style.display = 'none';
-                    iframe.style.display = 'block';
-                    console.log('3D viewer loaded successfully');
-                };
-                
-                iframe.onerror = () => {
-                    showError('Failed to load', 'Could not load 3D viewer.');
-                };
+
+                // First get SMILES for the compound (MolView works better with SMILES)
+                let smiles = null;
+                try {
+                    const smilesUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/CanonicalSMILES/JSON`;
+                    const smilesResponse = await fetch(smilesUrl);
+                    if (smilesResponse.ok) {
+                        const smilesData = await smilesResponse.json();
+                        if (smilesData.PropertyTable && smilesData.PropertyTable.Properties && smilesData.PropertyTable.Properties[0]) {
+                            smiles = smilesData.PropertyTable.Properties[0].CanonicalSMILES;
+                            console.log('Got SMILES:', smiles);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Could not get SMILES:', e);
+                }
+
+                // Use our new direct database access renderer that bypasses MolView entirely
+                const container = document.getElementById('loading');
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: white; width: 100%;">
+                        <h3>Fetching from Source Databases...</h3>
+                        <div class="loading-spinner" style="width: 40px; height: 40px; border: 3px solid #2a2a4e; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;"></div>
+                        <p>Retrieving 3D structure from PubChem/RCSB/COD directly</p>
+                    </div>
+                    <style>
+                        @keyframes spin { to { transform: rotate(360deg); } }
+                    </style>
+                `;
+
+                // Create the 3D viewer container
+                const viewerContainer = document.createElement('div');
+                viewerContainer.id = 'direct-3d-viewer-container';
+                viewerContainer.style.cssText = 'width:100%; height:100%;';
+                document.querySelector('.viewer-wrapper').appendChild(viewerContainer);
+
+                try {
+                    // Check if our direct renderer and database access are loaded
+                    if (typeof DirectMolViewRenderer !== 'undefined' && typeof DirectChemicalDatabaseAccess !== 'undefined') {
+                        // Create a new instance of the direct renderer
+                        const directRenderer = new DirectMolViewRenderer();
+
+                        // Determine the parameter type and value
+                        let paramType, paramValue;
+                        if (cid) {
+                            paramType = 'cid';
+                            paramValue = cid;
+                        } else if (smiles) {
+                            // For SMILES, first try to get CID, then render
+                            try {
+                                const cidFromSmiles = await getCIDFromSmiles(smiles);
+                                if (cidFromSmiles) {
+                                    paramType = 'cid';
+                                    paramValue = cidFromSmiles;
+                                } else {
+                                    // If we can't get CID from SMILES, try to render directly
+                                    // This would need additional functionality
+                                    throw new Error('Could not convert SMILES to a database identifier');
+                                }
+                            } catch (smilesError) {
+                                console.error('Error converting SMILES:', smilesError);
+                                throw smilesError;
+                            }
+                        } else {
+                            throw new Error('No valid identifier provided');
+                        }
+
+                        // Render the molecule directly from source databases
+                        const success = await directRenderer.renderDirectMolecule(
+                            paramType,
+                            paramValue,
+                            'direct-3d-viewer-container'
+                        );
+
+                        if (success) {
+                            console.log(`Direct 3D rendering successful for ${paramType}=${paramValue}`);
+                        } else {
+                            throw new Error('Rendering failed');
+                        }
+                    } else {
+                        // Load the required scripts dynamically
+                        container.innerHTML = `
+                            <div style="text-align: center; padding: 20px; color: white; width: 100%;">
+                                <h3>Loading 3D Rendering Engine...</h3>
+                                <div class="loading-spinner" style="width: 40px; height: 40px; border: 3px solid #2a2a4e; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;"></div>
+                                <p>Preparing local 3D visualization</p>
+                            </div>
+                            <style>
+                                @keyframes spin { to { transform: rotate(360deg); } }
+                            </style>
+                        `;
+
+                        // Load the required scripts
+                        const scriptPromises = [];
+
+                        // Check and load Three.js if not available
+                        if (typeof THREE === 'undefined') {
+                            const threePromise = new Promise((resolve, reject) => {
+                                const script = document.createElement('script');
+                                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+                                script.onload = resolve;
+                                script.onerror = reject;
+                                document.head.appendChild(script);
+                            });
+                            scriptPromises.push(threePromise);
+                        }
+
+                        // Load our database access script
+                        const dbPromise = new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = '../../../direct_database_access.js';
+                            script.onload = resolve;
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                        });
+                        scriptPromises.push(dbPromise);
+
+                        // Load our direct renderer script
+                        const rendererPromise = new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = '../../../direct_molview_renderer.js';
+                            script.onload = resolve;
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                        });
+                        scriptPromises.push(rendererPromise);
+
+                        // Wait for all scripts to load, then retry
+                        Promise.all(scriptPromises).then(async () => {
+                            // Retry rendering after scripts are loaded
+                            const directRenderer = new DirectMolViewRenderer();
+
+                            let paramType, paramValue;
+                            if (cid) {
+                                paramType = 'cid';
+                                paramValue = cid;
+                            } else if (smiles) {
+                                const cidFromSmiles = await getCIDFromSmiles(smiles);
+                                if (cidFromSmiles) {
+                                    paramType = 'cid';
+                                    paramValue = cidFromSmiles;
+                                } else {
+                                    throw new Error('Could not convert SMILES to a database identifier');
+                                }
+                            } else {
+                                throw new Error('No valid identifier provided');
+                            }
+
+                            await directRenderer.renderDirectMolecule(
+                                paramType,
+                                paramValue,
+                                'direct-3d-viewer-container'
+                            );
+                        }).catch(loadError => {
+                            console.error('Error loading required scripts:', loadError);
+                            container.innerHTML = `
+                                <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; color: white;">
+                                    <h3>Error Loading Components</h3>
+                                    <p>Could not load required 3D rendering libraries</p>
+                                    <p>${loadError.message}</p>
+                                    <button onclick="location.reload()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 4px; margin-top: 15px; cursor: pointer;">
+                                        Retry
+                                    </button>
+                                </div>
+                            `;
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error with direct 3D rendering:', error);
+                    container.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; color: white;">
+                            <h3>Error Loading 3D Structure</h3>
+                            <p>${error.message}</p>
+                            <p>Could not fetch data from source databases</p>
+                            <button onclick="location.reload()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 4px; margin-top: 15px; cursor: pointer;">
+                                Retry
+                            </button>
+                        </div>
+                    `;
+                }
+
+                // Helper function to get CID from SMILES
+                async function getCIDFromSmiles(smiles) {
+                    try {
+                        const url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/${encodeURIComponent(smiles)}/cids/JSON`;
+                        const response = await fetch(url);
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.IdentifierList && data.IdentifierList.CID && data.IdentifierList.CID.length > 0) {
+                                return data.IdentifierList.CID[0].toString();
+                            }
+                        }
+                        return null;
+                    } catch (error) {
+                        console.error('Error getting CID from SMILES:', error);
+                        return null;
+                    }
+                }
                 
             } catch (error) {
                 console.error('Error initializing viewer:', error);
@@ -198,19 +386,43 @@
         // Get CID from compound name
         async function getCID(name) {
             try {
-                // Use absolute URL to the server
-                const url = `http://localhost:5002/info/${encodeURIComponent(name)}`;
-                console.log('Fetching CID from:', url);
-                
-                const response = await fetch(url);
-                if (!response.ok) {
-                    console.error('Response not OK:', response.status, response.statusText);
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                // Try direct PubChem API first (more reliable)
+                let url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(name)}/cids/JSON`;
+                console.log('Fetching CID from PubChem:', url);
+
+                let response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.IdentifierList && data.IdentifierList.CID && data.IdentifierList.CID.length > 0) {
+                        console.log('Got CID from PubChem:', data.IdentifierList.CID[0]);
+                        return data.IdentifierList.CID[0];
+                    }
                 }
-                
-                const data = await response.json();
-                console.log('Got CID:', data.cid);
-                return data.cid;
+
+                // Try SMILES lookup if name fails
+                url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/${encodeURIComponent(name)}/cids/JSON`;
+                console.log('Trying SMILES lookup:', url);
+                response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.IdentifierList && data.IdentifierList.CID && data.IdentifierList.CID.length > 0) {
+                        console.log('Got CID from SMILES:', data.IdentifierList.CID[0]);
+                        return data.IdentifierList.CID[0];
+                    }
+                }
+
+                // Fallback to local server
+                url = `http://localhost:5002/pubchem/info?name=${encodeURIComponent(name)}`;
+                console.log('Falling back to local server:', url);
+
+                response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Got CID from local server:', data.cid);
+                    return data.cid;
+                }
+
+                return null;
             } catch (error) {
                 console.error('Error fetching CID:', error);
                 return null;

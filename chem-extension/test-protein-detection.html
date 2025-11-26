@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Protein Auto-Detection</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-link {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            margin: 10px 10px 10px 0;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        .test-link:hover {
+            background: #2980b9;
+        }
+        .info {
+            background: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧬 Protein Auto-Detection Test</h1>
+
+    <div class="section">
+        <h2>Feature Testing</h2>
+        <p>This page tests the automatic protein detection feature that switches large molecules (>100 atoms) from stick/ball-and-stick to cartoon mode.</p>
+
+        <div class="info">
+            <strong>What's being tested:</strong>
+            <ul>
+                <li>Atom counting after SDF data is loaded</li>
+                <li>Auto-switch to cartoon mode for molecules with >100 atoms</li>
+                <li>Better error messages for missing 3D data (404 errors)</li>
+                <li>Console logging of detection: "⚙️ Large molecule detected (XXX atoms), switching to cartoon mode"</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Test Cases</h2>
+
+        <h3>1. Large Protein (Should Auto-Switch to Cartoon)</h3>
+        <p>Hemoglobin (CID: 68018) - Large protein with many atoms</p>
+        <a class="test-link" href="3dmol-viewer.html?cid=68018&name=Hemoglobin&style=stick:sphere" target="_blank">
+            Open Hemoglobin (stick style → should auto-switch to cartoon)
+        </a>
+
+        <h3>2. Small Molecule (Should Stay Stick)</h3>
+        <p>Ethanol (CID: 702) - Small molecule, should keep stick style</p>
+        <a class="test-link" href="3dmol-viewer.html?cid=702&name=Ethanol&style=stick:sphere" target="_blank">
+            Open Ethanol (should stay stick)
+        </a>
+
+        <h3>3. Medium Protein</h3>
+        <p>Insulin (CID: 16129857) - Medium-sized protein</p>
+        <a class="test-link" href="3dmol-viewer.html?cid=16129857&name=Insulin&style=stick:sphere" target="_blank">
+            Open Insulin (should auto-switch to cartoon if >100 atoms)
+        </a>
+
+        <h3>4. Cartoon Mode Explicitly Set (Should Not Override)</h3>
+        <p>Hemoglobin with cartoon already selected</p>
+        <a class="test-link" href="3dmol-viewer.html?cid=68018&name=Hemoglobin&style=cartoon" target="_blank">
+            Open Hemoglobin (cartoon mode)
+        </a>
+
+        <h3>5. Missing 3D Data Test (Should Show Better Error)</h3>
+        <p>Invalid CID - should show improved error message</p>
+        <a class="test-link" href="3dmol-viewer.html?cid=999999999&name=InvalidCompound&style=stick" target="_blank">
+            Open Invalid Compound (should show better error)
+        </a>
+    </div>
+
+    <div class="section">
+        <h2>Embedded Test - Hemoglobin</h2>
+        <p>Opens in iframe below. Check browser console (F12) to see the detection message.</p>
+        <iframe src="3dmol-viewer.html?cid=68018&name=Hemoglobin&style=stick:sphere"></iframe>
+    </div>
+
+    <div class="section">
+        <h2>Expected Behavior</h2>
+        <ul>
+            <li><strong>Hemoglobin:</strong> Should display "⚙️ Large molecule detected (X atoms), switching to cartoon mode" in console</li>
+            <li><strong>Ethanol:</strong> Should show in stick:sphere mode (no auto-switch)</li>
+            <li><strong>Invalid compound:</strong> Should show "This molecule may not have 3D structure data in PubChem. Try a different molecule or use 2D view."</li>
+            <li><strong>All molecules:</strong> Console should log "Molecule has X atoms" for each load</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>How to Test</h2>
+        <ol>
+            <li>Open your browser's Developer Console (F12)</li>
+            <li>Click on any test link above</li>
+            <li>Watch the console for logging messages</li>
+            <li>Verify the visualization style matches expectations</li>
+            <li>For the embedded iframe, check console in this page</li>
+        </ol>
+    </div>
+</body>
+</html>

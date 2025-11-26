@@ -23,6 +23,12 @@ REM Start PubChem Server
 echo Starting PubChem Server (Port 5002)...
 start "PubChem-5002" cmd /c "cd /d C:\Users\Kapil\Personal\PROJECTS\Chemparser\MoleculeViewer\pubchem && node server.js"
 
+timeout /t 2 /nobreak >nul
+
+REM Start MolView Server
+echo Starting MolView Server (Port 5003)...
+start "MolView-5003" cmd /c "cd /d C:\Users\Kapil\Personal\PROJECTS\Chemparser && python Molview/molview_server.py"
+
 timeout /t 3 /nobreak >nul
 
 REM Open browser

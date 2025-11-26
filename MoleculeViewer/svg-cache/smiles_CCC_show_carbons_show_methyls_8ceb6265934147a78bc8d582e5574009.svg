@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='iso-8859-1'?>
+<svg version='1.1' baseProfile='full'
+              xmlns='http://www.w3.org/2000/svg'
+                      xmlns:rdkit='http://www.rdkit.org/xml'
+                      xmlns:xlink='http://www.w3.org/1999/xlink'
+                  xml:space='preserve'
+width='300px' height='200px' viewBox='0 0 300 200'>
+<!-- END OF HEADER -->
+
+<path class='bond-0 atom-0 atom-1' d='M 40.6,127.8 L 125.3,78.9' style='fill:none;fill-rule:evenodd;stroke:#191919;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />
+<path class='bond-1 atom-1 atom-2' d='M 174.7,78.9 L 259.4,127.8' style='fill:none;fill-rule:evenodd;stroke:#191919;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />
+<text x="28.9" y="139.4" style="font-size:41.2px;font-family:sans-serif;text-anchor:middle;fill:#191919">CH₃</text>
+<text x="140.2" y="68.6" style="font-size:41.2px;font-family:sans-serif;text-anchor:middle;fill:#191919">CH₃</text>
+<text x="161.4" y="74.0" style="font-size:41.2px;font-family:sans-serif;text-anchor:middle;fill:#191919">CH₃</text>
+<text x="274.4" y="139.4" style="font-size:41.2px;font-family:sans-serif;text-anchor:middle;fill:#191919">CH₃</text>
+</svg>

@@ -384,6 +384,403 @@
             z-index: 1000;
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
         }
+
+        .viewer-container {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .viewer-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        #molview-3dmol-container {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #1a1a2e;
+        }
+    </style>
+
+    <!-- 3Dmol.js for molecular visualization -->
+    <script src="https://3dmol.org/build/3Dmol-min.js"></script>
+    <script src="advanced_molviewer_3dmol.js"></script>
+</head>
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .tabs {
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            gap: 5px;
+            padding: 10px 40px 0;
+            overflow-x: auto;
+        }
+
+        .tab-button {
+            background: transparent;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab-button:hover {
+            color: #667eea;
+        }
+
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px 40px;
+            background: white;
+            margin: 0 40px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            min-height: 600px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .iframe-container {
+            width: 100%;
+            height: 800px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .control-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .control-group input[type="text"],
+        .control-group input[type="number"],
+        .control-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .control-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .result-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            min-height: 200px;
+        }
+
+        .result-container img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .test-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .test-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .test-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .test-card h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .test-card p {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .test-card button {
+            width: 100%;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+        }
+
+        .status-offline {
+            background: #ef4444;
+        }
+
+        /* Flow Diagram Styles */
+        .flow-node {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 15px 20px;
+            min-width: 140px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 3px solid transparent;
+        }
+
+        .flow-node:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .flow-node.highlighted {
+            border-color: #fbbf24;
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
+        }
+
+        .flow-node.dimmed {
+            opacity: 0.3;
+        }
+
+        .node-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .node-title {
+            font-weight: 700;
+            font-size: 14px;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .node-subtitle {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .node-status {
+            margin-top: 8px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .node-status.online {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .node-status.offline {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .node-status.checking {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        /* Node type specific styles */
+        .user-node { border-left: 4px solid #3b82f6; }
+        .page-node { border-left: 4px solid #8b5cf6; }
+        .extension-node {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border: 3px solid #667eea;
+        }
+        .selector-node { border-left: 4px solid #f59e0b; }
+        .server-node {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+            border: 3px solid #10b981;
+        }
+        .docker-node {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.1));
+            border: 3px solid #8b5cf6;
+        }
+        .api-node {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.1));
+            border: 3px solid #f59e0b;
+        }
+        .library-node {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(8, 145, 178, 0.1));
+            border: 3px solid #06b6d4;
+        }
+        .output-node { border-left: 4px solid #10b981; }
+        .process-node { border-left: 4px solid #6366f1; }
+        .options-node { border-left: 4px solid #ec4899; }
+        .cache-node { border-left: 4px solid #14b8a6; }
+        .bridge-node {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15));
+            border: 3px solid #f59e0b;
+        }
+
+        .flow-section {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section-title {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        /* Connection line styles */
+        .flow-line {
+            stroke-width: 2;
+            fill: none;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+
+        .flow-line:hover {
+            stroke-width: 4;
+            opacity: 1;
+        }
+
+        .flow-line.highlighted {
+            stroke-width: 4;
+            opacity: 1;
+            filter: drop-shadow(0 0 6px currentColor);
+        }
+
+        .flow-line.dimmed {
+            opacity: 0.15;
+        }
+
+        .flow-line-label {
+            fill: white;
+            font-size: 10px;
+            font-weight: 600;
+            text-anchor: middle;
+        }
+
+        /* Draggable nodes */
+        .flow-node.draggable {
+            cursor: grab;
+            user-select: none;
+        }
+
+        .flow-node.draggable:active {
+            cursor: grabbing;
+        }
+
+        .flow-node.dragging {
+            opacity: 0.8;
+            z-index: 1000;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -394,9 +791,10 @@
 
     <div class="tabs">
         <button class="tab-button" onclick="switchTab('flow')">🔄 Flow</button>
-        <button class="tab-button active" onclick="switchTab('mol2chemfig')">📐 Mol2ChemFig</button>
+        <button class="tab-button" onclick="switchTab('mol2chemfig')">📐 Mol2ChemFig</button>
         <button class="tab-button" onclick="switchTab('moleculeviewer')">🧬 MoleculeViewer</button>
         <button class="tab-button" onclick="switchTab('pubchem')">🌐 PubChem</button>
+        <button class="tab-button" onclick="switchTab('molview')">🔮 MolView 3D</button>
         <button class="tab-button" onclick="switchTab('3d-smiles')">🔬 3D SMILES</button>
         <button class="tab-button" onclick="switchTab('tests')">🧪 Tests</button>
         <button class="tab-button" onclick="switchTab('designs')">🎨 Designs</button>
@@ -687,6 +1085,38 @@
         </div>
     </div>
 
+    <!-- MolView Tab -->
+    <div id="molview" class="tab-content">
+        <h2>🔮 MolView 3D Structure Viewer</h2>
+        <div class="control-panel">
+            <div class="control-group">
+                <label>Enter SMILES, InChI, or Compound Name:</label>
+                <input type="text" id="molview-input" placeholder="e.g., CC, CCO, benzene, aspirin" value="CCO">
+            </div>
+            <div class="control-group">
+                <label>View Options:</label>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <button class="btn" onclick="loadMolView()">🚀 Load Structure</button>
+                    <button class="btn btn-secondary" onclick="resetMolView()">Reset View</button>
+                    <select id="molview-representation">
+                        <option value="ball-stick">Ball & Stick</option>
+                        <option value="stick">Stick</option>
+                        <option value="wireframe">Wireframe</option>
+                        <option value="vdw">van der Waals</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="viewer-container">
+            <iframe id="molview-iframe" src="http://localhost:5003/"
+                    title="MolView 3D Structure Viewer"></iframe>
+        </div>
+        <div class="control-panel" style="margin-top: 20px;">
+            <h3>Direct MolView Integration</h3>
+            <p>Use this iframe directly in the Chrome extension to avoid CORS issues when loading structures.</p>
+        </div>
+    </div>
+
     <!-- 3D SMILES Tab -->
     <div id="3d-smiles" class="tab-content">
         <h2>3D SMILES Generator (OPSIN)</h2>
@@ -914,7 +1344,23 @@
 
         function open3DViewer() {
             const name = document.getElementById('pubchem-name').value;
-            window.open(`http://localhost:5002/static/viewer-3d.html?name=${encodeURIComponent(name)}&embed=true`, '_blank');
+
+            // Try to use the local MolView server first, fallback to the old method
+            fetch('http://localhost:5000/')
+                .then(response => {
+                    if (response.ok) {
+                        // Local MolView server is available, use it
+                        window.open(`http://localhost:5000/?q=${encodeURIComponent(name)}`, '_blank');
+                    } else {
+                        // Fallback to old method
+                        window.open(`http://localhost:5002/static/viewer-3d.html?name=${encodeURIComponent(name)}&embed=true`, '_blank');
+                    }
+                })
+                .catch(error => {
+                    // Server not available, use fallback
+                    console.log('Local MolView server not available, using fallback');
+                    window.open(`http://localhost:5002/static/viewer-3d.html?name=${encodeURIComponent(name)}&embed=true`, '_blank');
+                });
         }
 
         function clearPubChem() {
@@ -1468,6 +1914,7 @@ https://embed.molview.org/v1/?mode=balls&smiles=NCCC1=CN=CN1</pre>
                 { id: 'moleculeviewer', url: 'http://localhost:5000/health' },
                 { id: 'mol2chemfig', url: 'http://localhost:5001/health' },
                 { id: 'pubchem', url: 'http://localhost:5002/health' },
+                { id: 'molview', url: 'http://localhost:5003/' },
                 { id: 'docker', url: 'http://localhost:8000/m2cf/reset', method: 'POST' }
             ];
 
@@ -1597,6 +2044,28 @@ https://embed.molview.org/v1/?mode=balls&smiles=NCCC1=CN=CN1</pre>
                 draggedNode = null;
                 isDragging = false;
             }
+        }
+
+        // MolView Functions
+        function loadMolView() {
+            const input = document.getElementById('molview-input').value;
+            if (!input.trim()) {
+                alert('Please enter a compound name, SMILES, or InChI');
+                return;
+            }
+
+            // Update the iframe src with the query parameter
+            const iframe = document.getElementById('molview-iframe');
+            const representation = document.getElementById('molview-representation').value;
+
+            // For MolView, we'll use the q parameter to search for compounds
+            // The MolView server will handle the query and display the structure
+            iframe.src = `http://localhost:5003/?q=${encodeURIComponent(input)}`;
+        }
+
+        function resetMolView() {
+            const iframe = document.getElementById('molview-iframe');
+            iframe.src = 'http://localhost:5003/';
         }
 
         // Initialize draggable on load

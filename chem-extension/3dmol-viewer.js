@@ -132,11 +132,193 @@ const vanDerWaalsRadii = {
     'Cm': 2.45,  // Curium
 };
 
-if (!cid) {
-    showError('No molecule ID provided');
-} else {
+if (cid) {
     loadMolecule(cid);
+} else if (name) {
+    resolveAndLoad(name);
+} else {
+    showError('No molecule ID or Name provided');
 }
+
+async function resolveAndLoad(name) {
+    console.log(`🔍 Resolving molecule: ${name}`);
+
+    // STEP 1: Query local MolView API for intelligent molecule detection
+    const MOLVIEW_API = 'http://localhost:5003';
+
+    try {
+        console.log(`🌐 Querying local MolView API: ${MOLVIEW_API}/api/search?q=${encodeURIComponent(name)}`);
+        const response = await fetch(`${MOLVIEW_API}/api/search?q=${encodeURIComponent(name)}`);
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('📦 MolView API response:', data);
+
+            if (data.found) {
+                const category = data.category?.toLowerCase();
+
+                // CASE 1: Compound or Mineral → Use SMILES/SDF with local 3Dmol.js
+                if (category === 'compound' || category === 'mineral') {
+                    console.log(`✅ Found ${category}: ${name}`);
+
+                    if (data.sdf) {
+                        // Render SDF directly with 3Dmol.js
+                        console.log('📄 Using SDF data from MolView');
+                        loadMoleculeFromSDF(data.sdf, name);
+                        return;
+                    } else if (data.smiles) {
+                        // Convert SMILES to SDF via PubChem, then render
+                        console.log('🧪 Using SMILES from MolView:', data.smiles);
+                        const cid = await getCIDFromSMILES(data.smiles);
+                        if (cid) {
+                            loadMolecule(cid);
+                            return;
+                        }
+                    }
+                }
+
+                // CASE 2: Protein/Biomolecule → Use local MolView embed
+                else if (category === 'protein' || category === 'biomolecule' || category === 'pdb') {
+                    console.log(`🧬 Found ${category}: ${name}`);
+
+                    // Use local MolView embed with the query
+                    const molviewUrl = `${MOLVIEW_API}/?q=${encodeURIComponent(name)}`;
+                    embedMolView(molviewUrl, name);
+                    return;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn(`⚠️ Local MolView API failed: ${e.message}`);
+    }
+
+    // STEP 2: Fallback to PubChem for small molecules
+    console.log('🔄 Falling back to PubChem lookup...');
+    try {
+        const response = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(name)}/cids/JSON`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.IdentifierList && data.IdentifierList.CID && data.IdentifierList.CID.length > 0) {
+                const cid = data.IdentifierList.CID[0];
+                console.log(`✅ Resolved name "${name}" to CID ${cid} via PubChem`);
+                loadMolecule(cid);
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn(`⚠️ PubChem lookup failed: ${e.message}`);
+    }
+
+    // STEP 3: Final fallback to online MolView embed
+    console.warn(`⚠️ Could not resolve "${name}" locally. Using online MolView.`);
+    fallbackToMolView(name, false);
+}
+
+// Helper: Get CID from SMILES
+async function getCIDFromSMILES(smiles) {
+    try {
+        const url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/${encodeURIComponent(smiles)}/cids/JSON`;
+        const response = await fetch(url);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.IdentifierList && data.IdentifierList.CID && data.IdentifierList.CID.length > 0) {
+                return data.IdentifierList.CID[0];
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to get CID from SMILES:', e);
+    }
+    return null;
+}
+
+// Helper: Load molecule from SDF data
+function loadMoleculeFromSDF(sdfData, name) {
+    console.log('🎨 Rendering molecule from SDF data');
+
+    // Hide loading
+    document.getElementById('loading').style.display = 'none';
+
+    // Create 3Dmol viewer
+    const bgColor = decodeURIComponent(urlParams.get('bgColor') || '#1a1a2e');
+    let viewer = $3Dmol.createViewer('viewer', {
+        backgroundColor: bgColor,
+        antialias: true
+    });
+
+    // Add model from SDF
+    const model = viewer.addModel(sdfData, 'sdf');
+
+    // Apply default styling
+    viewer.setStyle({}, {
+        stick: { radius: 0.15, colorscheme: 'Jmol' },
+        sphere: { colorscheme: 'Jmol' }
+    });
+
+    viewer.zoomTo();
+    viewer.zoom(1.2);
+    viewer.render();
+
+    // Enable rotation if configured
+    const autoRotate = urlParams.get('autoRotate') !== 'false';
+    if (autoRotate) {
+        viewer.spin(true);
+    }
+
+    console.log('✅ Molecule loaded from SDF:', name);
+}
+
+// Helper: Embed MolView iframe
+function embedMolView(url, name) {
+    console.log(`🖼️ Embedding MolView: ${url}`);
+
+    // Clear the viewer container
+    document.body.innerHTML = '';
+    document.body.style.margin = '0';
+    document.body.style.padding = '0';
+    document.body.style.overflow = 'hidden';
+
+    // Create MolView iframe
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.style.width = '100vw';
+    iframe.style.height = '100vh';
+    iframe.style.border = 'none';
+    iframe.style.display = 'block';
+    iframe.title = `MolView: ${name}`;
+
+    document.body.appendChild(iframe);
+
+    console.log(`✅ MolView embedded for: ${name}`);
+}
+
+function fallbackToMolView(query, isCid) {
+    console.warn(`⚠️ Falling back to MolView for ${isCid ? 'CID' : 'Name'}: ${query}`);
+
+    // Clear the viewer container
+    document.body.innerHTML = '';
+    document.body.style.margin = '0';
+    document.body.style.padding = '0';
+    document.body.style.overflow = 'hidden';
+
+    // Create MolView iframe pointing to LOCAL MolView instance
+    const MOLVIEW_API = 'http://localhost:5003';
+    const iframe = document.createElement('iframe');
+
+    // Use local MolView /embed endpoint with query parameter
+    // If isCid is true, use cid=... else use q=...
+    const param = isCid ? `cid=${query}` : `q=${encodeURIComponent(query)}`;
+    iframe.src = `${MOLVIEW_API}/embed?${param}`;
+
+    iframe.style.width = '100vw';
+    iframe.style.height = '100vh';
+    iframe.style.border = 'none';
+    iframe.style.display = 'block';
+
+    document.body.appendChild(iframe);
+
+    console.log(`✅ Switched to LOCAL MolView /embed endpoint for ${isCid ? 'CID' : 'Name'} ${query}`);
+}
+
 
 function showError(message) {
     document.getElementById('loading').style.display = 'none';
@@ -212,25 +394,7 @@ async function loadMolecule(cid) {
         // If still no data, fallback to MolView (The "Singular Solution" for missing 3D data)
         if (!sdfData) {
             console.warn(`⚠️ No 3D data from PubChem for CID ${cid}. Falling back to MolView...`);
-
-            // Clear the viewer container
-            document.body.innerHTML = '';
-            document.body.style.margin = '0';
-            document.body.style.padding = '0';
-            document.body.style.overflow = 'hidden';
-
-            // Create MolView iframe
-            const iframe = document.createElement('iframe');
-            // Use embed mode with balls and sticks, hiding the toolbar if possible
-            iframe.src = `https://embed.molview.org/v1/?mode=balls&cid=${cid}`;
-            iframe.style.width = '100vw';
-            iframe.style.height = '100vh';
-            iframe.style.border = 'none';
-            iframe.style.display = 'block';
-
-            document.body.appendChild(iframe);
-
-            console.log(`✅ Switched to MolView for CID ${cid}`);
+            fallbackToMolView(cid, true);
             return;
         }
 

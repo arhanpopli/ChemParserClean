@@ -11,12 +11,15 @@
 const MOLECULE_VIEWER_API = 'http://localhost:5000';
 const MOL2CHEMFIG_API = 'http://localhost:5001';  // Flask wrapper (NOT port 8000 Docker backend)
 const PUBCHEM_API = 'http://localhost:5002';
+const MOLVIEW_API = 'http://localhost:5003';  // MolView server for proteins, minerals, and complex molecules
+const MOLVIEW_SEARCH_API = 'http://localhost:8001';  // Unified search API with autocorrect (compounds, proteins, minerals)
 
 // For Heroku production (uncomment when ready to deploy):
 // const MOLECULE_VIEWER_API = 'https://YOUR-HEROKU-APP.herokuapp.com';
 // const MOL2CHEMFIG_API = 'https://YOUR-MOL2CHEMFIG-APP.herokuapp.com';
 // const PUBCHEM_API = 'https://YOUR-PUBCHEM-APP.herokuapp.com';
-// const 
+// const MOLVIEW_API = 'https://YOUR-MOLVIEW-APP.herokuapp.com';
+// const MOLVIEW_SEARCH_API = 'https://YOUR-MOLVIEW-SEARCH-APP.herokuapp.com'; 
 
 // ============================================
 // LOGGING UTILITIES
@@ -523,6 +526,12 @@ async function getPubChemCID(nameOrSmiles) {
   } catch (e) {
     console.warn('⚠️ [CID] Autocomplete failed:', e.message);
   }
+
+  // Priority 2.5: Check for Protein/Biomolecule (PDB)
+  // If it's a protein name like "rhinovirus", "hemoglobin", etc., PubChem might not have it or it might be a substance.
+  // We can try to guess if it's a protein by checking if it fails standard lookup but looks like a biological name.
+  // For now, we will rely on the 3D viewer's fallback to MolView which handles PDB search better.
+  // But we can add a specific check here if needed in the future.
 
   // Priority 3: SMILES Bridge fallback (Last resort)
   console.log('%c🌉 [CID] Priority 3: Using SMILES Bridge fallback...', 'color: #FF8800; font-weight: bold;');
@@ -1374,6 +1383,9 @@ chrome.storage.sync.get(null, (result) => {
   } else if (settings.rendererEngine === 'pubchem') {
     engineName = '🌐 PubChem';
     enginePort = '5002';
+  } else if (settings.rendererEngine === 'molview-search') {
+    engineName = '🔍 MolView Search';
+    enginePort = '8001';
   } else if (settings.rendererEngine === 'client-side') {
     engineName = '💻 Client-Side (SmilesDrawer)';
     enginePort = 'N/A';
@@ -1411,6 +1423,8 @@ chrome.storage.onChanged.addListener((changes) => {
       engineName = '📐 mol2chemfig';
     } else if (settings.rendererEngine === 'pubchem') {
       engineName = '🌐 PubChem';
+    } else if (settings.rendererEngine === 'molview-search') {
+      engineName = '🔍 MolView Search';
     } else if (settings.rendererEngine === 'client-side') {
       engineName = '💻 Client-Side (SmilesDrawer)';
     } else {
@@ -2998,11 +3012,12 @@ function setupLazyLoading() {
 
       switch (viewerSource) {
         case 'molview':
-          // MolView Embed
+          // MolView Embed - using LOCAL MolView server
           const cidMolview = await getPubChemCID(compoundName);
           if (cidMolview) {
-            viewerUrl = `https://embed.molview.org/v1/?mode=balls&cid=${cidMolview}`;
-            console.log('%c📍 MolView Embed URL:', 'color: #0066cc; font-weight: bold;', viewerUrl);
+            // Use local MolView server /embed endpoint for clean 3D-only viewer
+            viewerUrl = `http://localhost:5003/embed?cid=${cidMolview}`;
+            console.log('%c📍 Local MolView /embed URL:', 'color: #0066cc; font-weight: bold;', viewerUrl);
           } else {
             console.warn('%c⚠️ CID not found for MolView, using 3Dmol.js fallback', 'color: orange;');
             viewerSource = '3dmol';
@@ -3028,29 +3043,34 @@ function setupLazyLoading() {
         case '3dmol':
         default:
           // 3Dmol.js - client-side viewer with custom styling
-          const cid3dmol = await getPubChemCID(compoundName);
-          if (cid3dmol) {
-            // Use our custom 3Dmol.js viewer with user's style preferences
-            const style3D = settings.viewer3DStyle || 'stick:sphere';
-
-            // Get per-style settings for stick and sphere radius
-            const styleSettings = settings.viewer3DStyleSettings || {};
-            const currentStyleSettings = styleSettings[style3D] || {};
-            const stickRadius = currentStyleSettings.stickRadius || '0.15';
-            const sphereRadius = currentStyleSettings.sphereRadius || '0.3';
-            const autoRotate = settings.viewer3DAutoRotate !== false;
-            const bgColor = encodeURIComponent(settings.viewer3DBgColor || '#1a1a2e');
-
-            viewerUrl = chrome.runtime.getURL(
-              `3dmol-viewer.html?cid=${cid3dmol}&name=${encodeURIComponent(compoundName)}&style=${style3D}&stickRadius=${stickRadius}&sphereRadius=${sphereRadius}&autoRotate=${autoRotate}&bgColor=${bgColor}`
-            );
-            console.log('%c📍 3Dmol.js Custom Viewer URL:', 'color: #0066cc; font-weight: bold;', viewerUrl);
-            console.log('%c🎨 Style settings:', 'color: #9c88ff;', { style: style3D, stickRadius, sphereRadius, autoRotate });
-          } else {
-            throw new Error('Could not find molecule in PubChem database');
-            activeLoads--;
-            return;
+          let cid3dmol = null;
+          try {
+            cid3dmol = await getPubChemCID(compoundName);
+          } catch (e) {
+            console.warn('CID lookup failed, proceeding with name only:', e);
           }
+
+          // Use our custom 3Dmol.js viewer with user's style preferences
+          const style3D = settings.viewer3DStyle || 'stick:sphere';
+
+          // Get per-style settings for stick and sphere radius
+          const styleSettings = settings.viewer3DStyleSettings || {};
+          const currentStyleSettings = styleSettings[style3D] || {};
+          const stickRadius = currentStyleSettings.stickRadius || '0.15';
+          const sphereRadius = currentStyleSettings.sphereRadius || '0.3';
+          const autoRotate = settings.viewer3DAutoRotate !== false;
+          const bgColor = encodeURIComponent(settings.viewer3DBgColor || '#1a1a2e');
+
+          viewerUrl = chrome.runtime.getURL(
+            `3dmol-viewer.html?name=${encodeURIComponent(compoundName)}&style=${style3D}&stickRadius=${stickRadius}&sphereRadius=${sphereRadius}&autoRotate=${autoRotate}&bgColor=${bgColor}`
+          );
+
+          if (cid3dmol) {
+            viewerUrl += `&cid=${cid3dmol}`;
+          }
+
+          console.log('%c📍 3Dmol.js Custom Viewer URL:', 'color: #0066cc; font-weight: bold;', viewerUrl);
+          console.log('%c🎨 Style settings:', 'color: #9c88ff;', { style: style3D, stickRadius, sphereRadius, autoRotate });
           break;
       }
 
@@ -3471,6 +3491,120 @@ function setupLazyLoading() {
     });
 
     controlPanel.appendChild(view3DBtn);
+  }
+
+  // Helper function to load MolView Search with autocorrect
+  async function loadMolViewSearchImage(img) {
+    activeLoads++;
+    console.log('%c🔍 LOADMOLVIEWSEARCHIMAGE CALLED!', 'background: #222; color: #9C27B0; font-size: 20px; padding: 10px;');
+    console.log('Image element:', img);
+    console.log('Dataset:', img.dataset);
+    log.debug(`🔍 Loading MolView Search result (#${activeLoads})`);
+
+    try {
+      const moleculeData = JSON.parse(atob(img.dataset.moleculeViewer || img.dataset.mol2chemfig));
+      console.log('%c📦 Decoded molecule data:', 'color: #9C27B0; font-weight: bold;', moleculeData);
+
+      // Determine the query string (nomenclature or SMILES)
+      let queryString = '';
+      if (moleculeData.nomenclature) {
+        queryString = moleculeData.nomenclature;
+      } else if (moleculeData.smiles) {
+        queryString = moleculeData.smiles;
+      } else if (moleculeData.type === 'chemfig' && moleculeData.fallback && moleculeData.fallback.smiles) {
+        queryString = moleculeData.fallback.smiles;
+      } else {
+        throw new Error('No valid compound identifier found');
+      }
+
+      console.log('%c🔍 Searching for compound:', 'color: #9C27B0; font-weight: bold;', queryString);
+
+      // Call the MolView Search API
+      const searchUrl = `${MOLVIEW_SEARCH_API}/search?q=${encodeURIComponent(queryString)}&format=compact`;
+      console.log('%c📡 Search API URL:', 'color: #9C27B0; font-weight: bold;', searchUrl);
+
+      // Fetch the search result
+      backgroundFetchJSON(searchUrl)
+        .then(async (searchResult) => {
+          console.log('%c📊 Search result:', 'color: #9C27B0; font-weight: bold;', searchResult);
+
+          if (searchResult.error) {
+            throw new Error(searchResult.error);
+          }
+
+          // Show autocorrect info if query was corrected
+          let correctedInfo = '';
+          if (searchResult.corrected_query) {
+            correctedInfo = `<div style="font-size: 12px; color: #9C27B0; margin-bottom: 4px;">
+              ✓ Autocorrected: <em>${queryString}</em> → <strong>${searchResult.corrected_query}</strong>
+            </div>`;
+          }
+
+          // Create an iframe to embed the MolView visualization
+          const embedContainer = document.createElement('div');
+          embedContainer.className = 'chemfig-diagram molview-search-embed';
+          embedContainer.style.cssText = `
+            display: inline-block;
+            max-width: 600px;
+            margin: 0 12px 8px 0;
+            vertical-align: middle;
+          `;
+
+          // Add autocorrect info if present
+          if (correctedInfo) {
+            embedContainer.innerHTML = correctedInfo;
+          }
+
+          // Create iframe for MolView embed
+          const iframe = document.createElement('iframe');
+          iframe.src = searchResult.embed_url;
+          iframe.style.cssText = `
+            width: 600px;
+            height: 450px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+          `;
+          iframe.title = `MolView: ${searchResult.name}`;
+
+          embedContainer.appendChild(iframe);
+
+          // Add compound info below
+          const infoDiv = document.createElement('div');
+          infoDiv.style.cssText = `
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+          `;
+          infoDiv.innerHTML = `
+            <strong>${searchResult.name}</strong> (${searchResult.primary_type})
+            ${searchResult.canonical_smiles ? `<br/>SMILES: <code>${searchResult.canonical_smiles}</code>` : ''}
+            <br/><a href="${searchResult.source_url}" target="_blank" style="color: #9C27B0;">View source ↗</a>
+          `;
+          embedContainer.appendChild(infoDiv);
+
+          // Mark as loaded
+          img.dataset.loaded = 'true';
+
+          // Replace the placeholder image with the embed
+          img.replaceWith(embedContainer);
+
+          console.log('%c✅ MolView Search embed loaded successfully', 'color: green; font-weight: bold;');
+          activeLoads--;
+        })
+        .catch(error => {
+          console.error('%c❌ MolView Search failed:', 'color: red; font-weight: bold;', error);
+          img.alt = `Error: ${error.message}`;
+          img.title = `MolView Search failed: ${error.message}`;
+          activeLoads--;
+        });
+
+    } catch (error) {
+      console.error('Error in loadMolViewSearchImage:', error);
+      img.alt = 'Error: ' + error.message;
+      img.title = 'Error: ' + error.message;
+      activeLoads--;
+    }
   }
 
   // Helper function to load mol2chemfig rendering with caching
@@ -4035,6 +4169,12 @@ function setupLazyLoading() {
     } else if (img.classList.contains('chemfig-mol2chemfig')) {
       console.log('%c📐 Using MOL2CHEMFIG renderer (from class)', 'background: #FF6B00; color: #FFF; font-size: 14px; padding: 5px;');
       loadMol2chemfigImage(img);
+    } else if (img.classList.contains('chemfig-molview-search')) {
+      console.log('%c🔍 Using MOLVIEW SEARCH renderer (from class)', 'background: #9C27B0; color: #FFF; font-size: 14px; padding: 5px;');
+      loadMolViewSearchImage(img);
+    } else if (settings.rendererEngine === 'molview-search') {
+      console.log('%c🔍 Using MOLVIEW SEARCH renderer engine', 'background: #9C27B0; color: #FFF; font-size: 14px; padding: 5px;');
+      loadMolViewSearchImage(img);
     } else if (settings.rendererEngine === 'mol2chemfig') {
       console.log('%c📐 Using MOL2CHEMFIG renderer engine', 'background: #FF6B00; color: #FFF; font-size: 14px; padding: 5px;');
       loadMol2chemfigImage(img);
@@ -4937,9 +5077,11 @@ function wrapChemicalFormulas(text) {
       if (flagOverrides.is3D) {
         const pubchemData = {
           ...(isSMILES ? { smiles: compoundName } : { nomenclature: compoundName }),
+          name: compoundName, // Always pass name for fallback
           type: isSMILES ? 'smiles' : 'nomenclature',
           isPubChem: true,
-          show3D: true  // Signal to show 3D viewer immediately
+          show3D: true,  // Signal to show 3D viewer immediately
+          auto3D: true   // Hint to viewer to auto-select best 3D mode
         };
 
         const encoded = btoa(JSON.stringify(pubchemData));
@@ -4953,6 +5095,7 @@ function wrapChemicalFormulas(text) {
       if (flagOverrides.isPubchem) {
         const pubchemData = {
           ...(isSMILES ? { smiles: compoundName } : { nomenclature: compoundName }),
+          name: compoundName,
           type: isSMILES ? 'smiles' : 'nomenclature',
           isPubChem: true
         };
@@ -4969,6 +5112,7 @@ function wrapChemicalFormulas(text) {
         // Use PubChem - supports 3D viewer when enabled
         const pubchemData = {
           ...(isSMILES ? { smiles: compoundName } : { nomenclature: compoundName }),
+          name: compoundName,
           type: isSMILES ? 'smiles' : 'nomenclature',
           isPubChem: true
         };

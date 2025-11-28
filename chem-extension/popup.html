@@ -117,6 +117,47 @@
       padding-bottom: 6px;
       border-bottom: 1px solid rgba(0, 0, 0, 0.06);
       letter-spacing: 0.8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .section-title:hover {
+      color: #333;
+    }
+
+    .section-title .chevron {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.25s ease;
+      opacity: 0.6;
+    }
+
+    .section-title:hover .chevron {
+      opacity: 1;
+    }
+
+    .section.collapsed .section-title {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .section.collapsed .section-title .chevron {
+      transform: rotate(-90deg);
+    }
+
+    .section-content {
+      transition: max-height 0.25s ease, opacity 0.2s ease;
+      overflow: hidden;
+    }
+
+    .section.collapsed .section-content {
+      max-height: 0 !important;
+      opacity: 0;
+      padding-top: 0;
     }
 
     .option {
@@ -445,8 +486,11 @@
     <div class="content">
       <!-- Main Controls -->
       <div class="section">
-        <div class="section-title">Main Controls</div>
-
+        <div class="section-title">
+          <span>Main Controls</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
         <div class="option">
           <label class="option-label" for="enabledToggle">
             <strong>Extension Status</strong>
@@ -473,12 +517,16 @@
           <input type="checkbox" id="chemfigToggle" checked>
           <label class="toggle" for="chemfigToggle"></label>
         </div>
+        </div>
       </div>
 
       <!-- Renderer Selection -->
       <div class="section">
-        <div class="section-title">Rendering Engine</div>
-
+        <div class="section-title">
+          <span>Rendering Engine</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
         <div class="radio-group">
           <input type="radio" name="renderingEngine" value="moleculeviewer" id="engine1" checked>
           <label for="engine1" class="radio-option">
@@ -515,17 +563,30 @@
               <small>Offline rendering (SmilesDrawer)</small>
             </div>
           </label>
+
+          <input type="radio" name="renderingEngine" value="molview-search" id="engine5">
+          <label for="engine5" class="radio-option">
+            <div class="radio-indicator"></div>
+            <div>
+              <strong>MolView Search</strong>
+              <small>Unified search with autocorrect (port 8001)</small>
+            </div>
+          </label>
         </div>
 
         <div class="info-box" id="engineInfo">
           <strong>Local Rendering</strong> - All chemistry structures render locally without external API dependencies.
         </div>
+        </div>
       </div>
 
       <!-- MoleculeViewer Options -->
       <div id="moleculeViewerOptions" class="section">
-        <div class="section-title">MoleculeViewer Options</div>
-
+        <div class="section-title">
+          <span>MoleculeViewer Options</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
         <div class="option">
           <label class="option-label" for="mvUse3DSmilesToggle">
             <strong>3D Stereochemistry (OPSIN)</strong>
@@ -580,13 +641,16 @@
           </div>
           <input type="range" id="mvRotateSlider" min="0" max="360" step="90" value="0" class="slider">
         </div>
+        </div>
       </div>
 
       <!-- mol2chemfig Options -->
       <div id="mol2chemfigOptions" class="section" style="display: none;">
-        <div class="section-title">Rendering Options</div>
-        
-        <!-- Note about client-side limitations -->
+        <div class="section-title">
+          <span>Rendering Options</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
         <div id="clientSideNote" style="display: none; background: rgba(230, 126, 34, 0.1); border: 1px solid rgba(230, 126, 34, 0.3); border-radius: 6px; padding: 8px; margin-bottom: 10px; font-size: 11px; color: #d35400;">
           💡 <strong>Client-Side Mode:</strong> Uses SmilesDrawer library. Only ✓ options work. For full control, use mol2chemfig engine.
         </div>
@@ -737,12 +801,16 @@
             </div>
           </details>
         </div>
+        </div>
       </div>
 
       <!-- PubChem Options -->
       <div id="pubchemOptions" class="section" style="display: none;">
-        <div class="section-title">PubChem Options</div>
-
+        <div class="section-title">
+          <span>PubChem Options</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
         <div class="option">
           <label class="option-label">
             <strong>Default Image Type</strong>
@@ -793,12 +861,16 @@
           <input type="checkbox" id="pubchemSharpenToggle" checked>
           <label class="toggle" for="pubchemSharpenToggle"></label>
         </div>
+        </div>
       </div>
 
       <!-- 3D Viewer Settings -->
       <div id="viewer3DSettings" class="section" style="display: none;">
-        <div class="section-title">3D Viewer Settings</div>
-
+        <div class="section-title">
+          <span>3D Viewer Settings</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
         <div class="option">
           <label class="option-label" for="enable3DViewerToggle">
             <strong>Enable 3D Viewer</strong>
@@ -901,12 +973,71 @@
           <option value="#34495e">Dark Gray</option>
           <option value="transparent">Transparent</option>
         </select>
+        </div>
+      </div>
+
+      <!-- MolView Protein Options -->
+      <div id="molviewProteinOptions" class="section" style="display: none;">
+        <div class="section-title">
+          <span>MolView Protein Options</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
+        <div class="option">
+          <label class="option-label" for="molviewBioAssemblyToggle">
+            <strong>Show Biological Assembly</strong>
+            <small>Display bio assembly instead of asymmetric unit</small>
+          </label>
+          <input type="checkbox" id="molviewBioAssemblyToggle">
+          <label class="toggle" for="molviewBioAssemblyToggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label">
+            <strong>Chain Representation</strong>
+            <small>How protein backbone is rendered</small>
+          </label>
+        </div>
+        <select id="molviewChainTypeSelect">
+          <option value="ribbon" selected>Ribbon</option>
+          <option value="cylinders">Cylinder and Plate</option>
+          <option value="btube">B-factor Tube</option>
+          <option value="ctrace">C-alpha Trace</option>
+        </select>
+
+        <div class="option">
+          <label class="option-label" for="molviewChainBondsToggle">
+            <strong>Show Chain Bonds</strong>
+            <small>Display bonds in chain representation</small>
+          </label>
+          <input type="checkbox" id="molviewChainBondsToggle">
+          <label class="toggle" for="molviewChainBondsToggle"></label>
+        </div>
+
+        <div class="option">
+          <label class="option-label">
+            <strong>Chain Color Scheme</strong>
+            <small>How to color the protein chain</small>
+          </label>
+        </div>
+        <select id="molviewChainColorSelect">
+          <option value="ss" selected>Secondary Structure</option>
+          <option value="spectrum">Spectrum (rainbow)</option>
+          <option value="chain">By Chain</option>
+          <option value="residue">By Residue</option>
+          <option value="polarity">By Polarity</option>
+          <option value="bfactor">B-factor (temperature)</option>
+        </select>
+        </div>
       </div>
 
       <!-- Image Size Controls -->
       <div class="section">
-        <div class="section-title">Image Size Controls</div>
-
+        <div class="section-title">
+          <span>Image Size Controls</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
         <div class="option">
           <label class="option-label" for="saveSizePerImageToggle">
             <strong>Save Size Per Page</strong>
@@ -924,11 +1055,16 @@
           <input type="checkbox" id="saveSizeBySMILESToggle">
           <label class="toggle" for="saveSizeBySMILESToggle"></label>
         </div>
+        </div>
       </div>
 
       <!-- Performance -->
       <div class="section">
-        <div class="section-title">Performance</div>
+        <div class="section-title">
+          <span>Performance</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
         <div class="option">
           <label class="option-label" for="perfModeToggle">
             <strong>Lazy-Loading Mode</strong>
@@ -937,11 +1073,16 @@
           <input type="checkbox" id="perfModeToggle" checked>
           <label class="toggle" for="perfModeToggle"></label>
         </div>
+        </div>
       </div>
 
       <!-- AI Molecular Control -->
       <div class="section">
-        <div class="section-title">AI Molecular Control</div>
+        <div class="section-title">
+          <span>AI Molecular Control</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
         <div class="option">
           <label class="option-label" for="aiMolecularControlToggle">
             <strong>Enable AI Flag Control</strong>
@@ -950,11 +1091,16 @@
           <input type="checkbox" id="aiMolecularControlToggle">
           <label class="toggle" for="aiMolecularControlToggle"></label>
         </div>
+        </div>
       </div>
 
       <!-- Developer Mode -->
       <div class="section">
-        <div class="section-title">Developer Mode</div>
+        <div class="section-title">
+          <span>Developer Mode</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
         <div class="option">
           <label class="option-label" for="devModeToggle">
             <strong>Show Raw Text</strong>
@@ -963,12 +1109,16 @@
           <input type="checkbox" id="devModeToggle">
           <label class="toggle" for="devModeToggle"></label>
         </div>
+        </div>
       </div>
 
       <!-- UI Settings -->
       <div class="section">
-        <div class="section-title">UI Settings</div>
-
+        <div class="section-title">
+          <span>UI Settings</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+        </div>
+        <div class="section-content">
         <div class="slider-option">
           <div class="slider-header">
             <label><strong>Molecule Count</strong></label>
@@ -999,6 +1149,7 @@
             <span id="opacityValue">45%</span>
           </div>
           <input type="range" id="opacitySlider" min="0" max="100" value="45" class="slider">
+        </div>
         </div>
       </div>
 

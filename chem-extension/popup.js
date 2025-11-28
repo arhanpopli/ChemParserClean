@@ -224,6 +224,11 @@ chrome.storage.sync.get({
   if (viewer3DSettings) {
     viewer3DSettings.style.display = 'block';
   }
+  // Show MolView Protein Options only for PubChem engine
+  const molviewProteinOptionsInit = document.getElementById('molviewProteinOptions');
+  if (molviewProteinOptionsInit) {
+    molviewProteinOptionsInit.style.display = (settings.rendererEngine === 'pubchem') ? 'block' : 'none';
+  }
   
   // Update client-side note visibility on initialization
   // Use setTimeout to ensure function is defined (it's declared later in the file)
@@ -671,7 +676,8 @@ engineRadios.forEach(radio => {
           'moleculeviewer': 'MoleculeViewer',
           'mol2chemfig': 'mol2chemfig',
           'pubchem': 'PubChem',
-          'client-side': 'Client-Side'
+          'client-side': 'Client-Side',
+          'molview-search': 'MolView Search'
         };
         showStatus(`Switched to ${engineNames[engine]}. Reload page to apply.`, 'success');
       });
@@ -682,6 +688,8 @@ engineRadios.forEach(radio => {
 /**
  * Update engine info display
  */
+const molviewProteinOptions = document.getElementById('molviewProteinOptions');
+
 function updateEngineInfo(engine) {
   if (engine === 'moleculeviewer') {
     if (engineInfo) engineInfo.textContent = '🧪 MoleculeViewer Server (localhost:5000)';
@@ -689,6 +697,7 @@ function updateEngineInfo(engine) {
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
     if (pubchemOptions) pubchemOptions.style.display = 'none';
     if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
+    if (molviewProteinOptions) molviewProteinOptions.style.display = 'none';
     updateClientSideNote(false);
   } else if (engine === 'mol2chemfig') {
     if (engineInfo) engineInfo.textContent = '📐 mol2chemfig Server (localhost:8000)';
@@ -696,6 +705,7 @@ function updateEngineInfo(engine) {
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'block';
     if (pubchemOptions) pubchemOptions.style.display = 'none';
     if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
+    if (molviewProteinOptions) molviewProteinOptions.style.display = 'none';
     updateClientSideNote(false);
   } else if (engine === 'pubchem') {
     if (engineInfo) engineInfo.textContent = '🌐 PubChem Server (localhost:5002)';
@@ -703,6 +713,7 @@ function updateEngineInfo(engine) {
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
     if (pubchemOptions) pubchemOptions.style.display = 'block';
     if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
+    if (molviewProteinOptions) molviewProteinOptions.style.display = 'block'; // Show protein options for PubChem
     updateClientSideNote(false);
   } else if (engine === 'client-side') {
     if (engineInfo) engineInfo.textContent = '💻 Client-Side (SmilesDrawer SVG) - No Server Required!';
@@ -710,7 +721,16 @@ function updateEngineInfo(engine) {
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'block'; // Show mol2chemfig options for rendering settings
     if (pubchemOptions) pubchemOptions.style.display = 'none';
     if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
+    if (molviewProteinOptions) molviewProteinOptions.style.display = 'none';
     updateClientSideNote(true); // Show client-side limitations note
+  } else if (engine === 'molview-search') {
+    if (engineInfo) engineInfo.textContent = '🔍 MolView Search Server (localhost:8001) - Unified search with autocorrect';
+    if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
+    if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
+    if (pubchemOptions) pubchemOptions.style.display = 'none';
+    if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
+    if (molviewProteinOptions) molviewProteinOptions.style.display = 'none';
+    updateClientSideNote(false);
   }
 }
 
@@ -964,3 +984,83 @@ chrome.storage.sync.get({
     molScaleValue.textContent = settings.moleculeScale;
   }
 });
+
+// =============================================
+// Collapsible Sections
+// =============================================
+(function initCollapsibleSections() {
+  const sectionTitles = document.querySelectorAll('.section-title');
+  
+  // Load collapsed state from storage
+  chrome.storage.sync.get({ collapsedSections: [] }, function(data) {
+    const collapsed = data.collapsedSections || [];
+    
+    sectionTitles.forEach(function(title) {
+      const sectionName = title.querySelector('span')?.textContent?.trim();
+      const section = title.closest('.section');
+      
+      // Restore collapsed state
+      if (sectionName && collapsed.includes(sectionName)) {
+        section.classList.add('collapsed');
+      }
+      
+      // Add click handler
+      title.addEventListener('click', function() {
+        section.classList.toggle('collapsed');
+        
+        // Save state
+        const allCollapsed = [];
+        document.querySelectorAll('.section.collapsed .section-title span').forEach(function(span) {
+          allCollapsed.push(span.textContent.trim());
+        });
+        chrome.storage.sync.set({ collapsedSections: allCollapsed });
+      });
+    });
+  });
+})();
+
+// =============================================
+// MolView Protein Options
+// =============================================
+const molviewBioAssemblyToggle = document.getElementById('molviewBioAssemblyToggle');
+const molviewChainTypeSelect = document.getElementById('molviewChainTypeSelect');
+const molviewChainBondsToggle = document.getElementById('molviewChainBondsToggle');
+const molviewChainColorSelect = document.getElementById('molviewChainColorSelect');
+
+// Load MolView protein settings
+chrome.storage.sync.get({
+  molviewBioAssembly: false,
+  molviewChainType: 'ribbon',
+  molviewChainBonds: false,
+  molviewChainColor: 'ss'
+}, function(settings) {
+  if (molviewBioAssemblyToggle) molviewBioAssemblyToggle.checked = settings.molviewBioAssembly;
+  if (molviewChainTypeSelect) molviewChainTypeSelect.value = settings.molviewChainType;
+  if (molviewChainBondsToggle) molviewChainBondsToggle.checked = settings.molviewChainBonds;
+  if (molviewChainColorSelect) molviewChainColorSelect.value = settings.molviewChainColor;
+});
+
+// Save MolView protein settings
+if (molviewBioAssemblyToggle) {
+  molviewBioAssemblyToggle.addEventListener('change', function() {
+    chrome.storage.sync.set({ molviewBioAssembly: this.checked });
+  });
+}
+
+if (molviewChainTypeSelect) {
+  molviewChainTypeSelect.addEventListener('change', function() {
+    chrome.storage.sync.set({ molviewChainType: this.value });
+  });
+}
+
+if (molviewChainBondsToggle) {
+  molviewChainBondsToggle.addEventListener('change', function() {
+    chrome.storage.sync.set({ molviewChainBonds: this.checked });
+  });
+}
+
+if (molviewChainColorSelect) {
+  molviewChainColorSelect.addEventListener('change', function() {
+    chrome.storage.sync.set({ molviewChainColor: this.value });
+  });
+}

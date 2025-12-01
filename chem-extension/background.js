@@ -208,3 +208,26 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     console.log('[ChemRenderer] Tab updated:', tab.url);
   }
 });
+
+// Create context menu item
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: "inspect-molecule",
+    title: "Render as Molecule: '%s'",
+    contexts: ["selection"]
+  });
+});
+
+// Handle context menu clicks
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "inspect-molecule") {
+    const selectedText = info.selectionText;
+    console.log('[Background] Inspecting molecule:', selectedText);
+
+    // Send message to content script to handle the inspection
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'INSPECT_MOLECULE',
+      text: selectedText
+    });
+  }
+});

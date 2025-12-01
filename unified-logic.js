@@ -50,7 +50,7 @@ async function generateMol2ChemFig() {
         // If 3D is enabled, convert name to 3D SMILES first
         if (use3D) {
             resultDiv.innerHTML = '<p>Converting to 3D SMILES via OPSIN...</p>';
-            const opsinResponse = await fetch(`http://localhost:5001/api/opsin?name=${encodeURIComponent(input)}`);
+            const opsinResponse = await fetch(`http://localhost:1000/api/opsin?name=${encodeURIComponent(input)}`);
             const opsinData = await opsinResponse.json();
 
             if (opsinData.smiles_3d) {
@@ -60,7 +60,7 @@ async function generateMol2ChemFig() {
         }
 
         // Generate with Mol2ChemFig
-        const response = await fetch('http://localhost:5001/api/generate', {
+        const response = await fetch('http://localhost:1000/api/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ smiles: smiles })
@@ -103,7 +103,7 @@ async function generateMoleculeViewer() {
         // If 3D is enabled, convert to 3D SMILES first
         if (use3D) {
             resultDiv.innerHTML = '<p>Converting to 3D SMILES via OPSIN...</p>';
-            const opsinResponse = await fetch(`http://localhost:5001/api/opsin?name=${encodeURIComponent(smiles)}`);
+            const opsinResponse = await fetch(`http://localhost:1000/api/opsin?name=${encodeURIComponent(smiles)}`);
             const opsinData = await opsinResponse.json();
 
             if (opsinData.smiles_3d) {
@@ -202,7 +202,7 @@ async function generate3DSMILES() {
     resultDiv.innerHTML = '<p>Converting to 3D SMILES via OPSIN...</p>';
 
     try {
-        const response = await fetch(`http://localhost:5001/api/opsin?name=${encodeURIComponent(name)}`);
+        const response = await fetch(`http://localhost:1000/api/opsin?name=${encodeURIComponent(name)}`);
         const data = await response.json();
 
         if (data.smiles_3d) {
@@ -394,7 +394,7 @@ function showNodeDetails(nodeId) {
 async function checkAllServers() {
     const servers = [
         { id: 'moleculeviewer', url: 'http://localhost:5000/health' },
-        { id: 'mol2chemfig', url: 'http://localhost:5001/health' },
+        { id: 'mol2chemfig', url: 'http://localhost:1000/health' },
         { id: 'pubchem', url: 'http://localhost:5002/health' },
         { id: 'molview', url: 'http://localhost:5003/' },
         { id: 'docker', url: 'http://localhost:8000/m2cf/reset', method: 'POST' }

@@ -51,6 +51,18 @@ const viewer3DSourceSelect = document.getElementById('viewer3DSourceSelect');
 const viewer3DSizeSelect = document.getElementById('viewer3DSizeSelect');
 const viewer3DBgColorSelect = document.getElementById('viewer3DBgColorSelect');
 
+// MolView specific options
+const molviewOptions = document.getElementById('molviewOptions');
+const molviewRepresentationSelect = document.getElementById('molviewRepresentationSelect');
+const molviewEngineSelect = document.getElementById('molviewEngineSelect');
+const molviewCrystallographySelect = document.getElementById('molviewCrystallographySelect');
+
+// MolView Protein Options
+const molviewBioAssemblyToggle = document.getElementById('molviewBioAssemblyToggle');
+const molviewChainTypeSelect = document.getElementById('molviewChainTypeSelect');
+const molviewChainBondsToggle = document.getElementById('molviewChainBondsToggle');
+const molviewChainColorSelect = document.getElementById('molviewChainColorSelect');
+
 // Image size control options
 const saveSizePerImageToggle = document.getElementById('saveSizePerImageToggle');
 const saveSizeBySMILESToggle = document.getElementById('saveSizeBySMILESToggle');
@@ -120,7 +132,17 @@ chrome.storage.sync.get({
   viewer3DStyle: 'stick:sphere',
   viewer3DAutoRotate: true,
   viewer3DSize: 'normal',
+  viewer3DSize: 'normal',
   viewer3DBgColor: '#1a1a2e',  // Default dark blue background
+  // MolView specific options
+  molviewRepresentation: 'ballAndStick',
+  molviewEngine: 'glmol',
+  molviewCrystallography: 'none',
+  // MolView Protein Options
+  molviewBioAssembly: false,
+  molviewChainType: 'ribbon',
+  molviewChainBonds: false,
+  molviewChainColor: 'ss',
   // Per-style settings for stick and sphere radius
   viewer3DStyleSettings: {
     'stick': { stickRadius: '0.15' },
@@ -196,6 +218,22 @@ chrome.storage.sync.get({
   if (viewer3DSizeSelect) viewer3DSizeSelect.value = settings.viewer3DSize || 'normal';
   if (viewer3DBgColorSelect) viewer3DBgColorSelect.value = settings.viewer3DBgColor || '#1a1a2e';
 
+  // Load MolView specific options
+  if (molviewRepresentationSelect) molviewRepresentationSelect.value = settings.molviewRepresentation || 'ballAndStick';
+  if (molviewEngineSelect) molviewEngineSelect.value = settings.molviewEngine || 'glmol';
+  if (molviewCrystallographySelect) molviewCrystallographySelect.value = settings.molviewCrystallography || 'none';
+
+  // Load MolView Protein Options
+  if (molviewBioAssemblyToggle) molviewBioAssemblyToggle.checked = settings.molviewBioAssembly;
+  if (molviewChainTypeSelect) molviewChainTypeSelect.value = settings.molviewChainType || 'ribbon';
+  if (molviewChainBondsToggle) molviewChainBondsToggle.checked = settings.molviewChainBonds;
+  if (molviewChainColorSelect) molviewChainColorSelect.value = settings.molviewChainColor || 'ss';
+
+  // Show/hide MolView options based on current source
+  if (molviewOptions) {
+    molviewOptions.style.display = (settings.viewer3DSource === 'molview') ? 'block' : 'none';
+  }
+
   // Load MolView-Only Mode option
   if (molviewOnlyModeToggle) molviewOnlyModeToggle.checked = settings.molviewOnlyMode;
 
@@ -237,7 +275,7 @@ chrome.storage.sync.get({
   if (molviewProteinOptionsInit) {
     molviewProteinOptionsInit.style.display = (settings.rendererEngine === 'pubchem') ? 'block' : 'none';
   }
-  
+
   // Update client-side note visibility on initialization
   // Use setTimeout to ensure function is defined (it's declared later in the file)
   setTimeout(() => {
@@ -569,8 +607,14 @@ if (viewer3DSourceSelect) {
       }
       const sourceNames = {
         '3dmol': '3Dmol.js',
+        'molview': 'MolView (Local)',
         'pubchem': 'PubChem Official'
       };
+
+      // Show/hide MolView specific options
+      if (molviewOptions) {
+        molviewOptions.style.display = (newValue === 'molview') ? 'block' : 'none';
+      }
       console.log('Successfully saved viewer3DSource:', newValue);
       showStatus('3D viewer source set to ' + sourceNames[newValue] + '. Reload page to apply.', 'success');
     });
@@ -681,6 +725,64 @@ if (viewer3DBgColorSelect) {
   });
 }
 
+// MolView specific options event listeners
+if (molviewRepresentationSelect) {
+  molviewRepresentationSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ molviewRepresentation: e.target.value }, () => {
+      showStatus('Representation set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (molviewEngineSelect) {
+  molviewEngineSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ molviewEngine: e.target.value }, () => {
+      showStatus('Engine set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (molviewCrystallographySelect) {
+  molviewCrystallographySelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ molviewCrystallography: e.target.value }, () => {
+      showStatus('Crystallography set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+// MolView Protein Options event listeners
+if (molviewBioAssemblyToggle) {
+  molviewBioAssemblyToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ molviewBioAssembly: e.target.checked }, () => {
+      showStatus('Bio Assembly ' + (e.target.checked ? 'shown' : 'hidden') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (molviewChainTypeSelect) {
+  molviewChainTypeSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ molviewChainType: e.target.value }, () => {
+      showStatus('Chain Type set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (molviewChainBondsToggle) {
+  molviewChainBondsToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ molviewChainBonds: e.target.checked }, () => {
+      showStatus('Chain Bonds ' + (e.target.checked ? 'shown' : 'hidden') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (molviewChainColorSelect) {
+  molviewChainColorSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ molviewChainColor: e.target.value }, () => {
+      showStatus('Chain Color set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
 // Add event listeners for rendering engine radio buttons
 const engineRadios = document.querySelectorAll('input[name="renderingEngine"]');
 engineRadios.forEach(radio => {
@@ -749,16 +851,16 @@ function updateClientSideNote(isClientSide) {
   const clientSideNote = document.getElementById('clientSideNote');
   const clientSideRendererSection = document.getElementById('clientSideRendererSection');
   const m2cfOnlyBadges = document.querySelectorAll('.m2cf-only-badge');
-  
+
   if (clientSideNote) {
     clientSideNote.style.display = isClientSide ? 'block' : 'none';
   }
-  
+
   // Show renderer selection only in client-side mode
   if (clientSideRendererSection) {
     clientSideRendererSection.style.display = isClientSide ? 'block' : 'none';
   }
-  
+
   // Gray out m2cf-only options when in client-side mode
   m2cfOnlyBadges.forEach(badge => {
     const option = badge.closest('.option');
@@ -780,7 +882,7 @@ if (clientSideRendererSelect) {
   chrome.storage.sync.get(['clientSideRenderer'], (result) => {
     clientSideRendererSelect.value = result.clientSideRenderer || 'smilesdrawer';
   });
-  
+
   // Save on change
   clientSideRendererSelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ clientSideRenderer: e.target.value }, () => {
@@ -998,27 +1100,27 @@ chrome.storage.sync.get({
 // =============================================
 (function initCollapsibleSections() {
   const sectionTitles = document.querySelectorAll('.section-title');
-  
+
   // Load collapsed state from storage
-  chrome.storage.sync.get({ collapsedSections: [] }, function(data) {
+  chrome.storage.sync.get({ collapsedSections: [] }, function (data) {
     const collapsed = data.collapsedSections || [];
-    
-    sectionTitles.forEach(function(title) {
+
+    sectionTitles.forEach(function (title) {
       const sectionName = title.querySelector('span')?.textContent?.trim();
       const section = title.closest('.section');
-      
+
       // Restore collapsed state
       if (sectionName && collapsed.includes(sectionName)) {
         section.classList.add('collapsed');
       }
-      
+
       // Add click handler
-      title.addEventListener('click', function() {
+      title.addEventListener('click', function () {
         section.classList.toggle('collapsed');
-        
+
         // Save state
         const allCollapsed = [];
-        document.querySelectorAll('.section.collapsed .section-title span').forEach(function(span) {
+        document.querySelectorAll('.section.collapsed .section-title span').forEach(function (span) {
           allCollapsed.push(span.textContent.trim());
         });
         chrome.storage.sync.set({ collapsedSections: allCollapsed });
@@ -1027,48 +1129,3 @@ chrome.storage.sync.get({
   });
 })();
 
-// =============================================
-// MolView Protein Options
-// =============================================
-const molviewBioAssemblyToggle = document.getElementById('molviewBioAssemblyToggle');
-const molviewChainTypeSelect = document.getElementById('molviewChainTypeSelect');
-const molviewChainBondsToggle = document.getElementById('molviewChainBondsToggle');
-const molviewChainColorSelect = document.getElementById('molviewChainColorSelect');
-
-// Load MolView protein settings
-chrome.storage.sync.get({
-  molviewBioAssembly: false,
-  molviewChainType: 'ribbon',
-  molviewChainBonds: false,
-  molviewChainColor: 'ss'
-}, function(settings) {
-  if (molviewBioAssemblyToggle) molviewBioAssemblyToggle.checked = settings.molviewBioAssembly;
-  if (molviewChainTypeSelect) molviewChainTypeSelect.value = settings.molviewChainType;
-  if (molviewChainBondsToggle) molviewChainBondsToggle.checked = settings.molviewChainBonds;
-  if (molviewChainColorSelect) molviewChainColorSelect.value = settings.molviewChainColor;
-});
-
-// Save MolView protein settings
-if (molviewBioAssemblyToggle) {
-  molviewBioAssemblyToggle.addEventListener('change', function() {
-    chrome.storage.sync.set({ molviewBioAssembly: this.checked });
-  });
-}
-
-if (molviewChainTypeSelect) {
-  molviewChainTypeSelect.addEventListener('change', function() {
-    chrome.storage.sync.set({ molviewChainType: this.value });
-  });
-}
-
-if (molviewChainBondsToggle) {
-  molviewChainBondsToggle.addEventListener('change', function() {
-    chrome.storage.sync.set({ molviewChainBonds: this.checked });
-  });
-}
-
-if (molviewChainColorSelect) {
-  molviewChainColorSelect.addEventListener('change', function() {
-    chrome.storage.sync.set({ molviewChainColor: this.value });
-  });
-}

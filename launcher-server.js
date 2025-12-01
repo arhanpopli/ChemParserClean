@@ -25,12 +25,12 @@ app.use(express.static(__dirname));
 // Get status of all servers
 app.get('/api/status', async (req, res) => {
   const status = {};
-  
+
   // Check each server
   const servers = [
     { id: 'pubchem', port: 5002, url: 'http://localhost:5002/health' },
     { id: 'moleculeviewer', port: 5000, url: 'http://localhost:5000/health' },
-    { id: 'mol2chemfig', port: 5001, url: 'http://localhost:5001/health' }
+    { id: 'mol2chemfig', port: 1000, url: 'http://localhost:1000/health' }
   ];
 
   for (const server of servers) {
@@ -54,7 +54,7 @@ app.get('/api/status', async (req, res) => {
 // Start PubChem server
 app.post('/api/start/pubchem', (req, res) => {
   console.log('🚀 Starting PubChem Server...');
-  
+
   const serverPath = path.join(__dirname, 'MoleculeViewer', 'pubchem');
   const scriptPath = path.join(serverPath, 'server.js');
 
@@ -94,7 +94,7 @@ app.post('/api/start/pubchem', (req, res) => {
 // Stop PubChem server
 app.post('/api/stop/pubchem', (req, res) => {
   console.log('⏹️ Stopping PubChem Server...');
-  
+
   if (runningProcesses.pubchem) {
     runningProcesses.pubchem.kill();
     delete runningProcesses.pubchem;
@@ -122,7 +122,7 @@ app.post('/api/stop/pubchem', (req, res) => {
 // Start MoleculeViewer server
 app.post('/api/start/moleculeviewer', (req, res) => {
   console.log('🚀 Starting MoleculeViewer Server...');
-  
+
   const serverPath = path.join(__dirname, 'MoleculeViewer');
   const scriptPath = path.join(serverPath, 'server.js');
 
@@ -157,11 +157,11 @@ app.post('/api/stop/moleculeviewer', (req, res) => {
 // Start ALL servers
 app.post('/api/start/all', (req, res) => {
   console.log('🚀 Starting ALL Servers...');
-  
+
   // Start PubChem
   const pubchemPath = path.join(__dirname, 'MoleculeViewer', 'pubchem');
   const pubchemScript = path.join(pubchemPath, 'server.js');
-  
+
   if (!runningProcesses.pubchem) {
     const pubchemProcess = spawn('node', [pubchemScript], {
       cwd: pubchemPath,
@@ -181,7 +181,7 @@ app.post('/api/start/all', (req, res) => {
 // Stop ALL servers
 app.post('/api/stop/all', (req, res) => {
   console.log('⏹️ Stopping ALL Servers...');
-  
+
   Object.keys(runningProcesses).forEach(key => {
     if (runningProcesses[key]) {
       runningProcesses[key].kill();
@@ -200,7 +200,7 @@ app.post('/api/stop/all', (req, res) => {
 // View logs
 app.get('/api/logs/:serverId', (req, res) => {
   const { serverId } = req.params;
-  
+
   // Return placeholder logs (in real implementation, read from log files)
   res.json({
     logs: [
@@ -234,7 +234,7 @@ app.listen(PORT, () => {
 // Cleanup on exit
 process.on('SIGINT', () => {
   console.log('\n🛑 Shutting down launcher control server...');
-  
+
   Object.keys(runningProcesses).forEach(key => {
     if (runningProcesses[key]) {
       runningProcesses[key].kill();

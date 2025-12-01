@@ -88,11 +88,14 @@ function getPageImageKey(moleculeData, pageUrl) {
 async function loadImageSize(moleculeData, pageUrl, settings) {
   try {
     const imageKey = getImageKey(moleculeData);
-    if (!imageKey) return calculateDefaultSize(moleculeData);
+    // Use calculateDefaultSize for better molecule-specific sizing
+    const defaultSize = calculateDefaultSize(moleculeData);
+
+    if (!imageKey) return defaultSize;
 
     // Check if size saving is enabled
     if (!settings.saveSizePerImage && !settings.saveSizeBySMILES) {
-      return calculateDefaultSize(moleculeData);
+      return defaultSize;
     }
 
     // Determine which storage key to use
@@ -105,7 +108,7 @@ async function loadImageSize(moleculeData, pageUrl, settings) {
       storageKey = imageKey;
     }
 
-    if (!storageKey) return calculateDefaultSize(moleculeData);
+    if (!storageKey) return defaultSize;
 
     // Load from chrome.storage
     return new Promise((resolve) => {
@@ -113,7 +116,7 @@ async function loadImageSize(moleculeData, pageUrl, settings) {
         if (result[storageKey]) {
           resolve(result[storageKey]);
         } else {
-          resolve(calculateDefaultSize(moleculeData));
+          resolve(defaultSize);
         }
       });
     });

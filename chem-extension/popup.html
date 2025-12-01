@@ -488,35 +488,37 @@
       <div class="section">
         <div class="section-title">
           <span>Main Controls</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div class="option">
-          <label class="option-label" for="enabledToggle">
-            <strong>Extension Status</strong>
-            <small>Enable/disable formula rendering</small>
-          </label>
-          <input type="checkbox" id="enabledToggle" checked>
-          <label class="toggle" for="enabledToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="enabledToggle">
+              <strong>Extension Status</strong>
+              <small>Enable/disable formula rendering</small>
+            </label>
+            <input type="checkbox" id="enabledToggle" checked>
+            <label class="toggle" for="enabledToggle"></label>
+          </div>
 
-        <div class="option">
-          <label class="option-label" for="mhchemToggle">
-            <strong>mhchem Formulas</strong>
-            <small>\ce{H2O}, \ce{CO2}</small>
-          </label>
-          <input type="checkbox" id="mhchemToggle" checked>
-          <label class="toggle" for="mhchemToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="mhchemToggle">
+              <strong>mhchem Formulas</strong>
+              <small>\ce{H2O}, \ce{CO2}</small>
+            </label>
+            <input type="checkbox" id="mhchemToggle" checked>
+            <label class="toggle" for="mhchemToggle"></label>
+          </div>
 
-        <div class="option">
-          <label class="option-label" for="chemfigToggle">
-            <strong>chemfig Structures</strong>
-            <small>\chemfig{...}</small>
-          </label>
-          <input type="checkbox" id="chemfigToggle" checked>
-          <label class="toggle" for="chemfigToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="chemfigToggle">
+              <strong>chemfig Structures</strong>
+              <small>\chemfig{...}</small>
+            </label>
+            <input type="checkbox" id="chemfigToggle" checked>
+            <label class="toggle" for="chemfigToggle"></label>
+          </div>
         </div>
       </div>
 
@@ -524,64 +526,70 @@
       <div class="section">
         <div class="section-title">
           <span>Rendering Engine</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div class="radio-group">
-          <input type="radio" name="renderingEngine" value="moleculeviewer" id="engine1" checked>
-          <label for="engine1" class="radio-option">
-            <div class="radio-indicator"></div>
-            <div>
-              <strong>MoleculeViewer</strong>
-              <small>SMILES & nomenclature (port 5000)</small>
-            </div>
-          </label>
+          <div class="radio-group">
+            <input type="radio" name="renderingEngine" value="moleculeviewer" id="engine1" checked>
+            <label for="engine1" class="radio-option">
+              <div class="radio-indicator"></div>
+              <div>
+                <strong>MoleculeViewer</strong>
+                <small>SMILES & nomenclature (port 5000)</small>
+              </div>
+            </label>
 
-          <input type="radio" name="renderingEngine" value="mol2chemfig" id="engine2">
-          <label for="engine2" class="radio-option">
-            <div class="radio-indicator"></div>
-            <div>
-              <strong>mol2chemfig</strong>
-              <small>Chemfig & LaTeX (port 8000)</small>
-            </div>
-          </label>
+            <input type="radio" name="renderingEngine" value="mol2chemfig" id="engine2">
+            <label for="engine2" class="radio-option">
+              <div class="radio-indicator"></div>
+              <div>
+                <strong>mol2chemfig</strong>
+                <small>Chemfig & LaTeX (port 8000)</small>
+              </div>
+            </label>
 
-          <input type="radio" name="renderingEngine" value="pubchem" id="engine3">
-          <label for="engine3" class="radio-option">
-            <div class="radio-indicator"></div>
-            <div>
-              <strong>PubChem</strong>
-              <small>Direct API with 3D models (port 5002)</small>
-            </div>
-          </label>
+            <input type="radio" name="renderingEngine" value="pubchem" id="engine3">
+            <label for="engine3" class="radio-option">
+              <div class="radio-indicator"></div>
+              <div>
+                <strong>PubChem</strong>
+                <small>Direct API with 3D models (port 5002)</small>
+              </div>
+            </label>
 
-          <input type="radio" name="renderingEngine" value="client-side" id="engine4">
-          <label for="engine4" class="radio-option">
-            <div class="radio-indicator"></div>
-            <div>
-              <strong>Client-Side</strong>
-              <small>Offline rendering (SmilesDrawer)</small>
-            </div>
-          </label>
-        </div>
+            <input type="radio" name="renderingEngine" value="client-side" id="engine4">
+            <label for="engine4" class="radio-option">
+              <div class="radio-indicator"></div>
+              <div>
+                <strong>Client-Side</strong>
+                <small>Offline rendering (SmilesDrawer)</small>
+              </div>
+            </label>
+          </div>
 
-        <div class="info-box" style="background: rgba(156, 39, 176, 0.1); border-left: 3px solid #9C27B0; margin-top: 8px;">
-          <strong>🔍 Universal Search API (Port 8001)</strong><br>
-          <small>ALL engines now use intelligent search with autocorrect for typos, minerals, proteins, and compounds!</small>
-        </div>
+          <div class="info-box"
+            style="background: rgba(156, 39, 176, 0.1); border-left: 3px solid #9C27B0; margin-top: 8px;">
+            <strong>🔍 Universal Search API (Port 8001)</strong><br>
+            <small>ALL engines now use intelligent search with autocorrect for typos, minerals, proteins, and
+              compounds!</small>
+          </div>
 
-        <div class="option" style="margin-top: 12px; padding: 12px; background: rgba(33, 150, 243, 0.08); border-radius: 8px; border-left: 3px solid #2196F3;">
-          <label class="option-label" for="molviewOnlyModeToggle">
-            <strong>🌐 MolView-Only Mode</strong>
-            <small>Fetch ALL data from localhost:8000 (no external PubChem/OPSIN calls)</small>
-          </label>
-          <input type="checkbox" id="molviewOnlyModeToggle">
-          <label class="toggle" for="molviewOnlyModeToggle"></label>
-        </div>
+          <div class="option"
+            style="margin-top: 12px; padding: 12px; background: rgba(33, 150, 243, 0.08); border-radius: 8px; border-left: 3px solid #2196F3;">
+            <label class="option-label" for="molviewOnlyModeToggle">
+              <strong>🌐 MolView-Only Mode</strong>
+              <small>Fetch ALL data from localhost:8000 (no external PubChem/OPSIN calls)</small>
+            </label>
+            <input type="checkbox" id="molviewOnlyModeToggle">
+            <label class="toggle" for="molviewOnlyModeToggle"></label>
+          </div>
 
-        <div class="info-box" id="engineInfo">
-          <strong>Local Rendering</strong> - All chemistry structures render locally without external API dependencies.
-        </div>
+          <div class="info-box" id="engineInfo">
+            <strong>Local Rendering</strong> - All chemistry structures render locally without external API
+            dependencies.
+          </div>
         </div>
       </div>
 
@@ -589,63 +597,65 @@
       <div id="moleculeViewerOptions" class="section">
         <div class="section-title">
           <span>MoleculeViewer Options</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div class="option">
-          <label class="option-label" for="mvUse3DSmilesToggle">
-            <strong>3D Stereochemistry (OPSIN)</strong>
-            <small>Use OPSIN for 3D SMILES with stereochemistry</small>
-          </label>
-          <input type="checkbox" id="mvUse3DSmilesToggle">
-          <label class="toggle" for="mvUse3DSmilesToggle"></label>
-        </div>
-
-        <div class="option">
-          <label class="option-label" for="flipHorizontalToggle">
-            <strong>Flip Horizontal</strong>
-            <small>Mirror image</small>
-          </label>
-          <input type="checkbox" id="flipHorizontalToggle">
-          <label class="toggle" for="flipHorizontalToggle"></label>
-        </div>
-
-        <div class="option">
-          <label class="option-label" for="flipVerticalToggle">
-            <strong>Flip Vertical</strong>
-            <small>Upside down</small>
-          </label>
-          <input type="checkbox" id="flipVerticalToggle">
-          <label class="toggle" for="flipVerticalToggle"></label>
-        </div>
-
-        <div class="option">
-          <label class="option-label" for="mvAutoInvertToggle">
-            <strong>Auto Invert in Dark Mode</strong>
-            <small>Automatically invert colors when dark mode detected</small>
-          </label>
-          <input type="checkbox" id="mvAutoInvertToggle">
-          <label class="toggle" for="mvAutoInvertToggle"></label>
-        </div>
-
-        <div class="option">
-          <label class="option-label">
-            <strong>Invert Mode</strong>
-            <small>How to handle dark mode colors</small>
-          </label>
-        </div>
-        <select id="mvInvertModeSelect">
-          <option value="full">Full Invert - Inverts all colors (CSS filter)</option>
-          <option value="bw">BW Only - Changes black bonds to white, keeps atom colors</option>
-        </select>
-
-        <div class="slider-option">
-          <div class="slider-header">
-            <label><strong>Rotation</strong></label>
-            <span id="mvRotateValue">0°</span>
+          <div class="option">
+            <label class="option-label" for="mvUse3DSmilesToggle">
+              <strong>3D Stereochemistry (OPSIN)</strong>
+              <small>Use OPSIN for 3D SMILES with stereochemistry</small>
+            </label>
+            <input type="checkbox" id="mvUse3DSmilesToggle">
+            <label class="toggle" for="mvUse3DSmilesToggle"></label>
           </div>
-          <input type="range" id="mvRotateSlider" min="0" max="360" step="90" value="0" class="slider">
-        </div>
+
+          <div class="option">
+            <label class="option-label" for="flipHorizontalToggle">
+              <strong>Flip Horizontal</strong>
+              <small>Mirror image</small>
+            </label>
+            <input type="checkbox" id="flipHorizontalToggle">
+            <label class="toggle" for="flipHorizontalToggle"></label>
+          </div>
+
+          <div class="option">
+            <label class="option-label" for="flipVerticalToggle">
+              <strong>Flip Vertical</strong>
+              <small>Upside down</small>
+            </label>
+            <input type="checkbox" id="flipVerticalToggle">
+            <label class="toggle" for="flipVerticalToggle"></label>
+          </div>
+
+          <div class="option">
+            <label class="option-label" for="mvAutoInvertToggle">
+              <strong>Auto Invert in Dark Mode</strong>
+              <small>Automatically invert colors when dark mode detected</small>
+            </label>
+            <input type="checkbox" id="mvAutoInvertToggle">
+            <label class="toggle" for="mvAutoInvertToggle"></label>
+          </div>
+
+          <div class="option">
+            <label class="option-label">
+              <strong>Invert Mode</strong>
+              <small>How to handle dark mode colors</small>
+            </label>
+          </div>
+          <select id="mvInvertModeSelect">
+            <option value="full">Full Invert - Inverts all colors (CSS filter)</option>
+            <option value="bw">BW Only - Changes black bonds to white, keeps atom colors</option>
+          </select>
+
+          <div class="slider-option">
+            <div class="slider-header">
+              <label><strong>Rotation</strong></label>
+              <span id="mvRotateValue">0°</span>
+            </div>
+            <input type="range" id="mvRotateSlider" min="0" max="360" step="90" value="0" class="slider">
+          </div>
         </div>
       </div>
 
@@ -653,159 +663,202 @@
       <div id="mol2chemfigOptions" class="section" style="display: none;">
         <div class="section-title">
           <span>Rendering Options</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div id="clientSideNote" style="display: none; background: rgba(230, 126, 34, 0.1); border: 1px solid rgba(230, 126, 34, 0.3); border-radius: 6px; padding: 8px; margin-bottom: 10px; font-size: 11px; color: #d35400;">
-          💡 <strong>Client-Side Mode:</strong> Uses SmilesDrawer library. Only ✓ options work. For full control, use mol2chemfig engine.
-        </div>
+          <div id="clientSideNote"
+            style="display: none; background: rgba(230, 126, 34, 0.1); border: 1px solid rgba(230, 126, 34, 0.3); border-radius: 6px; padding: 8px; margin-bottom: 10px; font-size: 11px; color: #d35400;">
+            💡 <strong>Client-Side Mode:</strong> Uses SmilesDrawer library. Only ✓ options work. For full control, use
+            mol2chemfig engine.
+          </div>
 
-        <!-- Client-Side Renderer Info -->
-        <div id="clientSideRendererSection" style="display: none; margin-bottom: 12px;">
+          <!-- Client-Side Renderer Info -->
+          <div id="clientSideRendererSection" style="display: none; margin-bottom: 12px;">
+            <div class="option">
+              <label class="option-label">
+                <strong>Renderer: SmilesDrawer</strong>
+                <small>Fast client-side rendering (250KB), no server needed. Some options limited.</small>
+              </label>
+            </div>
+          </div>
+
+          <div class="option" data-client-support="false">
+            <label class="option-label" for="m2cfShowCarbonsToggle">
+              <strong>Show Carbon Atoms <span class="m2cf-only-badge"
+                  style="font-size: 9px; background: #e74c3c; color: white; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">m2cf
+                  only</span></strong>
+              <small>Display C labels (-c flag)</small>
+            </label>
+            <input type="checkbox" id="m2cfShowCarbonsToggle">
+            <label class="toggle" for="m2cfShowCarbonsToggle"></label>
+          </div>
+
+          <div class="option" data-client-support="false">
+            <label class="option-label" for="m2cfAromaticCirclesToggle">
+              <strong>Aromatic Circles <span class="m2cf-only-badge"
+                  style="font-size: 9px; background: #e74c3c; color: white; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">m2cf
+                  only</span></strong>
+              <small>Draw circles in rings (-o flag)</small>
+            </label>
+            <input type="checkbox" id="m2cfAromaticCirclesToggle">
+            <label class="toggle" for="m2cfAromaticCirclesToggle"></label>
+          </div>
+
+          <div class="option" data-client-support="true">
+            <label class="option-label" for="m2cfShowMethylsToggle">
+              <strong>Show Methyl Groups <span style="font-size: 9px; color: #27ae60;">✓</span></strong>
+              <small>Display CH₃ labels (-m flag)</small>
+            </label>
+            <input type="checkbox" id="m2cfShowMethylsToggle">
+            <label class="toggle" for="m2cfShowMethylsToggle"></label>
+          </div>
+
+          <div class="option" data-client-support="false">
+            <label class="option-label" for="m2cfAtomNumbersToggle">
+              <strong>Atom Numbers <span class="m2cf-only-badge"
+                  style="font-size: 9px; background: #e74c3c; color: white; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">m2cf
+                  only</span></strong>
+              <small>Number atoms except H (-n flag)</small>
+            </label>
+            <input type="checkbox" id="m2cfAtomNumbersToggle">
+            <label class="toggle" for="m2cfAtomNumbersToggle"></label>
+          </div>
+
+          <div class="option" data-client-support="true">
+            <label class="option-label" for="m2cfFlipVerticalToggle">
+              <strong>Flip Vertical <span style="font-size: 9px; color: #27ae60;">✓</span></strong>
+              <small>Upside down (CSS transform)</small>
+            </label>
+            <input type="checkbox" id="m2cfFlipVerticalToggle">
+            <label class="toggle" for="m2cfFlipVerticalToggle"></label>
+          </div>
+
+          <div class="option" data-client-support="true">
+            <label class="option-label" for="use3DSmilesToggle">
+              <strong>3D Stereochemistry (OPSIN) <span style="font-size: 9px; color: #27ae60;">✓</span></strong>
+              <small>Use OPSIN for 3D SMILES</small>
+            </label>
+            <input type="checkbox" id="use3DSmilesToggle">
+            <label class="toggle" for="use3DSmilesToggle"></label>
+          </div>
+
+          <div class="option" data-client-support="true">
+            <label class="option-label" for="m2cfAddH2Toggle">
+              <strong>Add Hydrogens <span style="font-size: 9px; color: #27ae60;">✓</span></strong>
+              <small>Explicitly show H atoms</small>
+            </label>
+            <input type="checkbox" id="m2cfAddH2Toggle">
+            <label class="toggle" for="m2cfAddH2Toggle"></label>
+          </div>
+
+          <div class="option" data-client-support="true">
+            <label class="option-label" for="m2cfFlipToggle">
+              <strong>Flip Horizontal <span style="font-size: 9px; color: #27ae60;">✓</span></strong>
+              <small>Mirror image</small>
+            </label>
+            <input type="checkbox" id="m2cfFlipToggle">
+            <label class="toggle" for="m2cfFlipToggle"></label>
+          </div>
+
+          <div class="option">
+            <label class="option-label" for="m2cfAutoInvertToggle">
+              <strong>Auto Invert in Dark Mode</strong>
+              <small>Automatically invert colors when dark mode detected</small>
+            </label>
+            <input type="checkbox" id="m2cfAutoInvertToggle" checked>
+            <label class="toggle" for="m2cfAutoInvertToggle"></label>
+          </div>
+
           <div class="option">
             <label class="option-label">
-              <strong>Renderer: SmilesDrawer</strong>
-              <small>Fast client-side rendering (250KB), no server needed. Some options limited.</small>
+              <strong>Invert Mode</strong>
+              <small>How colors are inverted in dark mode</small>
             </label>
           </div>
-        </div>
+          <select id="m2cfInvertModeSelect">
+            <option value="full">Full Invert - All colors inverted</option>
+            <option value="bw">Black & White Only - Only B/W inverted</option>
+          </select>
 
-        <div class="option" data-client-support="false">
-          <label class="option-label" for="m2cfShowCarbonsToggle">
-            <strong>Show Carbon Atoms <span class="m2cf-only-badge" style="font-size: 9px; background: #e74c3c; color: white; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">m2cf only</span></strong>
-            <small>Display C labels (-c flag)</small>
-          </label>
-          <input type="checkbox" id="m2cfShowCarbonsToggle">
-          <label class="toggle" for="m2cfShowCarbonsToggle"></label>
-        </div>
-
-        <div class="option" data-client-support="false">
-          <label class="option-label" for="m2cfAromaticCirclesToggle">
-            <strong>Aromatic Circles <span class="m2cf-only-badge" style="font-size: 9px; background: #e74c3c; color: white; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">m2cf only</span></strong>
-            <small>Draw circles in rings (-o flag)</small>
-          </label>
-          <input type="checkbox" id="m2cfAromaticCirclesToggle">
-          <label class="toggle" for="m2cfAromaticCirclesToggle"></label>
-        </div>
-
-        <div class="option" data-client-support="true">
-          <label class="option-label" for="m2cfShowMethylsToggle">
-            <strong>Show Methyl Groups <span style="font-size: 9px; color: #27ae60;">✓</span></strong>
-            <small>Display CH₃ labels (-m flag)</small>
-          </label>
-          <input type="checkbox" id="m2cfShowMethylsToggle">
-          <label class="toggle" for="m2cfShowMethylsToggle"></label>
-        </div>
-
-        <div class="option" data-client-support="false">
-          <label class="option-label" for="m2cfAtomNumbersToggle">
-            <strong>Atom Numbers <span class="m2cf-only-badge" style="font-size: 9px; background: #e74c3c; color: white; padding: 1px 4px; border-radius: 3px; margin-left: 4px;">m2cf only</span></strong>
-            <small>Number atoms except H (-n flag)</small>
-          </label>
-          <input type="checkbox" id="m2cfAtomNumbersToggle">
-          <label class="toggle" for="m2cfAtomNumbersToggle"></label>
-        </div>
-
-        <div class="option" data-client-support="true">
-          <label class="option-label" for="m2cfFlipVerticalToggle">
-            <strong>Flip Vertical <span style="font-size: 9px; color: #27ae60;">✓</span></strong>
-            <small>Upside down (CSS transform)</small>
-          </label>
-          <input type="checkbox" id="m2cfFlipVerticalToggle">
-          <label class="toggle" for="m2cfFlipVerticalToggle"></label>
-        </div>
-
-        <div class="option" data-client-support="true">
-          <label class="option-label" for="use3DSmilesToggle">
-            <strong>3D Stereochemistry (OPSIN) <span style="font-size: 9px; color: #27ae60;">✓</span></strong>
-            <small>Use OPSIN for 3D SMILES</small>
-          </label>
-          <input type="checkbox" id="use3DSmilesToggle">
-          <label class="toggle" for="use3DSmilesToggle"></label>
-        </div>
-
-        <div class="option" data-client-support="true">
-          <label class="option-label" for="m2cfAddH2Toggle">
-            <strong>Add Hydrogens <span style="font-size: 9px; color: #27ae60;">✓</span></strong>
-            <small>Explicitly show H atoms</small>
-          </label>
-          <input type="checkbox" id="m2cfAddH2Toggle">
-          <label class="toggle" for="m2cfAddH2Toggle"></label>
-        </div>
-
-        <div class="option" data-client-support="true">
-          <label class="option-label" for="m2cfFlipToggle">
-            <strong>Flip Horizontal <span style="font-size: 9px; color: #27ae60;">✓</span></strong>
-            <small>Mirror image</small>
-          </label>
-          <input type="checkbox" id="m2cfFlipToggle">
-          <label class="toggle" for="m2cfFlipToggle"></label>
-        </div>
-
-        <div class="option">
-          <label class="option-label" for="m2cfAutoInvertToggle">
-            <strong>Auto Invert in Dark Mode</strong>
-            <small>Automatically invert colors when dark mode detected</small>
-          </label>
-          <input type="checkbox" id="m2cfAutoInvertToggle" checked>
-          <label class="toggle" for="m2cfAutoInvertToggle"></label>
-        </div>
-
-        <div class="option">
-          <label class="option-label">
-            <strong>Invert Mode</strong>
-            <small>How colors are inverted in dark mode</small>
-          </label>
-        </div>
-        <select id="m2cfInvertModeSelect">
-          <option value="full">Full Invert - All colors inverted</option>
-          <option value="bw">Black & White Only - Only B/W inverted</option>
-        </select>
-
-        <div class="slider-option">
-          <div class="slider-header">
-            <label><strong>Rotation</strong></label>
-            <span id="m2cfRotateValue">0°</span>
+          <div class="slider-option">
+            <div class="slider-header">
+              <label><strong>Rotation</strong></label>
+              <span id="m2cfRotateValue">0°</span>
+            </div>
+            <input type="range" id="m2cfRotateSlider" min="0" max="360" step="90" value="0" class="slider">
           </div>
-          <input type="range" id="m2cfRotateSlider" min="0" max="360" step="90" value="0" class="slider">
-        </div>
 
-        <!-- Flag Reference -->
-        <div class="flag-reference" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.08);">
-          <details>
-            <summary style="cursor: pointer; font-weight: 600; font-size: 12px; color: #555; user-select: none;">
-              📝 Per-Molecule Flag Reference
-            </summary>
-            <div style="margin-top: 8px; font-size: 11px; line-height: 1.5; color: #666; background: rgba(0,0,0,0.03); padding: 8px; border-radius: 6px;">
-              <p style="margin-bottom: 6px; font-weight: 600; color: #333;">Add flags after molecule name:</p>
-              <code style="display: block; font-family: monospace; background: rgba(0,0,0,0.05); padding: 4px 6px; border-radius: 4px; margin-bottom: 8px;">
+          <!-- Flag Reference -->
+          <div class="flag-reference"
+            style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.08);">
+            <details>
+              <summary style="cursor: pointer; font-weight: 600; font-size: 12px; color: #555; user-select: none;">
+                📝 Per-Molecule Flag Reference
+              </summary>
+              <div
+                style="margin-top: 8px; font-size: 11px; line-height: 1.5; color: #666; background: rgba(0,0,0,0.03); padding: 8px; border-radius: 6px;">
+                <p style="margin-bottom: 6px; font-weight: 600; color: #333;">Add flags after molecule name:</p>
+                <code
+                  style="display: block; font-family: monospace; background: rgba(0,0,0,0.05); padding: 4px 6px; border-radius: 4px; margin-bottom: 8px;">
                 phenol+m+h or histamine+3d
               </code>
-              
-              <p style="margin: 8px 0 4px; font-weight: 600; color: #27ae60;">✓ Works with Client-Side:</p>
-              <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-                <tr><td style="padding: 2px 4px;"><code>+m</code></td><td>Show methyl groups (CH₃)</td></tr>
-                <tr><td style="padding: 2px 4px;"><code>+h</code></td><td>Add hydrogen atoms</td></tr>
-                <tr><td style="padding: 2px 4px;"><code>+p</code></td><td>Flip horizontal</td></tr>
-                <tr><td style="padding: 2px 4px;"><code>+q</code></td><td>Flip vertical</td></tr>
-                <tr><td style="padding: 2px 4px;"><code>+3d</code></td><td>Show 3D view</td></tr>
-                <tr><td style="padding: 2px 4px;"><code>+s150</code></td><td>Size (150% = 1.5x)</td></tr>
-                <tr><td style="padding: 2px 4px;"><code>+r90</code></td><td>Rotate 90°</td></tr>
-              </table>
-              
-              <p style="margin: 8px 0 4px; font-weight: 600; color: #e74c3c;">⚠ mol2chemfig Only:</p>
-              <table style="width: 100%; border-collapse: collapse; font-size: 10px; color: #888;">
-                <tr><td style="padding: 2px 4px;"><code>+c</code></td><td>Show all carbon atoms</td></tr>
-                <tr><td style="padding: 2px 4px;"><code>+o</code></td><td>Aromatic circles in rings</td></tr>
-                <tr><td style="padding: 2px 4px;"><code>+n</code></td><td>Number atoms</td></tr>
-              </table>
-              
-              <p style="margin-top: 8px; font-size: 10px; color: #888; font-style: italic;">
-                💡 Client-Side uses SmilesDrawer which has limited options. For full control, use mol2chemfig engine.
-              </p>
-            </div>
-          </details>
-        </div>
+
+                <p style="margin: 8px 0 4px; font-weight: 600; color: #27ae60;">✓ Works with Client-Side:</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                  <tr>
+                    <td style="padding: 2px 4px;"><code>+m</code></td>
+                    <td>Show methyl groups (CH₃)</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px 4px;"><code>+h</code></td>
+                    <td>Add hydrogen atoms</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px 4px;"><code>+p</code></td>
+                    <td>Flip horizontal</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px 4px;"><code>+q</code></td>
+                    <td>Flip vertical</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px 4px;"><code>+3d</code></td>
+                    <td>Show 3D view</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px 4px;"><code>+s150</code></td>
+                    <td>Size (150% = 1.5x)</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px 4px;"><code>+r90</code></td>
+                    <td>Rotate 90°</td>
+                  </tr>
+                </table>
+
+                <p style="margin: 8px 0 4px; font-weight: 600; color: #e74c3c;">⚠ mol2chemfig Only:</p>
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px; color: #888;">
+                  <tr>
+                    <td style="padding: 2px 4px;"><code>+c</code></td>
+                    <td>Show all carbon atoms</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px 4px;"><code>+o</code></td>
+                    <td>Aromatic circles in rings</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px 4px;"><code>+n</code></td>
+                    <td>Number atoms</td>
+                  </tr>
+                </table>
+
+                <p style="margin-top: 8px; font-size: 10px; color: #888; font-style: italic;">
+                  💡 Client-Side uses SmilesDrawer which has limited options. For full control, use mol2chemfig engine.
+                </p>
+              </div>
+            </details>
+          </div>
         </div>
       </div>
 
@@ -813,59 +866,61 @@
       <div id="pubchemOptions" class="section" style="display: none;">
         <div class="section-title">
           <span>PubChem Options</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div class="option">
-          <label class="option-label">
-            <strong>Default Image Type</strong>
-            <small>Choose between 2D flat or 3D perspective image</small>
-          </label>
-        </div>
-        <select id="pubchemRecordTypeSelect">
-          <option value="2d">2D Structure (flat)</option>
-          <option value="3d">3D Conformer (perspective)</option>
-        </select>
+          <div class="option">
+            <label class="option-label">
+              <strong>Default Image Type</strong>
+              <small>Choose between 2D flat or 3D perspective image</small>
+            </label>
+          </div>
+          <select id="pubchemRecordTypeSelect">
+            <option value="2d">2D Structure (flat)</option>
+            <option value="3d">3D Conformer (perspective)</option>
+          </select>
 
-        <div class="option">
-          <label class="option-label">
-            <strong>Image Size</strong>
-            <small>Default image dimensions</small>
-          </label>
-        </div>
-        <select id="pubchemImageSizeSelect">
-          <option value="small">Small (100x100)</option>
-          <option value="medium">Medium (200x200)</option>
-          <option value="large" selected>Large (300x300)</option>
-          <option value="xlarge">Extra Large (500x500)</option>
-        </select>
+          <div class="option">
+            <label class="option-label">
+              <strong>Image Size</strong>
+              <small>Default image dimensions</small>
+            </label>
+          </div>
+          <select id="pubchemImageSizeSelect">
+            <option value="small">Small (100x100)</option>
+            <option value="medium">Medium (200x200)</option>
+            <option value="large" selected>Large (300x300)</option>
+            <option value="xlarge">Extra Large (500x500)</option>
+          </select>
 
-        <div class="option">
-          <label class="option-label" for="pubchemDirectFetchToggle">
-            <strong>Direct Image Fetch</strong>
-            <small>Fetch images directly from PubChem (no bridge server)</small>
-          </label>
-          <input type="checkbox" id="pubchemDirectFetchToggle" checked>
-          <label class="toggle" for="pubchemDirectFetchToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="pubchemDirectFetchToggle">
+              <strong>Direct Image Fetch</strong>
+              <small>Fetch images directly from PubChem (no bridge server)</small>
+            </label>
+            <input type="checkbox" id="pubchemDirectFetchToggle" checked>
+            <label class="toggle" for="pubchemDirectFetchToggle"></label>
+          </div>
 
-        <div class="option">
-          <label class="option-label" for="pubchemRemoveBgToggle">
-            <strong>Remove White Background</strong>
-            <small>Make white backgrounds transparent</small>
-          </label>
-          <input type="checkbox" id="pubchemRemoveBgToggle">
-          <label class="toggle" for="pubchemRemoveBgToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="pubchemRemoveBgToggle">
+              <strong>Remove White Background</strong>
+              <small>Make white backgrounds transparent</small>
+            </label>
+            <input type="checkbox" id="pubchemRemoveBgToggle">
+            <label class="toggle" for="pubchemRemoveBgToggle"></label>
+          </div>
 
-        <div class="option">
-          <label class="option-label" for="pubchemSharpenToggle">
-            <strong>Sharpen Images</strong>
-            <small>Reduce pixelation after background removal</small>
-          </label>
-          <input type="checkbox" id="pubchemSharpenToggle" checked>
-          <label class="toggle" for="pubchemSharpenToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="pubchemSharpenToggle">
+              <strong>Sharpen Images</strong>
+              <small>Reduce pixelation after background removal</small>
+            </label>
+            <input type="checkbox" id="pubchemSharpenToggle" checked>
+            <label class="toggle" for="pubchemSharpenToggle"></label>
+          </div>
         </div>
       </div>
 
@@ -873,111 +928,149 @@
       <div id="viewer3DSettings" class="section" style="display: none;">
         <div class="section-title">
           <span>3D Viewer Settings</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div class="option">
-          <label class="option-label" for="enable3DViewerToggle">
-            <strong>Enable 3D Viewer</strong>
-            <small>Show interactive 3D models inline</small>
-          </label>
-          <input type="checkbox" id="enable3DViewerToggle">
-          <label class="toggle" for="enable3DViewerToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="enable3DViewerToggle">
+              <strong>Enable 3D Viewer</strong>
+              <small>Show interactive 3D models inline</small>
+            </label>
+            <input type="checkbox" id="enable3DViewerToggle">
+            <label class="toggle" for="enable3DViewerToggle"></label>
+          </div>
 
-        <div class="option">
-          <label class="option-label">
-            <strong>3D Viewer Source</strong>
-            <small>Choose where to load 3D models from</small>
-          </label>
-        </div>
-        <select id="viewer3DSourceSelect">
-          <option value="3dmol" selected>3Dmol.js - Client-side, customizable (recommended)</option>
-          <option value="pubchem">PubChem Official - Fallback option</option>
-        </select>
+          <div class="option">
+            <label class="option-label">
+              <strong>3D Viewer Source</strong>
+              <small>Choose where to load 3D models from</small>
+            </label>
+          </div>
+          <select id="viewer3DSourceSelect">
+            <option value="3dmol" selected>3Dmol.js - Client-side, customizable (recommended)</option>
+            <option value="molview">MolView (Local) - Advanced features</option>
+            <option value="pubchem">PubChem Official - Fallback option</option>
+          </select>
 
-        <div class="option">
-          <label class="option-label">
-            <strong>3D Visualization Style</strong>
-            <small>How to display molecules in 3D viewer</small>
-          </label>
-        </div>
-        <select id="viewer3DStyleSelect">
-          <option value="stick">Stick - Lines only (thin)</option>
-          <option value="line">Line - Very thin wireframe</option>
-          <option value="cross">Cross - Simple cross marks</option>
-          <option value="sphere">Sphere - Space-filling (CPK)</option>
-          <option value="stick:sphere" selected>Ball and Stick - Sticks with atom spheres</option>
-          <option value="cartoon">Cartoon - For proteins (not for small molecules)</option>
-        </select>
+          <!-- MolView Specific Options -->
+          <div id="molviewOptions"
+            style="display: none; margin-top: 10px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 10px;">
+            <div class="option">
+              <label class="option-label"><strong>Representation</strong></label>
+            </div>
+            <select id="molviewRepresentationSelect">
+              <option value="ballAndStick">Ball and Stick</option>
+              <option value="stick">Stick</option>
+              <option value="vdwSpheres">van der Waals Spheres</option>
+              <option value="wireframe">Wireframe</option>
+              <option value="line">Line</option>
+            </select>
 
-        <div class="option">
-          <label class="option-label">
-            <strong>Stick Thickness</strong>
-            <small>Only applies to: stick, ball-and-stick modes</small>
-          </label>
-        </div>
-        <select id="viewer3DStickRadiusSelect">
-          <option value="0.1">Thin (0.1)</option>
-          <option value="0.15" selected>Normal (0.15)</option>
-          <option value="0.2">Medium (0.2)</option>
-          <option value="0.25">Thick (0.25)</option>
-          <option value="0.3">Very Thick (0.3)</option>
-        </select>
+            <div class="option">
+              <label class="option-label"><strong>Engine</strong></label>
+            </div>
+            <select id="molviewEngineSelect">
+              <option value="glmol">GLmol</option>
+              <option value="jmol">Jmol</option>
+              <option value="chemdoodle">ChemDoodle</option>
+            </select>
 
-        <div class="option">
-          <label class="option-label">
-            <strong>Atom Sphere Size</strong>
-            <small>Only applies to: sphere, ball-and-stick modes</small>
-          </label>
-        </div>
-        <select id="viewer3DSphereRadiusSelect">
-          <option value="0.2">Small (0.2)</option>
-          <option value="0.3" selected>Normal (0.3)</option>
-          <option value="0.4">Medium (0.4)</option>
-          <option value="0.5">Large (0.5)</option>
-          <option value="0.7">Very Large (0.7)</option>
-          <option value="0.9">XXL (0.9)</option>
-          <option value="1.2">XXXL (1.2)</option>
-        </select>
+            <div class="option">
+              <label class="option-label"><strong>Crystallography</strong></label>
+            </div>
+            <select id="molviewCrystallographySelect">
+              <option value="none">None</option>
+              <option value="unitcell">Load unit cell</option>
+              <option value="supercell_2x2x2">Load 2x2x2 supercell</option>
+              <option value="supercell_1x3x3">Load 1x3x3 supercell</option>
+            </select>
+          </div>
 
-        <div class="option">
-          <label class="option-label" for="viewer3DAutoRotateToggle">
-            <strong>Auto-Rotate 3D Models</strong>
-            <small>Automatically spin molecules</small>
-          </label>
-          <input type="checkbox" id="viewer3DAutoRotateToggle" checked>
-          <label class="toggle" for="viewer3DAutoRotateToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label">
+              <strong>3D Visualization Style</strong>
+              <small>For 3Dmol.js only</small>
+            </label>
+          </div>
+          <select id="viewer3DStyleSelect">
+            <option value="stick">Stick - Lines only (thin)</option>
+            <option value="line">Line - Very thin wireframe</option>
+            <option value="cross">Cross - Simple cross marks</option>
+            <option value="sphere">Sphere - Space-filling (CPK)</option>
+            <option value="stick:sphere" selected>Ball and Stick - Sticks with atom spheres</option>
+            <option value="cartoon">Cartoon - For proteins (not for small molecules)</option>
+          </select>
 
-        <div class="option">
-          <label class="option-label">
-            <strong>3D Viewer Size</strong>
-            <small>Dimensions of embedded 3D viewer</small>
-          </label>
-        </div>
-        <select id="viewer3DSizeSelect">
-          <option value="small">Small (200x150)</option>
-          <option value="medium">Medium (300x250)</option>
-          <option value="normal" selected>Normal (400x350)</option>
-          <option value="large">Large (600x450)</option>
-          <option value="xlarge">Extra Large (800x600)</option>
-        </select>
+          <div class="option">
+            <label class="option-label">
+              <strong>Stick Thickness</strong>
+              <small>Only applies to: stick, ball-and-stick modes</small>
+            </label>
+          </div>
+          <select id="viewer3DStickRadiusSelect">
+            <option value="0.1">Thin (0.1)</option>
+            <option value="0.15" selected>Normal (0.15)</option>
+            <option value="0.2">Medium (0.2)</option>
+            <option value="0.25">Thick (0.25)</option>
+            <option value="0.3">Very Thick (0.3)</option>
+          </select>
 
-        <div class="option">
-          <label class="option-label">
-            <strong>3D Background Color</strong>
-            <small>Background color for 3D viewer</small>
-          </label>
-        </div>
-        <select id="viewer3DBgColorSelect">
-          <option value="#1a1a2e" selected>Dark Blue (default)</option>
-          <option value="#000000">Black</option>
-          <option value="#FFFFFF">White</option>
-          <option value="#2c3e50">Slate Gray</option>
-          <option value="#34495e">Dark Gray</option>
-          <option value="transparent">Transparent</option>
-        </select>
+          <div class="option">
+            <label class="option-label">
+              <strong>Atom Sphere Size</strong>
+              <small>Only applies to: sphere, ball-and-stick modes</small>
+            </label>
+          </div>
+          <select id="viewer3DSphereRadiusSelect">
+            <option value="0.2">Small (0.2)</option>
+            <option value="0.3" selected>Normal (0.3)</option>
+            <option value="0.4">Medium (0.4)</option>
+            <option value="0.5">Large (0.5)</option>
+            <option value="0.7">Very Large (0.7)</option>
+            <option value="0.9">XXL (0.9)</option>
+            <option value="1.2">XXXL (1.2)</option>
+          </select>
+
+          <div class="option">
+            <label class="option-label" for="viewer3DAutoRotateToggle">
+              <strong>Auto-Rotate 3D Models</strong>
+              <small>Automatically spin molecules</small>
+            </label>
+            <input type="checkbox" id="viewer3DAutoRotateToggle" checked>
+            <label class="toggle" for="viewer3DAutoRotateToggle"></label>
+          </div>
+
+          <div class="option">
+            <label class="option-label">
+              <strong>3D Viewer Size</strong>
+              <small>Dimensions of embedded 3D viewer</small>
+            </label>
+          </div>
+          <select id="viewer3DSizeSelect">
+            <option value="small">Small (200x150)</option>
+            <option value="medium">Medium (300x250)</option>
+            <option value="normal" selected>Normal (400x350)</option>
+            <option value="large">Large (600x450)</option>
+            <option value="xlarge">Extra Large (800x600)</option>
+          </select>
+
+          <div class="option">
+            <label class="option-label">
+              <strong>3D Background Color</strong>
+              <small>Background color for 3D viewer</small>
+            </label>
+          </div>
+          <select id="viewer3DBgColorSelect">
+            <option value="#1a1a2e" selected>Dark Blue (default)</option>
+            <option value="#000000">Black</option>
+            <option value="#FFFFFF">White</option>
+            <option value="#808080">Gray</option>
+            <option value="#2c3e50">Slate Gray</option>
+            <option value="#34495e">Dark Gray</option>
+            <option value="transparent">Transparent</option>
+          </select>
         </div>
       </div>
 
@@ -985,54 +1078,57 @@
       <div id="molviewProteinOptions" class="section" style="display: none;">
         <div class="section-title">
           <span>MolView Protein Options</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div class="option">
-          <label class="option-label" for="molviewBioAssemblyToggle">
-            <strong>Show Biological Assembly</strong>
-            <small>Display bio assembly instead of asymmetric unit</small>
-          </label>
-          <input type="checkbox" id="molviewBioAssemblyToggle">
-          <label class="toggle" for="molviewBioAssemblyToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="molviewBioAssemblyToggle">
+              <strong>Show Biological Assembly</strong>
+              <small>Display bio assembly instead of asymmetric unit</small>
+            </label>
+            <input type="checkbox" id="molviewBioAssemblyToggle">
+            <label class="toggle" for="molviewBioAssemblyToggle"></label>
+          </div>
 
-        <div class="option">
-          <label class="option-label">
-            <strong>Chain Representation</strong>
-            <small>How protein backbone is rendered</small>
-          </label>
-        </div>
-        <select id="molviewChainTypeSelect">
-          <option value="ribbon" selected>Ribbon</option>
-          <option value="cylinders">Cylinder and Plate</option>
-          <option value="btube">B-factor Tube</option>
-          <option value="ctrace">C-alpha Trace</option>
-        </select>
+          <div class="option">
+            <label class="option-label">
+              <strong>Chain Representation</strong>
+              <small>How protein backbone is rendered</small>
+            </label>
+          </div>
+          <select id="molviewChainTypeSelect">
+            <option value="ribbon" selected>Ribbon</option>
+            <option value="cylinders">Cylinder and Plate</option>
+            <option value="btube">B-factor Tube</option>
+            <option value="ctrace">C-alpha Trace</option>
+            <option value="bonds">Bonds</option>
+          </select>
 
-        <div class="option">
-          <label class="option-label" for="molviewChainBondsToggle">
-            <strong>Show Chain Bonds</strong>
-            <small>Display bonds in chain representation</small>
-          </label>
-          <input type="checkbox" id="molviewChainBondsToggle">
-          <label class="toggle" for="molviewChainBondsToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="molviewChainBondsToggle">
+              <strong>Show Chain Bonds</strong>
+              <small>Display bonds in chain representation</small>
+            </label>
+            <input type="checkbox" id="molviewChainBondsToggle">
+            <label class="toggle" for="molviewChainBondsToggle"></label>
+          </div>
 
-        <div class="option">
-          <label class="option-label">
-            <strong>Chain Color Scheme</strong>
-            <small>How to color the protein chain</small>
-          </label>
-        </div>
-        <select id="molviewChainColorSelect">
-          <option value="ss" selected>Secondary Structure</option>
-          <option value="spectrum">Spectrum (rainbow)</option>
-          <option value="chain">By Chain</option>
-          <option value="residue">By Residue</option>
-          <option value="polarity">By Polarity</option>
-          <option value="bfactor">B-factor (temperature)</option>
-        </select>
+          <div class="option">
+            <label class="option-label">
+              <strong>Chain Color Scheme</strong>
+              <small>How to color the protein chain</small>
+            </label>
+          </div>
+          <select id="molviewChainColorSelect">
+            <option value="ss" selected>Secondary Structure</option>
+            <option value="spectrum">Spectrum (rainbow)</option>
+            <option value="chain">By Chain</option>
+            <option value="residue">By Residue</option>
+            <option value="polarity">By Polarity</option>
+            <option value="bfactor">B-factor (temperature)</option>
+          </select>
         </div>
       </div>
 
@@ -1040,26 +1136,28 @@
       <div class="section">
         <div class="section-title">
           <span>Image Size Controls</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div class="option">
-          <label class="option-label" for="saveSizePerImageToggle">
-            <strong>Save Size Per Page</strong>
-            <small>Remember size for each page separately</small>
-          </label>
-          <input type="checkbox" id="saveSizePerImageToggle">
-          <label class="toggle" for="saveSizePerImageToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="saveSizePerImageToggle">
+              <strong>Save Size Per Page</strong>
+              <small>Remember size for each page separately</small>
+            </label>
+            <input type="checkbox" id="saveSizePerImageToggle">
+            <label class="toggle" for="saveSizePerImageToggle"></label>
+          </div>
 
-        <div class="option">
-          <label class="option-label" for="saveSizeBySMILESToggle">
-            <strong>Save Size By SMILES</strong>
-            <small>Use same size for identical molecules</small>
-          </label>
-          <input type="checkbox" id="saveSizeBySMILESToggle">
-          <label class="toggle" for="saveSizeBySMILESToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="saveSizeBySMILESToggle">
+              <strong>Save Size By SMILES</strong>
+              <small>Use same size for identical molecules</small>
+            </label>
+            <input type="checkbox" id="saveSizeBySMILESToggle">
+            <label class="toggle" for="saveSizeBySMILESToggle"></label>
+          </div>
         </div>
       </div>
 
@@ -1067,17 +1165,19 @@
       <div class="section">
         <div class="section-title">
           <span>Performance</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div class="option">
-          <label class="option-label" for="perfModeToggle">
-            <strong>Lazy-Loading Mode</strong>
-            <small>Only render visible formulas</small>
-          </label>
-          <input type="checkbox" id="perfModeToggle" checked>
-          <label class="toggle" for="perfModeToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="perfModeToggle">
+              <strong>Lazy-Loading Mode</strong>
+              <small>Only render visible formulas</small>
+            </label>
+            <input type="checkbox" id="perfModeToggle" checked>
+            <label class="toggle" for="perfModeToggle"></label>
+          </div>
         </div>
       </div>
 
@@ -1085,17 +1185,19 @@
       <div class="section">
         <div class="section-title">
           <span>AI Molecular Control</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div class="option">
-          <label class="option-label" for="aiMolecularControlToggle">
-            <strong>Enable AI Flag Control</strong>
-            <small>Use flags in chem:...:/d to override settings</small>
-          </label>
-          <input type="checkbox" id="aiMolecularControlToggle">
-          <label class="toggle" for="aiMolecularControlToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="aiMolecularControlToggle">
+              <strong>Enable AI Flag Control</strong>
+              <small>Use flags in chem:...:/d to override settings</small>
+            </label>
+            <input type="checkbox" id="aiMolecularControlToggle">
+            <label class="toggle" for="aiMolecularControlToggle"></label>
+          </div>
         </div>
       </div>
 
@@ -1103,17 +1205,19 @@
       <div class="section">
         <div class="section-title">
           <span>Developer Mode</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div class="option">
-          <label class="option-label" for="devModeToggle">
-            <strong>Show Raw Text</strong>
-            <small>Display chemfig text instead of images</small>
-          </label>
-          <input type="checkbox" id="devModeToggle">
-          <label class="toggle" for="devModeToggle"></label>
-        </div>
+          <div class="option">
+            <label class="option-label" for="devModeToggle">
+              <strong>Show Raw Text</strong>
+              <small>Display chemfig text instead of images</small>
+            </label>
+            <input type="checkbox" id="devModeToggle">
+            <label class="toggle" for="devModeToggle"></label>
+          </div>
         </div>
       </div>
 
@@ -1121,40 +1225,42 @@
       <div class="section">
         <div class="section-title">
           <span>UI Settings</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
         </div>
         <div class="section-content">
-        <div class="slider-option">
-          <div class="slider-header">
-            <label><strong>Molecule Count</strong></label>
-            <span id="molCountValue">20</span>
+          <div class="slider-option">
+            <div class="slider-header">
+              <label><strong>Molecule Count</strong></label>
+              <span id="molCountValue">20</span>
+            </div>
+            <input type="range" id="molCountSlider" min="0" max="50" value="20" class="slider">
           </div>
-          <input type="range" id="molCountSlider" min="0" max="50" value="20" class="slider">
-        </div>
 
-        <div class="slider-option">
-          <div class="slider-header">
-            <label><strong>Molecule Size</strong></label>
-            <span id="molScaleValue">0.6</span>
+          <div class="slider-option">
+            <div class="slider-header">
+              <label><strong>Molecule Size</strong></label>
+              <span id="molScaleValue">0.6</span>
+            </div>
+            <input type="range" id="molScaleSlider" min="0.1" max="1.5" step="0.1" value="0.6" class="slider">
           </div>
-          <input type="range" id="molScaleSlider" min="0.1" max="1.5" step="0.1" value="0.6" class="slider">
-        </div>
 
-        <div class="slider-option">
-          <div class="slider-header">
-            <label><strong>Background Blur</strong></label>
-            <span id="blurValue">10px</span>
+          <div class="slider-option">
+            <div class="slider-header">
+              <label><strong>Background Blur</strong></label>
+              <span id="blurValue">10px</span>
+            </div>
+            <input type="range" id="blurSlider" min="0" max="20" value="10" class="slider">
           </div>
-          <input type="range" id="blurSlider" min="0" max="20" value="10" class="slider">
-        </div>
 
-        <div class="slider-option">
-          <div class="slider-header">
-            <label><strong>Box Opacity</strong></label>
-            <span id="opacityValue">45%</span>
+          <div class="slider-option">
+            <div class="slider-header">
+              <label><strong>Box Opacity</strong></label>
+              <span id="opacityValue">45%</span>
+            </div>
+            <input type="range" id="opacitySlider" min="0" max="100" value="45" class="slider">
           </div>
-          <input type="range" id="opacitySlider" min="0" max="100" value="45" class="slider">
-        </div>
         </div>
       </div>
 

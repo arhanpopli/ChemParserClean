@@ -81,7 +81,7 @@ echo   MoleculeViewer:    http://localhost:5000
 echo   PubChem:           http://localhost:5002
 echo.
 echo   Extension uses:
-echo   - Port 8001 for ALL queries (with autocorrect)
+echo   - Port 1000 for ALL queries (via mol2chemfig)
 echo   - Port 8000 for MolView embeds
 echo.
 echo   To stop servers: run util-stop-all.bat

@@ -2,7 +2,7 @@
 Mol2ChemFig Server - Flask wrapper for mol2chemfig Docker backend
 Provides persistent SVG/PDF links and Chrome extension integration
 
-Port: 5001 (Docker backend uses 8000)
+Port: 1000 (Docker backend uses 8000)
 """
 
 from flask import Flask, request, jsonify, send_file
@@ -214,7 +214,7 @@ def health():
     return jsonify({
         "status": "running",
         "server": "mol2chemfig_server",
-        "port": 5001,
+        "port": 1000,
         "docker_backend": docker_status,
         "storage": str(STORAGE_DIR),
         "cached_images": len(image_cache)
@@ -342,6 +342,44 @@ def convert_nomenclature_to_smiles(name):
         return None, "Cannot connect to PubChem API"
     except Exception as e:
         return None, f"SMILES conversion error: {str(e)}"
+
+
+
+def get_cid_from_name(name):
+    """
+    Get PubChem CID from name.
+    Returns CID (int) or None.
+    """
+    try:
+        encoded_name = requests.utils.quote(name)
+        url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{encoded_name}/cids/JSON"
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if 'IdentifierList' in data and 'CID' in data['IdentifierList']:
+                return data['IdentifierList']['CID'][0]
+        return None
+    except:
+        return None
+
+
+def get_smiles_from_cod(codid):
+    """
+    Get SMILES from COD ID using MolView's proxy or COD directly.
+    MolView uses: http://molview.org/php/cod.php?action=smiles&q={codid}
+    """
+    try:
+        # Try MolView API first as it's what the user referenced
+        url = f"http://molview.org/php/cod.php?action=smiles&q={codid}"
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            # Format: {"records":[{"id":"9000126","smiles":"[O-][U](=[O+])([O-])=O.[Cu+2].O.O"}]}
+            if 'records' in data and len(data['records']) > 0:
+                return data['records'][0].get('smiles')
+        return None
+    except:
+        return None
 
 
 def add_hydrogens_to_structure(text_data):
@@ -559,6 +597,7 @@ def m2cf_opsin_3d():
 def m2cf_search():
     """
     Search for molecule by name - first tries PubChem conversion, then Docker backend
+    Enhanced to handle Minerals (COD) and Biomolecules (PDB) with 2D image generation.
     """
     try:
         if request.method == 'GET':
@@ -575,26 +614,25 @@ def m2cf_search():
         print(f"[SEARCH] Searching: {search_term}")
 
         # Step 1: If input looks like nomenclature (not SMILES), convert via PubChem first
-        smiles_to_use = search_term
+        # This handles standard compounds efficiently
         if not is_smiles(search_term):
             print(f"[SEARCH] Input looks like nomenclature, trying PubChem conversion...")
             smiles, source = convert_nomenclature_to_smiles(search_term)
             if smiles:
                 print(f"[SEARCH] PubChem found: {smiles}")
-                smiles_to_use = smiles
-                # Return the SMILES directly - the frontend will then call /m2cf/submit
                 resp = jsonify({
                     "smiles": smiles,
                     "source": source,
-                    "name": search_term
+                    "name": search_term,
+                    "compoundType": "compound"
                 })
                 resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                 return resp
             else:
                 print(f"[SEARCH] PubChem failed: {source}")
-                # Fall through to try Docker backend as backup
+                # Fall through to try Docker backend as backup (might be mineral or protein)
 
-        # Step 2: Try Docker backend (for SMILES input or if PubChem failed)
+        # Step 2: Try Docker backend (MolView Search)
         print(f"[SEARCH] Trying Docker backend...")
         try:
             if request.method == 'GET':
@@ -612,8 +650,56 @@ def m2cf_search():
 
             if response.status_code == 200:
                 result = response.json()
+                
+                # ENHANCEMENT: Handle Biomolecules (PDB)
+                if result.get('pdbid'):
+                    pdbid = result['pdbid']
+                    print(f"[SEARCH] Found Biomolecule: {pdbid}")
+                    return jsonify({
+                        "pdbid": pdbid,
+                        "name": result.get('name', search_term),
+                        "compoundType": "biomolecule",
+                        # Use RCSB static image as "2D" view
+                        "image_url": f"https://cdn.rcsb.org/images/structures/{pdbid}_assembly-1.jpeg",
+                        "embed_url": f"http://localhost:8000/embed/v2/?pdbid={pdbid}"
+                    })
 
-                # If Docker returned inline SVG, save it to cache
+                # ENHANCEMENT: Handle Minerals (COD)
+                if result.get('codid'):
+                    codid = result['codid']
+                    mineral_name = result.get('name', search_term)
+                    print(f"[SEARCH] Found Mineral: {codid} ({mineral_name})")
+                    
+                    # Strategy 1: Try to get PubChem CID from name -> 2D Image
+                    image_url = None
+                    cid = get_cid_from_name(mineral_name)
+                    
+                    if cid:
+                        print(f"[SEARCH] Mineral mapped to PubChem CID: {cid}")
+                        # Use PubChem image service
+                        image_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/PNG?image_size=large"
+                    else:
+                        print(f"[SEARCH] Mineral name lookup failed, trying COD SMILES...")
+                        # Strategy 2: Try to get SMILES from COD -> Generate Image URL
+                        smiles = get_smiles_from_cod(codid)
+                        if smiles:
+                            print(f"[SEARCH] Found SMILES for mineral: {smiles}")
+                            # Use our own SMILES rendering endpoint (MoleculeViewer on port 5000)
+                            encoded_smiles = requests.utils.quote(smiles)
+                            image_url = f"http://localhost:5000/img/smiles?smiles={encoded_smiles}&width=300&height=250"
+                        else:
+                            print(f"[SEARCH] No 2D representation found for mineral")
+
+                    return jsonify({
+                        "codid": codid,
+                        "name": mineral_name,
+                        "compoundType": "mineral",
+                        "image_url": image_url, # Might be None, frontend should handle fallback
+                        "embed_url": f"http://localhost:8000/embed/v2/?codid={codid}"
+                    })
+
+                # Default: Compound/SMILES from Docker
+                # If Docker returned inline SVG, save it to cache (existing logic)
                 if result.get('svglink') and result['svglink'].startswith('<?xml'):
                     svg_content = result['svglink']
                     smiles = result.get('smiles', search_term)
@@ -627,9 +713,9 @@ def m2cf_search():
                         "chemfig": result.get('chemfig', ''),
                         "timestamp": datetime.now().isoformat()
                     }
-
                     print(f"[DOCKER] Saved search result SVG: {filename}")
 
+                result['compoundType'] = 'compound' # Explicitly mark as compound
                 return jsonify(result)
             else:
                 # Docker failed too

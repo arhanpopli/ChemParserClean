@@ -9,8 +9,44 @@
 const SIZE_STEP = 20; // Pixels to increase/decrease per click
 const MIN_SIZE = 100; // Minimum size in pixels
 const MAX_SIZE = 800; // Maximum size in pixels
-const DEFAULT_WIDTH = 300;
-const DEFAULT_HEIGHT = 200;
+
+// Non-linear (parabolic) default size calculation
+// Instead of linear scaling, use a parabolic curve where size increase rate diminishes
+// This prevents very large molecules from becoming excessively large
+const BASE_SIZE = 150; // Base size for small molecules
+const SIZE_SCALE_FACTOR = 0.5; // Controls the rate of size increase (lower = slower growth)
+const MAX_DEFAULT_SIZE = 400; // Maximum default size for very large molecules
+
+/**
+ * Calculate default size based on molecule complexity using parabolic scaling
+ * Formula: size = BASE_SIZE + sqrt(complexity) * SCALE_FACTOR
+ * This creates a curve where size increases quickly at first, then slows down
+ */
+function calculateDefaultSize(moleculeData) {
+  if (!moleculeData) return { width: BASE_SIZE, height: BASE_SIZE };
+
+  // Estimate molecule complexity from SMILES length or atom count
+  let complexity = 0;
+  if (moleculeData.smiles) {
+    complexity = moleculeData.smiles.length;
+  } else if (moleculeData.nomenclature) {
+    complexity = moleculeData.nomenclature.length * 0.5; // Nomenclature is typically longer
+  }
+
+  // Apply parabolic scaling: sqrt creates the diminishing rate of increase
+  const scaledSize = BASE_SIZE + Math.sqrt(complexity) * SIZE_SCALE_FACTOR * 50;
+
+  // Clamp to reasonable bounds
+  const finalSize = Math.min(MAX_DEFAULT_SIZE, Math.max(BASE_SIZE, scaledSize));
+
+  return {
+    width: Math.round(finalSize),
+    height: Math.round(finalSize * 0.67) // Maintain aspect ratio
+  };
+}
+
+const DEFAULT_WIDTH = BASE_SIZE;
+const DEFAULT_HEIGHT = Math.round(BASE_SIZE * 0.67);
 
 // ============================================
 // SIZE STORAGE MANAGEMENT
@@ -52,11 +88,11 @@ function getPageImageKey(moleculeData, pageUrl) {
 async function loadImageSize(moleculeData, pageUrl, settings) {
   try {
     const imageKey = getImageKey(moleculeData);
-    if (!imageKey) return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+    if (!imageKey) return calculateDefaultSize(moleculeData);
 
     // Check if size saving is enabled
     if (!settings.saveSizePerImage && !settings.saveSizeBySMILES) {
-      return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+      return calculateDefaultSize(moleculeData);
     }
 
     // Determine which storage key to use
@@ -69,7 +105,7 @@ async function loadImageSize(moleculeData, pageUrl, settings) {
       storageKey = imageKey;
     }
 
-    if (!storageKey) return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+    if (!storageKey) return calculateDefaultSize(moleculeData);
 
     // Load from chrome.storage
     return new Promise((resolve) => {
@@ -77,13 +113,13 @@ async function loadImageSize(moleculeData, pageUrl, settings) {
         if (result[storageKey]) {
           resolve(result[storageKey]);
         } else {
-          resolve({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT });
+          resolve(calculateDefaultSize(moleculeData));
         }
       });
     });
   } catch (error) {
     console.error('Error loading image size:', error);
-    return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+    return calculateDefaultSize(moleculeData);
   }
 }
 

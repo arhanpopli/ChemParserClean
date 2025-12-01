@@ -75,14 +75,14 @@ def start_mol2chemfig_server():
     try:
         mol2chemfig_server_path = project_root / "mol2chemfig_server.py"
         if mol2chemfig_server_path.exists():
-            print("[TEST_TUBE] Starting Mol2ChemFig server on port 5001...")
-
+            print("[TEST_TUBE] Starting Mol2ChemFig server on port 1000...")
+            
             proc = subprocess.Popen([
                 sys.executable, str(mol2chemfig_server_path)
             ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             SERVER_PROCESSES.append(proc)
-            print("[CHECK] Mol2ChemFig server started on http://localhost:5001")
+            print("[CHECK] Mol2ChemFig server started on http://localhost:1000")
             return proc
         else:
             print("[ERROR] Mol2ChemFig server not found")
@@ -137,7 +137,7 @@ def start_all_servers():
     print("\n[CHECKLIST] Server Status:")
     checks = [
         ("MolView", "http://localhost:5000/", molview_proc),
-        ("Mol2ChemFig", "http://localhost:5001/", mol2chemfig_proc),
+        ("Mol2ChemFig", "http://localhost:1000/", mol2chemfig_proc),
         ("PubChem", "http://localhost:5002/", pubchem_proc)
     ]
 

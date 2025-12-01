@@ -9,9 +9,9 @@
 // ============================================
 // LOCAL TESTING - Use localhost to avoid HTTPS mixed content errors
 const MOLECULE_VIEWER_API = 'http://localhost:5000';
-const MOL2CHEMFIG_API = 'http://localhost:5001';  // Flask wrapper (NOT port 8000 Docker backend)
+const MOL2CHEMFIG_API = 'http://localhost:1000';  // Flask wrapper (NOT port 8000 Docker backend)
 const PUBCHEM_API = 'http://localhost:5002';
-const MOLVIEW_API = 'http://localhost:5003';  // MolView server for proteins, minerals, and complex molecules
+const MOLVIEW_API = 'http://localhost:8000';  // MolView server for proteins, minerals, and complex molecules
 const MOLVIEW_SEARCH_API = 'http://localhost:8001';  // Unified search API with autocorrect (compounds, proteins, minerals)
 
 // For Heroku production (uncomment when ready to deploy):
@@ -208,7 +208,7 @@ function invertSvgForDarkMode(svgContent) {
     result = result.replace(/(<svg[^>]*>)/i, '$1<style type="text/css">text { fill: #FFFFFF !important; }</style>');
   }
 
-  console.log('%c🌙 Dark mode SVG inversion applied', 'color: #9B59B6; font-weight: bold;');
+  // console.log('%c🌙 Dark mode SVG inversion applied', 'color: #9B59B6; font-weight: bold;');
   return result;
 }
 
@@ -223,24 +223,24 @@ function invertSvgForDarkMode(svgContent) {
  * Falls back to direct fetch if background is unavailable
  */
 async function backgroundFetchJSON(url, options = {}) {
-  console.log('%c[ChemRenderer] backgroundFetchJSON called', 'color: #00AAFF; font-weight: bold;', { url, options });
+  // console.log('%c[ChemRenderer] backgroundFetchJSON called', 'color: #00AAFF; font-weight: bold;', { url, options });
   try {
     // Try background script first (works on CSP-restricted sites)
     if (chrome.runtime && chrome.runtime.sendMessage) {
-      console.log('%c[ChemRenderer] Sending message to background...', 'color: #00AAFF;');
+      // console.log('%c[ChemRenderer] Sending message to background...', 'color: #00AAFF;');
       return new Promise((resolve, reject) => {
         chrome.runtime.sendMessage(
           { type: 'FETCH_API', url: url, options: options },
           (response) => {
-            console.log('%c[ChemRenderer] Got response from background:', 'color: #00AAFF;', response);
+            // console.log('%c[ChemRenderer] Got response from background:', 'color: #00AAFF;', response);
             if (chrome.runtime.lastError) {
-              console.warn('[ChemRenderer] Background fetch failed, trying direct:', chrome.runtime.lastError.message);
+              // console.warn('[ChemRenderer] Background fetch failed, trying direct:', chrome.runtime.lastError.message);
               // Fall back to direct fetch
               directFetchJSON(url, options).then(resolve).catch(reject);
               return;
             }
             if (response && response.success) {
-              console.log('%c[ChemRenderer] Background fetch SUCCESS', 'color: #00FF00; font-weight: bold;');
+              // console.log('%c[ChemRenderer] Background fetch SUCCESS', 'color: #00FF00; font-weight: bold;');
               resolve(response.data);
             } else {
               console.error('%c[ChemRenderer] Background fetch FAILED:', 'color: #FF0000;', response?.error);
@@ -250,13 +250,13 @@ async function backgroundFetchJSON(url, options = {}) {
         );
       });
     } else {
-      console.warn('[ChemRenderer] chrome.runtime.sendMessage not available');
+      // console.warn('[ChemRenderer] chrome.runtime.sendMessage not available');
     }
   } catch (e) {
-    console.warn('[ChemRenderer] Background unavailable, using direct fetch:', e.message);
+    // console.warn('[ChemRenderer] Background unavailable, using direct fetch:', e.message);
   }
   // Fall back to direct fetch
-  console.log('%c[ChemRenderer] Falling back to direct fetch', 'color: #FFAA00;');
+  // console.log('%c[ChemRenderer] Falling back to direct fetch', 'color: #FFAA00;');
   return directFetchJSON(url, options);
 }
 
@@ -283,7 +283,7 @@ async function backgroundFetchBlob(url) {
           { type: 'FETCH_BLOB', url: url },
           (response) => {
             if (chrome.runtime.lastError) {
-              console.warn('[ChemRenderer] Background blob fetch failed, trying direct:', chrome.runtime.lastError.message);
+              // console.warn('[ChemRenderer] Background blob fetch failed, trying direct:', chrome.runtime.lastError.message);
               directFetchBlob(url).then(resolve).catch(reject);
               return;
             }
@@ -297,7 +297,7 @@ async function backgroundFetchBlob(url) {
       });
     }
   } catch (e) {
-    console.warn('[ChemRenderer] Background unavailable for blob, using direct fetch');
+    // console.warn('[ChemRenderer] Background unavailable for blob, using direct fetch');
   }
   return directFetchBlob(url);
 }
@@ -335,7 +335,7 @@ async function backgroundFetchText(url, options = {}) {
           { type: 'FETCH_TEXT', url: url, options: options },
           (response) => {
             if (chrome.runtime.lastError) {
-              console.warn('[ChemRenderer] Background text fetch failed, trying direct:', chrome.runtime.lastError.message);
+              // console.warn('[ChemRenderer] Background text fetch failed, trying direct:', chrome.runtime.lastError.message);
               directFetchText(url, options).then(resolve).catch(reject);
               return;
             }
@@ -349,7 +349,7 @@ async function backgroundFetchText(url, options = {}) {
       });
     }
   } catch (e) {
-    console.warn('[ChemRenderer] Background unavailable for text, using direct fetch');
+    // console.warn('[ChemRenderer] Background unavailable for text, using direct fetch');
   }
   return directFetchText(url, options);
 }
@@ -383,9 +383,7 @@ async function directFetchText(url, options = {}) {
  */
 async function smilesBridge(name, options = {}) {
   const { use3DSmiles = false } = options;
-
-  console.log('%c🌉 SMILES BRIDGE: Converting name→SMILES', 'background: #4A90D9; color: white; font-weight: bold; padding: 2px 6px;', name, use3DSmiles ? '(3D enabled)' : '(3D disabled)');
-
+  // console.log('%c🌉 SMILES BRIDGE: Converting name→SMILES', 'background: #4A90D9; color: white; font-weight: bold; padding: 2px 6px;', name, use3DSmiles ? '(3D enabled)' : '(3D disabled)');
   if (!name || typeof name !== 'string') {
     console.error('❌ SMILES Bridge: Invalid name provided');
     return null;
@@ -395,7 +393,7 @@ async function smilesBridge(name, options = {}) {
   // Example: "phenol/d-c" → "phenol", "histamine/+c+o" → "histamine"
   const cleanName = stripFlagsFromName(name.trim());
   if (cleanName !== name.trim()) {
-    console.log('%c🧹 Stripped flags from name:', 'color: #9c88ff;', name, '→', cleanName);
+    // console.log('%c🧹 Stripped flags from name:', 'color: #9c88ff;', name, '→', cleanName);
   }
 
   if (!cleanName) {
@@ -403,32 +401,91 @@ async function smilesBridge(name, options = {}) {
     return null;
   }
 
-  // ===== PRIORITY 1: Direct PubChem API =====
+  // ===== PRIORITY 0: MolView Search API (NEW PRIMARY SOURCE) =====
+  // This provides autocorrection, intelligent filtering, and support for compounds, proteins, and minerals
+  // console.log('%c🌐 [Bridge] Priority 0: Trying MolView Search API...', 'color: #2196F3; font-weight: bold;');
+  try {
+    const molviewUrl = `${MOLVIEW_SEARCH_API}/search?q=${encodeURIComponent(cleanName)}`;
+    const molviewData = await backgroundFetchJSON(molviewUrl);
+
+    if (molviewData && !molviewData.error) {
+      // Check if it's a biomolecule (protein) - these should NOT be converted to SMILES
+      if (molviewData.primary_type === 'biomolecule') {
+        console.log('%c⚠️ [Bridge] Detected biomolecule/protein - skipping SMILES conversion', 'color: #FF9800; font-weight: bold;', molviewData);
+        return {
+          smiles: null,
+          source: 'MolView-Biomolecule',
+          molview_data: molviewData,
+          skip_smiles: true,
+          is_protein: true
+        };
+      }
+
+      // Check if it's a mineral - these also should NOT be converted to SMILES
+      if (molviewData.primary_type === 'mineral') {
+        console.log('%c⚠️ [Bridge] Detected mineral - skipping SMILES conversion', 'color: #795548; font-weight: bold;', molviewData);
+        return {
+          smiles: null,
+          source: 'MolView-Mineral',
+          molview_data: molviewData,
+          skip_smiles: true,
+          is_mineral: true
+        };
+      }
+
+      // For compounds, return SMILES if available
+      if (molviewData.canonical_smiles) {
+        const smiles = use3DSmiles ? (molviewData.isomeric_smiles || molviewData.canonical_smiles) : molviewData.canonical_smiles;
+        // console.log('%c✅ [Bridge] MolView Search SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
+        // console.log('%c📊 MolView Data:', 'color: #2196F3;', {
+        //   corrected: molviewData.corrected_query,
+        //   type: molviewData.primary_type,
+        //   has_sdf: molviewData.sdf?.available
+        // });
+        return {
+          smiles: smiles,
+          source: 'MolView-Search',
+          molview_data: molviewData,
+          corrected_name: molviewData.corrected_query
+        };
+      }
+    }
+  } catch (eMolView) {
+    // console.warn('⚠️ [Bridge] MolView Search API failed, falling back to PubChem:', eMolView.message);
+  }
+
+  // ✅ MolView-Only Mode: Skip PubChem fallback
+  if (settings.molviewOnlyMode) {
+    // console.log('%c🌐 MolView-Only Mode: Skipping PubChem fallback', 'background: #2196F3; color: white; font-weight: bold; padding: 2px 6px;');
+    return null;
+  }
+
+  // ===== PRIORITY 1: Direct PubChem API (FALLBACK) =====
   // Works for most compound names (common names, trade names, drug names)
-  console.log('%c🌐 [Bridge] Priority 1: Trying Direct PubChem API...', 'color: #0088FF; font-weight: bold;');
+  // console.log('%c🌐 [Bridge] Priority 1: Trying Direct PubChem API...', 'color: #0088FF; font-weight: bold;');
   try {
     const pubchemUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(cleanName)}/property/CanonicalSMILES,IsomericSMILES/JSON`;
     const data = await backgroundFetchJSON(pubchemUrl);
     if (data && data.PropertyTable && data.PropertyTable.Properties && data.PropertyTable.Properties.length > 0) {
       const props = data.PropertyTable.Properties[0];
       const smiles = use3DSmiles ? (props.IsomericSMILES || props.CanonicalSMILES) : props.CanonicalSMILES;
-      console.log('%c✅ [Bridge] Direct PubChem SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
+      // console.log('%c✅ [Bridge] Direct PubChem SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
       return { smiles: smiles, source: 'PubChem' };
     }
   } catch (ePubChem) {
-    console.warn('⚠️ [Bridge] Direct PubChem API request failed:', ePubChem.message);
+    // console.warn('⚠️ [Bridge] Direct PubChem API request failed:', ePubChem.message);
   }
 
   // ===== PRIORITY 2: PubChem Autocomplete (for class/generic names) =====
   // Handles names like "sphingomyelin" → finds "Sphingomyelin 16:0"
-  console.log('%c� [Bridge] Priority 2: Trying PubChem Autocomplete for class name...', 'color: #FF8800; font-weight: bold;');
+  // console.log('%c🌉 [Bridge] Priority 2: Trying PubChem Autocomplete for class name...', 'color: #FF8800; font-weight: bold;');
   try {
     const autocompleteUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/autocomplete/compound/${encodeURIComponent(cleanName)}/json?limit=5`;
     const autocompleteData = await backgroundFetchJSON(autocompleteUrl);
 
     if (autocompleteData && autocompleteData.dictionary_terms && autocompleteData.dictionary_terms.compound && autocompleteData.dictionary_terms.compound.length > 0) {
       const bestMatch = autocompleteData.dictionary_terms.compound[0];
-      console.log('%c🔗 [Bridge] Found related compound:', 'color: #FF8800;', bestMatch);
+      // console.log('%c🔗 [Bridge] Found related compound:', 'color: #FF8800;', bestMatch);
 
       // Fetch SMILES for the matched compound
       const matchUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(bestMatch)}/property/CanonicalSMILES,IsomericSMILES/JSON`;
@@ -437,12 +494,12 @@ async function smilesBridge(name, options = {}) {
       if (matchData && matchData.PropertyTable && matchData.PropertyTable.Properties && matchData.PropertyTable.Properties.length > 0) {
         const props = matchData.PropertyTable.Properties[0];
         const smiles = use3DSmiles ? (props.IsomericSMILES || props.CanonicalSMILES) : props.CanonicalSMILES;
-        console.log('%c✅ [Bridge] PubChem Autocomplete SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
+        // console.log('%c✅ [Bridge] PubChem Autocomplete SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
         return { smiles: smiles, source: 'PubChem-Autocomplete' };
       }
     }
   } catch (eAutocomplete) {
-    console.warn('⚠️ [Bridge] PubChem Autocomplete failed:', eAutocomplete.message);
+    // console.warn('⚠️ [Bridge] PubChem Autocomplete failed:', eAutocomplete.message);
   }
 
   // All conversion attempts failed
@@ -462,7 +519,7 @@ window.smilesBridge = smilesBridge;
  * @returns {Promise<number|null>} - PubChem CID or null if not found
  */
 async function getPubChemCID(nameOrSmiles) {
-  console.log('%c🔍 Getting PubChem CID for:', 'color: #0088FF; font-weight: bold;', nameOrSmiles);
+  // console.log('%c🔍 Getting PubChem CID for:', 'color: #0088FF; font-weight: bold;', nameOrSmiles);
 
   if (!nameOrSmiles || typeof nameOrSmiles !== 'string') {
     console.error('❌ Invalid input for getPubChemCID');
@@ -486,20 +543,20 @@ async function getPubChemCID(nameOrSmiles) {
   };
 
   // Priority 1: Direct lookup
-  console.log('%c🌐 [CID] Priority 1: Direct PubChem CID lookup...', 'color: #0088FF; font-weight: bold;');
+  // console.log('%c🌐 [CID] Priority 1: Direct PubChem CID lookup...', 'color: #0088FF; font-weight: bold;');
   let cid = await fetchCidByName(cleanInput);
   if (cid) {
-    console.log('%c✅ [CID] Direct lookup SUCCESS:', 'color: #00FF00; font-weight: bold;', cid);
+    // console.log('%c✅ [CID] Direct lookup SUCCESS:', 'color: #00FF00; font-weight: bold;', cid);
     return cid;
   }
 
   // Priority 1.5: Try appending "_1" (common PubChem pattern for representative compounds like Phosphatidylcholine)
   // This fixes "phosphatidylcholine" -> "Phosphatidylcholine_1" (CID 10425706 which has 3D)
   if (!cleanInput.includes('_')) {
-    console.log('%c🌐 [CID] Priority 1.5: Trying with _1 suffix...', 'color: #0088FF;');
+    // console.log('%c🌐 [CID] Priority 1.5: Trying with _1 suffix...', 'color: #0088FF;');
     cid = await fetchCidByName(cleanInput + '_1');
     if (cid) {
-      console.log('%c✅ [CID] Suffix lookup SUCCESS:', 'color: #00FF00; font-weight: bold;', cid);
+      // console.log('%c✅ [CID] Suffix lookup SUCCESS:', 'color: #00FF00; font-weight: bold;', cid);
       return cid;
     }
   }
@@ -507,14 +564,14 @@ async function getPubChemCID(nameOrSmiles) {
   // Priority 2: PubChem Autocomplete (The "Singular Solution" for complex molecules)
   // If direct lookup fails, ask PubChem for suggestions and use the first one
   // This handles generic names like "sphingomyelin" -> "Sphingomyelin 16:0" -> CID
-  console.log('%c🔍 [CID] Priority 2: Trying PubChem Autocomplete...', 'color: #FF8800; font-weight: bold;');
+  // console.log('%c🔍 [CID] Priority 2: Trying PubChem Autocomplete...', 'color: #FF8800; font-weight: bold;');
   try {
     const autocompleteUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/autocomplete/compound/${encodeURIComponent(cleanInput)}/json?limit=1`;
     const autocompleteData = await backgroundFetchJSON(autocompleteUrl);
 
     if (autocompleteData && autocompleteData.dictionary_terms && autocompleteData.dictionary_terms.compound && autocompleteData.dictionary_terms.compound.length > 0) {
       const bestMatch = autocompleteData.dictionary_terms.compound[0];
-      console.log('%c🔗 [CID] Autocomplete found match:', 'color: #FF8800; font-weight: bold;', bestMatch);
+      // console.log('%c🔗 [CID] Autocomplete found match:', 'color: #FF8800; font-weight: bold;', bestMatch);
 
       // Now get CID for this best match
       cid = await fetchCidByName(bestMatch);
@@ -524,7 +581,7 @@ async function getPubChemCID(nameOrSmiles) {
       }
     }
   } catch (e) {
-    console.warn('⚠️ [CID] Autocomplete failed:', e.message);
+    // console.warn('⚠️ [CID] Autocomplete failed:', e.message);
   }
 
   // Priority 2.5: Check for Protein/Biomolecule (PDB)
@@ -534,11 +591,11 @@ async function getPubChemCID(nameOrSmiles) {
   // But we can add a specific check here if needed in the future.
 
   // Priority 3: SMILES Bridge fallback (Last resort)
-  console.log('%c🌉 [CID] Priority 3: Using SMILES Bridge fallback...', 'color: #FF8800; font-weight: bold;');
+  // console.log('%c🌉 [CID] Priority 3: Using SMILES Bridge fallback...', 'color: #FF8800; font-weight: bold;');
   const bridgeResult = await smilesBridge(cleanInput, { use3DSmiles: false });
 
   if (bridgeResult && bridgeResult.smiles) {
-    console.log('%c✅ [CID] Got SMILES from bridge:', 'color: #00FF00;', bridgeResult.smiles, `(source: ${bridgeResult.source})`);
+    // console.log('%c✅ [CID] Got SMILES from bridge:', 'color: #00FF00;', bridgeResult.smiles, `(source: ${bridgeResult.source})`);
 
     // Now get CID from SMILES
     try {
@@ -547,11 +604,11 @@ async function getPubChemCID(nameOrSmiles) {
 
       if (smilesData && smilesData.IdentifierList && smilesData.IdentifierList.CID && smilesData.IdentifierList.CID.length > 0) {
         cid = smilesData.IdentifierList.CID[0];
-        console.log('%c✅ [CID] Found CID from SMILES:', 'color: #00FF00; font-weight: bold;', cid);
+        // console.log('%c✅ [CID] Found CID from SMILES:', 'color: #00FF00; font-weight: bold;', cid);
         return cid;
       }
     } catch (e) {
-      console.warn('⚠️ [CID] Lookup from SMILES failed:', e.message);
+      // console.warn('⚠️ [CID] Lookup from SMILES failed:', e.message);
     }
   }
 
@@ -573,11 +630,12 @@ window.getPubChemCID = getPubChemCID;
 function addHoverControls(container, moleculeName, moleculeData) {
   // Don't add controls if they already exist
   if (container.querySelector('.chem-hover-controls')) {
-    console.log('%c⚠️ Hover controls already exist, skipping', 'color: orange;');
+    // console.log('%c⚠️ Hover controls already exist, skipping', 'color: orange;');
+    return;
     return;
   }
 
-  console.log('%c🎮 Adding hover controls to container', 'color: #4ecdc4; font-weight: bold;', { moleculeName, moleculeData });
+  // console.log('%c🎮 Adding hover controls to container', 'color: #4ecdc4; font-weight: bold;', { moleculeName, moleculeData });
 
   // Create hover controls container
   const hoverControls = document.createElement('div');
@@ -642,7 +700,7 @@ function addHoverControls(container, moleculeName, moleculeData) {
   viewer3DBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
     e.preventDefault();
-    console.log('%c🔮 3D Viewer button clicked', 'color: #764ba2; font-weight: bold;');
+    // console.log('%c🔮 3D Viewer button clicked', 'color: #764ba2; font-weight: bold;');
 
     // Call show3DViewerInline if it exists (it's defined later in setupLazyLoading)
     if (typeof window.show3DViewerInline === 'function') {
@@ -665,7 +723,7 @@ function addHoverControls(container, moleculeName, moleculeData) {
     hoverControls.style.opacity = '0';
   });
 
-  console.log('%c✅ Hover controls added successfully', 'color: #00FF00; font-weight: bold;');
+  // console.log('%c✅ Hover controls added successfully', 'color: #00FF00; font-weight: bold;');
 }
 
 // Export for global access
@@ -754,9 +812,9 @@ function getPageImageKey(moleculeData, pageUrl) {
 async function loadImageSize(moleculeData, pageUrl, settings) {
   try {
     const imageKey = getImageKey(moleculeData);
-    if (!imageKey) return { scale: 1.5 }; // Default to 1.5x scale
+    if (!imageKey) return {}; // Return empty object, let smart scaling decide
     if (!settings.saveSizePerImage && !settings.saveSizeBySMILES) {
-      return { scale: 1.5 };
+      return {}; // Return empty object, let smart scaling decide
     }
     let storageKey;
     if (settings.saveSizePerImage && !settings.saveSizeBySMILES) {
@@ -764,7 +822,7 @@ async function loadImageSize(moleculeData, pageUrl, settings) {
     } else {
       storageKey = imageKey;
     }
-    if (!storageKey) return { scale: 1.5 };
+    if (!storageKey) return {}; // Return empty object, let smart scaling decide
     return new Promise((resolve) => {
       chrome.storage.local.get([storageKey], (result) => {
         if (result[storageKey]) {
@@ -773,17 +831,17 @@ async function loadImageSize(moleculeData, pageUrl, settings) {
             resolve(result[storageKey]);
           } else {
             // Legacy: convert old width/height to scale (assume default was 400x350)
-            const scale = result[storageKey].width ? result[storageKey].width / DEFAULT_WIDTH : 1.5;
-            resolve({ scale });
+            const scale = result[storageKey].width ? result[storageKey].width / DEFAULT_WIDTH : undefined;
+            resolve(scale !== undefined ? { scale } : {});
           }
         } else {
-          resolve({ scale: 1.5 });
+          resolve({}); // Return empty object, let smart scaling decide
         }
       });
     });
   } catch (error) {
     console.error('Error loading image size:', error);
-    return { scale: 1.5 };
+    return {}; // Return empty object, let smart scaling decide
   }
 }
 
@@ -879,8 +937,8 @@ function createSizeControls(container, svgImg, moleculeData, settings) {
 }
 
 function adjustImageSize(container, svgImg, moleculeData, delta, settings) {
-  // Get current scale (default to 1.5 for a good starting size)
-  let currentScale = parseFloat(svgImg.dataset.scale) || 1.5;
+  // Get current scale (fallback to 1.0 if not set - should already be set by wrapImageWithSizeControls)
+  let currentScale = parseFloat(svgImg.dataset.scale) || 1.0;
 
   // Adjust scale by delta (convert pixel delta to scale delta)
   const scaleDelta = delta / 100; // 20px = 0.2 scale change
@@ -963,8 +1021,85 @@ async function wrapImageWithSizeControls(svgImg, originalImg, moleculeData, sett
     const pageUrl = window.location.href;
     const savedSize = await loadImageSize(moleculeData, pageUrl, settings);
 
-    // Apply scale by calculating actual dimensions from intrinsic size
-    const scale = savedSize.scale || 1.5;
+    // Smart scaling: Calculate default scale based on molecule size to prevent overflow
+    let defaultScale = 1.5; // Default for medium molecules
+
+    // Try to get intrinsic dimensions to determine molecule size
+    const getIntrinsicDimensions = () => {
+      let width = svgImg.naturalWidth || svgImg.width || 0;
+      let height = svgImg.naturalHeight || svgImg.height || 0;
+
+      // If dimensions not available yet, try to extract from SVG data URL
+      if ((!width || !height) && svgImg.src && svgImg.src.startsWith('data:image/svg+xml')) {
+        try {
+          let svgContent;
+          if (svgImg.src.includes('base64,')) {
+            svgContent = atob(svgImg.src.split('base64,')[1]);
+          } else {
+            svgContent = decodeURIComponent(svgImg.src.split(',')[1]);
+          }
+
+          // Extract width and height
+          const widthMatch = svgContent.match(/width\s*=\s*["']?(\d+(?:\.\d+)?)/i);
+          const heightMatch = svgContent.match(/height\s*=\s*["']?(\d+(?:\.\d+)?)/i);
+
+          if (widthMatch) width = parseFloat(widthMatch[1]);
+          if (heightMatch) height = parseFloat(heightMatch[1]);
+
+          // Fallback to viewBox
+          if (!width || !height) {
+            const viewBoxMatch = svgContent.match(/viewBox\s*=\s*["']?[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)/i);
+            if (viewBoxMatch) {
+              width = width || parseFloat(viewBoxMatch[1]);
+              height = height || parseFloat(viewBoxMatch[2]);
+            }
+          }
+        } catch (e) {
+          console.warn('Could not extract SVG dimensions:', e);
+        }
+      }
+
+      return { width, height };
+    };
+
+    const { width: intrinsicWidth, height: intrinsicHeight } = getIntrinsicDimensions();
+
+    // Calculate smart default scale based on molecule size
+    // Use non-linear scaling to prevent large molecules from overflowing
+    if (intrinsicWidth > 0 && intrinsicHeight > 0) {
+      // Calculate "molecule size" as the diagonal (accounts for both width and height)
+      const moleculeSize = Math.sqrt(intrinsicWidth * intrinsicWidth + intrinsicHeight * intrinsicHeight);
+
+      // Define size thresholds and corresponding scales
+      // Small molecules (< 250px diagonal): scale up for visibility (1.5x - 2.0x)
+      // Medium molecules (250-500px): moderate scale (1.0x - 1.5x)
+      // Large molecules (500-800px): smaller scale (0.6x - 1.0x)
+      // Very large molecules (> 800px): minimal scale (0.4x - 0.6x)
+
+      // Use logarithmic scaling for smooth, non-linear decrease
+      // Formula: scale = baseScale * (referenceSize / moleculeSize)^exponent
+      // The exponent controls how aggressively the scale decreases
+
+      const referenceSize = 300; // Reference size for 1.5x scale
+      const baseScale = 1.5;
+      const exponent = 0.5; // Square root relationship (parabolic)
+
+      // Calculate scale with logarithmic dampening
+      defaultScale = baseScale * Math.pow(referenceSize / moleculeSize, exponent);
+
+      // Clamp to reasonable bounds
+      // Min: 0.4x (very large molecules like proteins)
+      // Max: 2.0x (very small molecules like water, methane)
+      defaultScale = Math.max(0.4, Math.min(2.0, defaultScale));
+
+      console.log(`%c📏 Smart Scaling: ${intrinsicWidth}x${intrinsicHeight} (diagonal: ${moleculeSize.toFixed(0)}px) → ${defaultScale.toFixed(2)}x scale`,
+        'color: #9C27B0; font-weight: bold;');
+    } else {
+      console.log('%c📏 Using default scale (dimensions not available yet)', 'color: #FF9800;');
+    }
+
+    // Use saved scale if available, otherwise use smart default
+    const scale = savedSize.scale || defaultScale;
     svgImg.dataset.scale = scale.toString();
 
     // Wait for image to load to get natural dimensions
@@ -1365,7 +1500,9 @@ let settings = {
   // Client-side renderer options
   clientSideRenderer: 'smilesdrawer',  // 'smilesdrawer' or 'kekule'
   // AI Molecular Control
-  enableAIMolecularControl: false
+  enableAIMolecularControl: false,
+  // MolView-Only Mode
+  molviewOnlyMode: false  // If enabled, fetch all data from localhost:8000 (no PubChem/OPSIN external calls)
 };
 
 log.info('📦 Loading settings from storage...');
@@ -1383,15 +1520,18 @@ chrome.storage.sync.get(null, (result) => {
   } else if (settings.rendererEngine === 'pubchem') {
     engineName = '🌐 PubChem';
     enginePort = '5002';
-  } else if (settings.rendererEngine === 'molview-search') {
-    engineName = '🔍 MolView Search';
-    enginePort = '8001';
   } else if (settings.rendererEngine === 'client-side') {
     engineName = '💻 Client-Side (SmilesDrawer)';
     enginePort = 'N/A';
   } else {
     engineName = '🧪 MoleculeViewer';
     enginePort = '5000';
+  }
+
+  log.info(`🔍 Universal Search API: Port 8001 (autocorrect & intelligent filtering enabled for ALL engines!)`);
+
+  if (settings.molviewOnlyMode) {
+    log.info(`%c🌐 MolView-Only Mode: ENABLED - All data from localhost:8000 (no external PubChem/OPSIN calls)`, 'background: #2196F3; color: white; font-weight: bold; padding: 2px 6px;');
   }
 
   log.success('✅ Settings loaded', settings);
@@ -1423,14 +1563,12 @@ chrome.storage.onChanged.addListener((changes) => {
       engineName = '📐 mol2chemfig';
     } else if (settings.rendererEngine === 'pubchem') {
       engineName = '🌐 PubChem';
-    } else if (settings.rendererEngine === 'molview-search') {
-      engineName = '🔍 MolView Search';
     } else if (settings.rendererEngine === 'client-side') {
       engineName = '💻 Client-Side (SmilesDrawer)';
     } else {
       engineName = '🧪 MoleculeViewer';
     }
-    log.success(`✅ Switched to ${engineName} renderer`);
+    log.success(`✅ Switched to ${engineName} renderer (with Universal Search API autocorrect)`);
 
     // Reload page to apply new renderer to all content
     setTimeout(() => {
@@ -2145,9 +2283,9 @@ function setupLazyLoading() {
   // Uses PubChem API (via background script) for name→SMILES conversion
   async function renderClientSide(moleculeData, img) {
     activeLoads++;
-    console.log('%c🎨 RENDERCLIENTSIDE CALLED (SmilesDrawer SVG)!', 'background: #222; color: #00FF00; font-size: 20px; padding: 10px;');
-    console.log('Image element:', img);
-    console.log('Dataset:', img.dataset);
+    // console.log('%c🎨 RENDERCLIENTSIDE CALLED (SmilesDrawer SVG)!', 'background: #222; color: #00FF00; font-size: 20px; padding: 10px;');
+    // console.log('Image element:', img);
+    // console.log('Dataset:', img.dataset);
     log.debug(`🎨 Rendering Client-Side SVG via SmilesDrawer (#${activeLoads})`);
 
     try {
@@ -2156,12 +2294,12 @@ function setupLazyLoading() {
         moleculeData = JSON.parse(atob(img.dataset.moleculeViewer));
       }
 
-      console.log('%c📦 Molecule data:', 'color: #FF00FF; font-weight: bold;', moleculeData);
+      // console.log('%c📦 Molecule data:', 'color: #FF00FF; font-weight: bold;', moleculeData);
 
       // Check for 3D request - redirect to 3D viewer
       // Pass both moleculeData and original img element (not a container)
       if (moleculeData.is3D || moleculeData.show3D || (moleculeData.options && moleculeData.options.is3D) || (moleculeData.flags && moleculeData.flags.is3D)) {
-        console.log('%c🔮 3D View requested in Client-Side mode', 'color: #FF00FF;');
+        // console.log('%c🔮 3D View requested in Client-Side mode', 'color: #FF00FF;');
         // For 3D viewer, we need to pass the actual target element
         // Create a temporary placeholder img if needed for 3D viewer to replace
         let targetForViewer = img;
@@ -2184,137 +2322,165 @@ function setupLazyLoading() {
       let smiles = moleculeData.smiles;
       const compoundName = moleculeData.nomenclature || moleculeData.name || 'molecule';
 
-      // If no SMILES, get it using PubChem (via background script to avoid CORS)
+      // If no SMILES, get it using Search API (MolView-Only) or PubChem
       if (!smiles && moleculeData.nomenclature) {
         const cleanName = moleculeData.nomenclature.trim();
-        console.log('%c🔍 Client-Side: Getting SMILES for:', 'color: #FF00FF; font-weight: bold;', cleanName);
+        // console.log('%c🔍 Client-Side: Getting SMILES for:', 'color: #FF00FF; font-weight: bold;', cleanName);
 
         // Check if 3D stereochemistry is enabled
         const use3DSmiles = settings.m2cfUse3DSmiles === true;
 
-        // ===== PRIORITY 1: PubChem direct API (via background to bypass CORS) =====
-        // Works for common names, trade names, drug names, and most molecules
-        console.log('%c🌐 [Client] Priority 1: Trying PubChem direct lookup (via background)...', 'color: #0088FF; font-weight: bold;');
+        // ===== PRIORITY 0: MolView Search API (PRIMARY SOURCE) =====
+        // Always try MolView Search first for autocorrection and type detection
+        // console.log('%c🌐 [Client] Priority 0: Using MolView Search API (PRIMARY)', 'background: #2196F3; color: white; font-weight: bold; padding: 4px;');
         try {
-          const pubchemUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(cleanName)}/property/CanonicalSMILES,IsomericSMILES/JSON`;
-          console.log('%c🔗 [Client] PubChem URL:', 'color: #0088FF;', pubchemUrl);
-          const data = await backgroundFetchJSON(pubchemUrl);
+          const searchUrl = `${MOLVIEW_SEARCH_API}/search?q=${encodeURIComponent(cleanName)}&format=compact`;
+          const searchResult = await backgroundFetchJSON(searchUrl);
 
-          console.log('%c📦 [Client] PubChem raw response:', 'color: #FF00FF; font-weight: bold;', JSON.stringify(data));
-          console.log('%c📦 [Client] data type:', 'color: #FF00FF;', typeof data);
-          console.log('%c📦 [Client] data.PropertyTable:', 'color: #FF00FF;', data?.PropertyTable);
-          console.log('%c📦 [Client] data.PropertyTable?.Properties:', 'color: #FF00FF;', data?.PropertyTable?.Properties);
-
-          if (data && data.PropertyTable && data.PropertyTable.Properties && data.PropertyTable.Properties[0]) {
-            const props = data.PropertyTable.Properties[0];
-            console.log('%c📦 [Client] props:', 'color: #00FFFF;', props);
-            // PubChem can return different property names: CanonicalSMILES, IsomericSMILES, SMILES, ConnectivitySMILES
-            smiles = use3DSmiles ?
-              (props.IsomericSMILES || props.SMILES || props.CanonicalSMILES || props.ConnectivitySMILES) :
-              (props.CanonicalSMILES || props.SMILES || props.ConnectivitySMILES);
-
-            // Remove any spaces from SMILES (PubChem sometimes adds them for readability)
-            if (smiles) {
-              smiles = smiles.replace(/\s+/g, '');
-            }
-
-            console.log('%c✅ [Client] PubChem direct SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
-            if (smiles) {
-              console.log('%c📏 SMILES length:', 'color: #9c88ff;', smiles.length, 'characters');
-            }
+          if (searchResult && !searchResult.error && searchResult.canonical_smiles) {
+            smiles = use3DSmiles && searchResult.isomeric_smiles ?
+              searchResult.isomeric_smiles :
+              searchResult.canonical_smiles;
+            // console.log('%c✅ [Client] MolView Search API SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
+            // console.log('%c📊 [Client] MolView Data:', 'color: #2196F3;', {
+            //   corrected: searchResult.corrected_query,
+            //   type: searchResult.primary_type,
+            //   has_sdf: searchResult.sdf?.available
+            // });
           } else {
-            console.warn('%c⚠️ [Client] PubChem data structure invalid:', 'color: #FF8800;', {
-              hasData: !!data,
-              hasPropertyTable: !!(data?.PropertyTable),
-              hasProperties: !!(data?.PropertyTable?.Properties),
-              hasFirst: !!(data?.PropertyTable?.Properties?.[0])
-            });
+            // console.warn('%c⚠️ [Client] MolView Search API failed, falling back to PubChem', 'color: #FF8800;', searchResult?.error);
           }
-        } catch (pubchemError) {
-          console.warn('⚠️ [Client] PubChem direct failed:', pubchemError.message);
-          console.error('⚠️ [Client] Full error:', pubchemError);
+        } catch (error) {
+          // console.warn('%c⚠️ [Client] MolView Search API request failed, falling back to PubChem:', 'color: #FF8800;', error.message);
         }
 
-        // ===== PRIORITY 2: PubChem Autocomplete (for generic/class names like "sphingomyelin") =====
-        // "sphingomyelin" → "Sphingomyelin 16:0", "phosphatidylcholine" → first match
-        if (!smiles) {
-          console.log('%c🔎 [Client] Priority 2: Trying PubChem autocomplete for class name...', 'color: #FF8800; font-weight: bold;');
+        // ===== PRIORITY 1: PubChem direct API (FALLBACK) =====
+        // Only used when MolView Search fails, unless molviewOnlyMode is enabled
+        if (!smiles && !settings.molviewOnlyMode) {
+          // Works for common names, trade names, drug names, and most molecules
+          // console.log('%c🌐 [Client] Priority 1: Trying PubChem direct lookup (via background)...', 'color: #0088FF; font-weight: bold;');
           try {
-            const autocompleteUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/autocomplete/compound/${encodeURIComponent(cleanName)}/json?limit=5`;
-            const autocompleteData = await backgroundFetchJSON(autocompleteUrl);
+            const pubchemUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(cleanName)}/property/CanonicalSMILES,IsomericSMILES/JSON`;
+            // console.log('%c🔗 [Client] PubChem URL:', 'color: #0088FF;', pubchemUrl);
+            const data = await backgroundFetchJSON(pubchemUrl);
 
-            if (autocompleteData && autocompleteData.dictionary_terms && autocompleteData.dictionary_terms.compound && autocompleteData.dictionary_terms.compound.length > 0) {
-              // Get the first matching compound name
-              const bestMatch = autocompleteData.dictionary_terms.compound[0];
-              console.log('%c🔗 [Client] Found related compound:', 'color: #FF8800;', bestMatch);
+            // console.log('%c📦 [Client] PubChem raw response:', 'color: #FF00FF; font-weight: bold;', JSON.stringify(data));
+            // console.log('%c📦 [Client] data type:', 'color: #FF00FF;', typeof data);
+            // console.log('%c📦 [Client] data.PropertyTable:', 'color: #FF00FF;', data?.PropertyTable);
+            // console.log('%c📦 [Client] data.PropertyTable?.Properties:', 'color: #FF00FF;', data?.PropertyTable?.Properties);
 
-              // Now lookup SMILES for the best match
-              const matchUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(bestMatch)}/property/CanonicalSMILES,IsomericSMILES/JSON`;
-              const matchData = await backgroundFetchJSON(matchUrl);
+            if (data && data.PropertyTable && data.PropertyTable.Properties && data.PropertyTable.Properties[0]) {
+              const props = data.PropertyTable.Properties[0];
+              console.log('%c📦 [Client] props:', 'color: #00FFFF;', props);
+              // PubChem can return different property names: CanonicalSMILES, IsomericSMILES, SMILES, ConnectivitySMILES
+              smiles = use3DSmiles ?
+                (props.IsomericSMILES || props.SMILES || props.CanonicalSMILES || props.ConnectivitySMILES) :
+                (props.CanonicalSMILES || props.SMILES || props.ConnectivitySMILES);
 
-              if (matchData && matchData.PropertyTable && matchData.PropertyTable.Properties && matchData.PropertyTable.Properties[0]) {
-                const props = matchData.PropertyTable.Properties[0];
-                // Accept any SMILES property name
-                smiles = use3DSmiles ?
-                  (props.IsomericSMILES || props.SMILES || props.CanonicalSMILES || props.ConnectivitySMILES) :
-                  (props.CanonicalSMILES || props.SMILES || props.ConnectivitySMILES);
+              // Remove any spaces from SMILES (PubChem sometimes adds them for readability)
+              if (smiles) {
+                smiles = smiles.replace(/\s+/g, '');
+              }
 
-                // Remove spaces
-                if (smiles) {
-                  smiles = smiles.replace(/\s+/g, '');
-                }
+              // console.log('%c✅ [Client] PubChem direct SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
+              if (smiles) {
+                // console.log('%c📏 SMILES length:', 'color: #9c88ff;', smiles.length, 'characters');
+              }
+            } else {
+              // console.warn('%c⚠️ [Client] PubChem data structure invalid:', 'color: #FF8800;', {
+              //   hasData: !!data,
+              //   hasPropertyTable: !!(data?.PropertyTable),
+              //   hasProperties: !!(data?.PropertyTable?.Properties),
+              //   hasFirst: !!(data?.PropertyTable?.Properties?.[0])
+              // });
+            }
+          } catch (pubchemError) {
+            // console.warn('⚠️ [Client] PubChem direct failed:', pubchemError.message);
+            // console.error('⚠️ [Client] Full error:', pubchemError);
+          }
 
-                console.log('%c✅ [Client] PubChem autocomplete SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
-                if (smiles) {
-                  console.log('%c📏 SMILES length:', 'color: #9c88ff;', smiles.length, 'characters');
+          // ===== PRIORITY 2: PubChem Autocomplete (for generic/class names like "sphingomyelin") =====
+          // "sphingomyelin" → "Sphingomyelin 16:0", "phosphatidylcholine" → first match
+          if (!smiles) {
+            // console.log('%c🔎 [Client] Priority 2: Trying PubChem autocomplete for class name...', 'color: #FF8800; font-weight: bold;');
+            try {
+              const autocompleteUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/autocomplete/compound/${encodeURIComponent(cleanName)}/json?limit=5`;
+              const autocompleteData = await backgroundFetchJSON(autocompleteUrl);
+
+              if (autocompleteData && autocompleteData.dictionary_terms && autocompleteData.dictionary_terms.compound && autocompleteData.dictionary_terms.compound.length > 0) {
+                // Get the first matching compound name
+                const bestMatch = autocompleteData.dictionary_terms.compound[0];
+                // console.log('%c🔗 [Client] Found related compound:', 'color: #FF8800;', bestMatch);
+
+                // Now lookup SMILES for the best match
+                const matchUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(bestMatch)}/property/CanonicalSMILES,IsomericSMILES/JSON`;
+                const matchData = await backgroundFetchJSON(matchUrl);
+
+                if (matchData && matchData.PropertyTable && matchData.PropertyTable.Properties && matchData.PropertyTable.Properties[0]) {
+                  const props = matchData.PropertyTable.Properties[0];
+                  // Accept any SMILES property name
+                  smiles = use3DSmiles ?
+                    (props.IsomericSMILES || props.SMILES || props.CanonicalSMILES || props.ConnectivitySMILES) :
+                    (props.CanonicalSMILES || props.SMILES || props.ConnectivitySMILES);
+
+                  // Remove spaces
+                  if (smiles) {
+                    smiles = smiles.replace(/\s+/g, '');
+                  }
+
+                  // console.log('%c✅ [Client] PubChem autocomplete SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
+                  if (smiles) {
+                    // console.log('%c📏 SMILES length:', 'color: #9c88ff;', smiles.length, 'characters');
+                  }
                 }
               }
+            } catch (autocompleteError) {
+              // console.warn('⚠️ [Client] PubChem autocomplete failed:', autocompleteError.message);
             }
-          } catch (autocompleteError) {
-            console.warn('⚠️ [Client] PubChem autocomplete failed:', autocompleteError.message);
           }
-        }
 
-        // ===== PRIORITY 3: Try getting CID first, then SMILES from CID =====
-        if (!smiles) {
-          console.log('%c🆔 [Client] Priority 3: Trying CID lookup...', 'color: #9c27b0; font-weight: bold;');
-          try {
-            const cid = await getPubChemCID(cleanName);
-            if (cid) {
-              console.log('%c✅ [Client] Found CID:', 'color: #9c27b0;', cid);
+          // ===== PRIORITY 3: Try getting CID first, then SMILES from CID =====
+          if (!smiles) {
+            // console.log('%c🆔 [Client] Priority 3: Trying CID lookup...', 'color: #9c27b0; font-weight: bold;');
+            try {
+              const cid = await getPubChemCID(cleanName);
+              if (cid) {
+                // console.log('%c✅ [Client] Found CID:', 'color: #9c27b0;', cid);
 
-              // Get SMILES from CID
-              const cidUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/CanonicalSMILES,IsomericSMILES/JSON`;
-              const cidData = await backgroundFetchJSON(cidUrl);
+                // Get SMILES from CID
+                const cidUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/CanonicalSMILES,IsomericSMILES/JSON`;
+                const cidData = await backgroundFetchJSON(cidUrl);
 
-              if (cidData && cidData.PropertyTable && cidData.PropertyTable.Properties && cidData.PropertyTable.Properties[0]) {
-                const props = cidData.PropertyTable.Properties[0];
-                smiles = use3DSmiles ?
-                  (props.IsomericSMILES || props.SMILES || props.CanonicalSMILES || props.ConnectivitySMILES) :
-                  (props.CanonicalSMILES || props.SMILES || props.ConnectivitySMILES);
+                if (cidData && cidData.PropertyTable && cidData.PropertyTable.Properties && cidData.PropertyTable.Properties[0]) {
+                  const props = cidData.PropertyTable.Properties[0];
+                  smiles = use3DSmiles ?
+                    (props.IsomericSMILES || props.SMILES || props.CanonicalSMILES || props.ConnectivitySMILES) :
+                    (props.CanonicalSMILES || props.SMILES || props.ConnectivitySMILES);
 
-                // Remove spaces
-                if (smiles) {
-                  smiles = smiles.replace(/\s+/g, '');
-                }
+                  // Remove spaces
+                  if (smiles) {
+                    smiles = smiles.replace(/\s+/g, '');
+                  }
 
-                console.log('%c✅ [Client] CID lookup SUCCESS:', 'color: #9c27b0; font-weight: bold;', smiles);
-                if (smiles) {
-                  console.log('%c📏 SMILES length:', 'color: #9c88ff;', smiles.length, 'characters');
+                  // console.log('%c✅ [Client] CID lookup SUCCESS:', 'color: #9c27b0; font-weight: bold;', smiles);
+                  if (smiles) {
+                    // console.log('%c📏 SMILES length:', 'color: #9c88ff;', smiles.length, 'characters');
+                  }
                 }
               }
+            } catch (cidError) {
+              // console.warn('⚠️ [Client] CID lookup failed:', cidError.message);
             }
-          } catch (cidError) {
-            console.warn('⚠️ [Client] CID lookup failed:', cidError.message);
           }
-        }
+        } // End of if (!smiles && !settings.molviewOnlyMode)
       }
 
       if (!smiles) {
-        throw new Error(`Could not obtain SMILES for "${compoundName}" - check internet connection`);
+        throw new Error(`Could not obtain SMILES for "${compoundName}" - check internet connection or enable MolView-Only Mode`);
       }
 
-      console.log('%c🧪 Creating SVG directly with SmilesDrawer:', 'color: #00BFFF;', smiles);
+      console.log('%c🎨 Rendering with SmilesDrawer:', 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;');
+      console.log(`%c📊 SMILES: ${smiles}`, 'background: #FF9800; color: white; font-weight: bold; padding: 4px;');
 
       // Get mol2chemfig-style rendering options from settings
       // Then apply any per-molecule flag overrides (e.g., +c, +m, /d-c)
@@ -2405,10 +2571,12 @@ function setupLazyLoading() {
 
         if (atomCount > 100) {
           // Large molecule like insulin - use bigger canvas
-          const complexityFactor = Math.min(atomCount / 50, 4); // Max 4x
+          // Use square root for sub-linear scaling (parabolic curve - rate of increase decreases)
+          // This prevents molecules from becoming excessively large
+          const complexityFactor = Math.min(Math.sqrt(atomCount / 50) * 1.5, 3); // Max 3x with sqrt scaling
           adjustedWidth = Math.ceil(renderWidth * complexityFactor);
           adjustedHeight = Math.ceil(renderHeight * complexityFactor);
-          console.log(`Large molecule detected, expanding canvas to ${adjustedWidth}x${adjustedHeight}`);
+          console.log(`Large molecule detected, expanding canvas to ${adjustedWidth}x${adjustedHeight} (factor: ${complexityFactor.toFixed(2)}x)`);
 
           // Update options
           smilesDrawerOptions.width = adjustedWidth;
@@ -2509,7 +2677,7 @@ function setupLazyLoading() {
           const parent = img.parentNode;
           if (parent) {
             parent.replaceChild(wrapper, img);
-            console.log('%c✅ SVG rendered as img with standard wrapper', 'color: green; font-weight: bold;');
+            // console.log('%c✅ SVG rendered as img with standard wrapper', 'color: green; font-weight: bold;');
           }
         }
       }, function (err) {
@@ -2572,24 +2740,71 @@ function setupLazyLoading() {
   }
 
   // Helper function to load MoleculeViewer rendering with caching and download link
-  // Uses centralized SMILES Bridge for nomenclature→SMILES conversion
+  // NOW USES UNIVERSAL SEARCH API (port 8001) for autocorrect and intelligent filtering
   async function loadMoleculeViewerImage(img) {
     activeLoads++;
-    console.log('%c🧪 LOADMOLECULEVIEWERIMAGE CALLED!', 'background: #222; color: #00FF00; font-size: 20px; padding: 10px;');
-    console.log('Image element:', img);
-    console.log('Dataset:', img.dataset);
+    // activeLoads++; // Removed duplicate
+    // console.log('%c🧪 LOADMOLECULEVIEWERIMAGE CALLED!', 'background: #222; color: #00FF00; font-size: 20px; padding: 10px;');
+    // console.log('Image element:', img);
+    // console.log('Dataset:', img.dataset);
     log.debug(`🧪 Loading MoleculeViewer SVG (#${activeLoads})`);
 
     try {
       const moleculeData = JSON.parse(atob(img.dataset.moleculeViewer));
       console.log('%c📦 Decoded molecule data:', 'color: #0088FF; font-weight: bold;', moleculeData);
 
-      // Check if we should use Client-Side rendering
+      // ========================================
+      // STEP 1: Query Search API (port 8001) - ALWAYS QUERY FIRST FOR ALL RENDERERS
+      // ========================================
+      const searchData = await querySearchAPI(moleculeData);
+
+      // ========================================
+      // STEP 2: Check compound type and route accordingly
+      // ========================================
+      // Proteins and minerals use MolView embed viewer (same as 3D viewer for compounds)
+      if (searchData.compoundType === 'biomolecule' || searchData.compoundType === 'mineral') {
+        console.log(`%c🔮 ${searchData.compoundType} detected: Using MolView embed viewer`, 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
+        // console.log(`%c🔗 Embed URL: ${searchData.searchResult.embed_url}`, 'background: #FF5722; color: white; font-weight: bold; padding: 4px;');
+
+        // Set up moleculeData with embed URL for show3DViewerInline
+        moleculeData.nomenclature = searchData.correctedName;
+        moleculeData.embedUrl = searchData.searchResult.embed_url; // Direct embed URL
+        moleculeData.compoundType = searchData.compoundType;
+        moleculeData.searchResult = searchData.searchResult;
+
+        // Use the same 3D viewer function that compounds use
+        activeLoads--;
+        await show3DViewerInline(moleculeData, img);
+        return;
+      }
+
+      // ========================================
+      // STEP 3: For compounds, route to appropriate renderer
+      // ========================================
+      // Update moleculeData with SMILES from search API
+      moleculeData.smiles = searchData.smiles;
+      moleculeData.nomenclature = searchData.correctedName;
+      moleculeData.searchResult = searchData.searchResult;
+
+      // Check if we should use Client-Side rendering (for compounds only)
       if (settings.rendererEngine === 'client-side') {
+        // console.log('%c🎨 Compound: Using client-side renderer with SMILES from Search API', 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;');
         activeLoads--; // Decrement because renderClientSide increments it again
         await renderClientSide(moleculeData, img);
         return;
       }
+
+      // ========================================
+      // STEP 4: Server-side rendering for compounds (MoleculeViewer, mol2chemfig, PubChem)
+      // ========================================
+      // Show autocorrect notice if needed
+      // DISABLED: User doesn't want to see autocorrect notifications
+      // if (searchData.wasCorrected) {
+      //   showAutocorrectNotice(img, searchData.originalQuery, searchData.correctedName);
+      // }
+
+      // Molecule data already updated with SMILES from Search API at line 2729-2731
+      moleculeData.type = 'smiles'; // Mark as SMILES type
 
       // Determine which endpoint to use based on data type
       let isNomenclature = moleculeData.type === 'nomenclature' && moleculeData.nomenclature;
@@ -2601,30 +2816,32 @@ function setupLazyLoading() {
         moleculeData.smiles = moleculeData.fallback.smiles;
       }
 
-      // 🌉 SMILES BRIDGE: Convert nomenclature to SMILES first
-      // This centralizes conversion logic (OPSIN → PubChem fallback)
-      // Uses mvUse3DSmiles setting for MoleculeViewer 3D stereochemistry
-      // IMPORTANT: Only use 3D SMILES when the option is explicitly enabled
+      // 🌉 SMILES BRIDGE: Convert nomenclature to SMILES (FALLBACK ONLY)
+      // NOTE: This is only reached if Search API didn't provide SMILES
+      // Since Search API was already queried above, this is mostly for edge cases
       if (isNomenclature && !isSMILES) {
-        const use3D = settings.mvUse3DSmiles === true;  // Ensure boolean check
-        console.log('%c🌉 Using SMILES Bridge for nomenclature conversion...', 'background: #4A90D9; color: white; font-weight: bold; padding: 2px 6px;', use3D ? '(3D enabled)' : '(3D disabled)');
+        const use3D = settings.mvUse3DSmiles === true;
         const bridgeResult = await smilesBridge(moleculeData.nomenclature, { use3DSmiles: use3D });
+
+        // NOTE: Protein/mineral detection already handled above at lines 2686-2723
+        // This code should only handle compounds that somehow bypassed Search API
+
         if (bridgeResult && bridgeResult.smiles) {
-          console.log('%c✅ SMILES Bridge conversion successful:', 'color: #00FF00; font-weight: bold;', bridgeResult.smiles, `(source: ${bridgeResult.source})`);
           moleculeData.smiles = bridgeResult.smiles;
           moleculeData.smilesSource = bridgeResult.source;
+          moleculeData.molview_data = bridgeResult.molview_data; // Store MolView metadata
           isSMILES = true;
           isNomenclature = false; // Now we have SMILES, use SMILES endpoint
-        } else {
-          console.warn('%c⚠️ SMILES Bridge conversion failed, falling back to server nomenclature endpoint', 'color: #FFA500; font-weight: bold;');
-          // Keep isNomenclature = true to fall back to server-side conversion
+
+          // Show autocorrection info if name was corrected
+          if (bridgeResult.corrected_name && bridgeResult.corrected_name !== moleculeData.nomenclature) {
+            // console.log('%c✏️ Autocorrected:', 'color: #2196F3; font-weight: bold;', moleculeData.nomenclature, '→', bridgeResult.corrected_name);
+          }
         }
       }
 
       let apiUrl;
       if (isSMILES) {
-        console.log('%c📤 Using SMILES endpoint', 'color: #FF6B00; font-weight: bold;');
-
         // Build options query string for MoleculeViewer (simplified - only essential params)
         const optionsParams = new URLSearchParams({
           smiles: moleculeData.smiles,
@@ -2634,12 +2851,8 @@ function setupLazyLoading() {
         });
 
         apiUrl = `${MOLECULE_VIEWER_API}/img/smiles?${optionsParams.toString()}&t=${Date.now()}`;
-        console.log('API URL:', apiUrl);
       } else if (isNomenclature) {
         // Fallback: server-side nomenclature conversion (if SMILES Bridge failed)
-        console.log('%c📤 Using nomenclature endpoint (server-side fallback)', 'color: #FF6B00; font-weight: bold;');
-        console.log('Nomenclature:', moleculeData.nomenclature);
-
         // Build options query string for MoleculeViewer (simplified - only essential params)
         const optionsParams = new URLSearchParams({
           nomenclature: moleculeData.nomenclature,
@@ -2649,23 +2862,13 @@ function setupLazyLoading() {
         });
 
         apiUrl = `${MOLECULE_VIEWER_API}/img/nomenclature?${optionsParams.toString()}&t=${Date.now()}`;
-        console.log('API URL:', apiUrl);
       } else {
         throw new Error('Invalid molecule data');
       }
 
-      // Log settings being used
-      console.log('%c⚙️ MoleculeViewer Settings:', 'color: #FF6B00; font-weight: bold;', {
-        mvUse3DSmiles: settings.mvUse3DSmiles,
-        flipHorizontal: settings.flipHorizontal,
-        flipVertical: settings.flipVertical
-      });
-
       // Fetch JSON response with cache link (via background to bypass CSP)
-      console.log('%c🌐 Fetching from backend...', 'color: #00AAFF; font-weight: bold;');
       backgroundFetchJSON(apiUrl)
         .then(data => {
-          console.log('%c📊 Backend data:', 'color: #FFAA00; font-weight: bold;', data);
           if (!data.success) {
             throw new Error(data.error || 'Rendering failed');
           }
@@ -2684,7 +2887,6 @@ function setupLazyLoading() {
           // Only apply SVG content inversion in "bw" mode (black/white only)
           // This replaces black (#000) with white (#FFF) in the SVG source
           if (shouldInvertSVG && invertMode === 'bw') {
-            console.log('%c🎨 Applying BW SVG inversion (black→white in source)', 'color: #FF6B00; font-weight: bold;');
             svgContent = invertSvgForDarkMode(svgContent);
           }
 
@@ -2710,7 +2912,6 @@ function setupLazyLoading() {
           // This inverts ALL colors via CSS filter
           let filter = '';
           if (shouldInvertSVG && invertMode === 'full') {
-            console.log('%c🎨 Applying FULL CSS filter inversion', 'color: #FF6B00; font-weight: bold;');
             filter += 'invert(1) ';
           }
 
@@ -2739,9 +2940,6 @@ function setupLazyLoading() {
             await wrapImageWithSizeControls(svgImg, img, moleculeData, sizeSettings);
           });
 
-          console.log('%c✅ Image loaded successfully', 'color: green; font-weight: bold;');
-          console.log('%c📍 Cache URL:', 'color: #0066cc; font-weight: bold;', data.cache_url);
-
           activeLoads--;
         })
         .catch(error => {
@@ -2764,80 +2962,78 @@ function setupLazyLoading() {
   }
 
   // Helper function to load PubChem images
+  // NOW USES UNIVERSAL SEARCH API (port 8001) for autocorrect and intelligent filtering
   async function loadPubChemImage(img) {
     activeLoads++;
-    console.log('%c🌐 LOADPUBCHEMIMAGE CALLED!', 'background: #222; color: #4CAF50; font-size: 20px; padding: 10px;');
-    console.log('Image element:', img);
-    console.log('Dataset:', img.dataset);
     log.debug(`🌐 Loading PubChem image (#${activeLoads})`);
 
     try {
       const moleculeData = JSON.parse(atob(img.dataset.moleculeViewer || img.dataset.mol2chemfig));
-      console.log('%c📦 Decoded molecule data:', 'color: #4CAF50; font-weight: bold;', moleculeData);
 
-      // Determine the compound name or SMILES for PubChem
-      let compoundName = '';
-      if (moleculeData.nomenclature) {
-        compoundName = moleculeData.nomenclature;
-      } else if (moleculeData.smiles) {
-        compoundName = moleculeData.smiles;
-      } else if (moleculeData.type === 'chemfig' && moleculeData.fallback && moleculeData.fallback.smiles) {
-        compoundName = moleculeData.fallback.smiles;
-      } else {
-        throw new Error('No valid compound identifier found');
-      }
+      // ========================================
+      // STEP 1: Query Search API (port 8001)
+      // ========================================
+      const searchData = await querySearchAPI(moleculeData);
 
-      console.log('%c🔍 Looking up compound:', 'color: #4CAF50; font-weight: bold;', compoundName);
+      // Show autocorrect notice if needed
+      // DISABLED: User doesn't want to see autocorrect notifications
+      // if (searchData.wasCorrected) {
+      //   showAutocorrectNotice(img, searchData.originalQuery, searchData.correctedName);
+      // }
+
+      // Use corrected name or SMILES from search API
+      const compoundName = searchData.correctedName || searchData.smiles;
 
       // Get settings, potentially overridden by flags
       const currentSettings = moleculeData.customSettings || settings;
       const flags = moleculeData.flags || {};
 
-      // Check if 3D flag was set - if so, show 3D viewer immediately
-      if (flags.is3D || moleculeData.show3D || img.dataset.show3d === 'true') {
+      // Check if 3D flag was set explicitly - if so, show 3D viewer immediately
+      // NOTE: This is ONLY for elements explicitly marked as 3D-only
+      // For regular PubChem elements, we ALWAYS show 2D first
+      if (flags.is3D && flags.force3D === true) {
         await show3DViewerInline(moleculeData, img);
         activeLoads--;
         return;
       }
 
-      // Check if 3D viewer is enabled globally - skip 2D image fetch entirely
-      const viewerSettings = await new Promise(resolve => {
-        chrome.storage.sync.get({ enable3DViewer: false }, resolve);
-      });
+      // NOTE: Removed enable3DViewer check - we ALWAYS load 2D first
+      // The user can click the 3D button to load the 3D viewer
 
-      if (viewerSettings.enable3DViewer) {
-        // User wants 3D viewer - show it directly without fetching 2D image
-        await show3DViewerInline(moleculeData, img);
-        activeLoads--;
-        return;
-      }
+
+      // ALWAYS use direct fetch from PubChem.gov unless explicitly disabled
+      // This bypasses the local bridge server (port 5002) for better reliability
+      // The bridge server is ONLY used as a fallback if direct fetch fails OR if explicitly disabled
+      const useDirectFetch = currentSettings.pubchemDirectFetch !== false; // Default to true
 
       let imageUrl;
       let recordType = currentSettings.pubchemRecordType || '2d';
       let fetchMethod = 'unknown';
 
-      if (currentSettings.pubchemDirectFetch) {
-        // Direct fetch from PubChem
+      if (useDirectFetch) {
+        // Direct fetch from PubChem.gov
+        console.log('%c🌐 Using DIRECT fetch from PubChem.gov (bypassing localhost:5002)', 'background: #10b981; color: white; font-weight: bold; padding: 2px 6px;');
         const cid = await getPubChemCID(compoundName);
         if (cid) {
-          imageUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/PNG?image_size=${currentSettings.pubchemImageSize || 'large'}&record_type=${recordType}`;
+          imageUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/PNG?image_size=${currentSettings.pubchemImageSize || 'large'}\u0026record_type=${recordType}`;
           fetchMethod = 'direct-pubchem';
-          console.log('%c🌐 Using DIRECT fetch from PubChem.gov', 'background: #10b981; color: white; font-weight: bold; padding: 2px 6px;');
+          console.log(`%c✅ Got CID: ${cid}`, 'color: #10b981; font-weight: bold;');
+          console.log(`%c📡 URL: ${imageUrl}`, 'color: #6b7280;');
         } else {
-          console.error('%c❌ Could not get CID for compound, falling back to bridge server', 'color: red; font-weight: bold;');
-          imageUrl = `${PUBCHEM_API}/pubchem/img/${encodeURIComponent(compoundName)}?size=${currentSettings.pubchemImageSize || 'large'}&type=${recordType}&proxy=true`;
+          console.warn('%c⚠️ Could not get CID for compound, falling back to bridge server', 'color: orange; font-weight: bold;');
+          imageUrl = `${PUBCHEM_API}/pubchem/img/${encodeURIComponent(compoundName)}?size=${currentSettings.pubchemImageSize || 'large'}\u0026type=${recordType}\u0026proxy=true`;
           fetchMethod = 'bridge-server-fallback';
         }
       } else {
-        // Use local PubChem bridge server (port 5002)
-        imageUrl = `${PUBCHEM_API}/pubchem/img/${encodeURIComponent(compoundName)}?size=${currentSettings.pubchemImageSize || 'large'}&type=${recordType}&proxy=true`;
+        // Use local PubChem bridge server (port 5002) - ONLY if explicitly requested
+        imageUrl = `${PUBCHEM_API}/pubchem/img/${encodeURIComponent(compoundName)}?size=${currentSettings.pubchemImageSize || 'large'}\u0026type=${recordType}\u0026proxy=true`;
         fetchMethod = 'bridge-server';
-        console.log('%c🖥️ Using BRIDGE SERVER (localhost:5002)', 'background: #3b82f6; color: white; font-weight: bold; padding: 2px 6px;');
+        console.log('%c🖥️ Using BRIDGE SERVER (localhost:5002) - explicitly requested', 'background: #3b82f6; color: white; font-weight: bold; padding: 2px 6px;');
         console.log('%c⚠️ Make sure PubChem server is running: python pubchem_server.py', 'color: orange; font-weight: bold;');
       }
 
-      console.log('%c📡 PubChem URL:', 'color: #4CAF50; font-weight: bold;', imageUrl);
-      console.log('%c🔧 Fetch method:', 'color: #9333ea;', fetchMethod);
+      // console.log('%c📡 PubChem URL:', 'color: #4CAF50; font-weight: bold;', imageUrl);
+      // console.log('%c🔧 Fetch method:', 'color: #9333ea;', fetchMethod);
 
       // Fetch the image via background script to bypass CSP
       backgroundFetchBlob(imageUrl)
@@ -2883,7 +3079,7 @@ function setupLazyLoading() {
             await wrapImageWithSizeControls(pubchemImg, img, moleculeData, pubchemSettings);
           });
 
-          console.log('%c✅ PubChem image loaded successfully', 'color: green; font-weight: bold;');
+          // console.log('%c✅ PubChem image loaded successfully', 'color: green; font-weight: bold;');
           activeLoads--;
         })
         .catch(error => {
@@ -2906,9 +3102,9 @@ function setupLazyLoading() {
 
   // Helper function to show 3D viewer inline using local PubChem 3D viewer (replaces the img element)
   async function show3DViewerInline(moleculeData, targetElement) {
-    console.log('%c🔮 SHOWING 3D VIEWER INLINE', 'background: #764ba2; color: white; font-size: 14px; padding: 8px;');
-    console.log('moleculeData:', moleculeData);
-    console.log('targetElement:', targetElement);
+    // console.log('%c🔮 SHOWING 3D VIEWER INLINE', 'background: #764ba2; color: white; font-size: 14px; padding: 8px;');
+    // console.log('moleculeData:', moleculeData);
+    // console.log('targetElement:', targetElement);
 
     // Extract compound name from moleculeData
     const compoundName = moleculeData.nomenclature || moleculeData.smiles || '';
@@ -2961,9 +3157,9 @@ function setupLazyLoading() {
       throw new Error('Could not find image element');
     }
 
-    console.log('Found img element:', img);
-    console.log('Container element:', container);
-    console.log('Compound name:', compoundName);
+    // console.log('Found img element:', img);
+    // console.log('Container element:', container);
+    // console.log('Compound name:', compoundName);
 
     try {
       // Get viewer size from settings
@@ -3006,77 +3202,79 @@ function setupLazyLoading() {
       const viewer3DIframe = document.createElement('iframe');
 
       let viewerUrl;
-      let viewerSource = settings.viewer3DSource || '3dmol';
-      console.log('%c🔍 Current 3D viewer source setting:', 'color: #ff6b6b; font-weight: bold;', viewerSource);
-      console.log('%c📦 All settings:', 'color: #4ecdc4;', settings);
 
-      switch (viewerSource) {
-        case 'molview':
-          // MolView Embed - using LOCAL MolView server
-          const cidMolview = await getPubChemCID(compoundName);
-          if (cidMolview) {
-            // Use local MolView server /embed endpoint for clean 3D-only viewer
-            viewerUrl = `http://localhost:5003/embed?cid=${cidMolview}`;
-            console.log('%c📍 Local MolView /embed URL:', 'color: #0066cc; font-weight: bold;', viewerUrl);
-          } else {
-            console.warn('%c⚠️ CID not found for MolView, using 3Dmol.js fallback', 'color: orange;');
-            viewerSource = '3dmol';
-          }
-          break;
+      // Check if this is a protein/mineral with a direct embed URL
+      if (moleculeData.embedUrl) {
+        console.log('%c🔮 Using direct embed URL for protein/mineral:', 'color: #9C27B0; font-weight: bold;', moleculeData.embedUrl);
+        viewerUrl = moleculeData.embedUrl;
 
-        case 'pubchem':
-          // PubChem 3D viewer with wrapper to hide extra UI
-          const cidPubchem = await getPubChemCID(compoundName);
-          if (cidPubchem) {
-            // Use our wrapper that tries to hide everything except the 3D widget
+        // Ensure iframe has necessary permissions for WebGL and interaction
+        viewer3DIframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen; xr-spatial-tracking');
+        viewer3DIframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms');
+      } else {
+        // For compounds, build URL based on user's selected source
+        let viewerSource = settings.viewer3DSource || '3dmol';
+        // console.log('%c🔍 Current 3D viewer source setting:', 'color: #ff6b6b; font-weight: bold;', viewerSource);
+        // console.log('%c📦 All settings:', 'color: #4ecdc4;', settings);
+
+        switch (viewerSource) {
+          case 'molview':
+            // MolView Embed - using LOCAL MolView server
+            const cidMolview = await getPubChemCID(compoundName);
+            if (cidMolview) {
+              // Use local MolView server /embed/v2/ endpoint for clean 3D-only viewer
+              viewerUrl = `http://localhost:8000/embed/v2/?cid=${cidMolview}`;
+              console.log('%c📍 Local MolView /embed/v2/ URL:', 'color: #0066cc; font-weight: bold;', viewerUrl);
+            } else {
+              console.warn('%c⚠️ CID not found for MolView, using 3Dmol.js fallback', 'color: orange;');
+              viewerSource = '3dmol';
+            }
+            break;
+
+          case 'pubchem':
+            // PubChem direct embed is unreliable due to cross-origin restrictions and lack of a clean widget URL.
+            // We fallback to 3Dmol.js which fetches data FROM PubChem but renders it locally and cleanly.
+            console.log('%c⚠️ PubChem direct embed is deprecated. Using 3Dmol.js (local renderer) instead.', 'color: orange; font-weight: bold;');
+          // Fallthrough to 3dmol
+
+          case '3dmol':
+          default:
+            // 3Dmol.js - client-side viewer with custom styling
+            let cid3dmol = null;
+            try {
+              cid3dmol = await getPubChemCID(compoundName);
+            } catch (e) {
+              console.warn('CID lookup failed, proceeding with name only:', e);
+            }
+
+            // Use our custom 3Dmol.js viewer with user's style preferences
+            const style3D = settings.viewer3DStyle || 'stick:sphere';
+
+            // Get per-style settings for stick and sphere radius
+            const styleSettings = settings.viewer3DStyleSettings || {};
+            const currentStyleSettings = styleSettings[style3D] || {};
+            const stickRadius = currentStyleSettings.stickRadius || '0.15';
+            const sphereRadius = currentStyleSettings.sphereRadius || '0.3';
+            const autoRotate = settings.viewer3DAutoRotate !== false;
+            const bgColor = encodeURIComponent(settings.viewer3DBgColor || '#1a1a2e');
+
             viewerUrl = chrome.runtime.getURL(
-              `pubchem-3d-wrapper.html?cid=${cidPubchem}&name=${encodeURIComponent(compoundName)}`
+              `3dmol-viewer.html?name=${encodeURIComponent(compoundName)}&style=${style3D}&stickRadius=${stickRadius}&sphereRadius=${sphereRadius}&autoRotate=${autoRotate}&bgColor=${bgColor}`
             );
-            console.log('%c📍 PubChem 3D Viewer (wrapped):', 'color: #0066cc; font-weight: bold;', viewerUrl);
-          } else {
-            // Fallback to 3dmol if CID not found
-            console.warn('%c⚠️ CID not found for PubChem, using 3Dmol.js', 'color: orange;');
-            viewerSource = '3dmol';
-          }
-          break;
 
-        case '3dmol':
-        default:
-          // 3Dmol.js - client-side viewer with custom styling
-          let cid3dmol = null;
-          try {
-            cid3dmol = await getPubChemCID(compoundName);
-          } catch (e) {
-            console.warn('CID lookup failed, proceeding with name only:', e);
-          }
+            if (cid3dmol) {
+              viewerUrl += `&cid=${cid3dmol}`;
+            }
 
-          // Use our custom 3Dmol.js viewer with user's style preferences
-          const style3D = settings.viewer3DStyle || 'stick:sphere';
-
-          // Get per-style settings for stick and sphere radius
-          const styleSettings = settings.viewer3DStyleSettings || {};
-          const currentStyleSettings = styleSettings[style3D] || {};
-          const stickRadius = currentStyleSettings.stickRadius || '0.15';
-          const sphereRadius = currentStyleSettings.sphereRadius || '0.3';
-          const autoRotate = settings.viewer3DAutoRotate !== false;
-          const bgColor = encodeURIComponent(settings.viewer3DBgColor || '#1a1a2e');
-
-          viewerUrl = chrome.runtime.getURL(
-            `3dmol-viewer.html?name=${encodeURIComponent(compoundName)}&style=${style3D}&stickRadius=${stickRadius}&sphereRadius=${sphereRadius}&autoRotate=${autoRotate}&bgColor=${bgColor}`
-          );
-
-          if (cid3dmol) {
-            viewerUrl += `&cid=${cid3dmol}`;
-          }
-
-          console.log('%c📍 3Dmol.js Custom Viewer URL:', 'color: #0066cc; font-weight: bold;', viewerUrl);
-          console.log('%c🎨 Style settings:', 'color: #9c88ff;', { style: style3D, stickRadius, sphereRadius, autoRotate });
-          break;
+            console.log('%c📍 3Dmol.js Custom Viewer URL:', 'color: #0066cc; font-weight: bold;', viewerUrl);
+            console.log('%c🎨 Style settings:', 'color: #9c88ff;', { style: style3D, stickRadius, sphereRadius, autoRotate });
+            break;
+        }
       }
 
-      viewer3DIframe.src = viewerUrl;
+      // viewer3DIframe.src = viewerUrl; // Moved to after appendChild
       // Allow necessary features for 3D rendering
-      viewer3DIframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+      viewer3DIframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen; xr-spatial-tracking');
       viewer3DIframe.setAttribute('allowfullscreen', 'true');
       viewer3DIframe.setAttribute('frameborder', '0');
       viewer3DIframe.style.cssText = `
@@ -3097,7 +3295,180 @@ function setupLazyLoading() {
       viewer3DContainer._original2DElement = container;
 
       // Assemble container (no toggle button or name label - handled by hover controls)
-      viewer3DContainer.appendChild(viewer3DIframe);
+      // viewer3DContainer.appendChild(viewer3DIframe);
+      // viewer3DIframe.src = viewerUrl;
+
+      // =================================================================================
+      // 🚀 CLICK-TO-LOAD IMPLEMENTATION (Prevents "Aw Snap" / WebGL context crashes)
+      // =================================================================================
+
+      // Create a placeholder container
+      const placeholder = document.createElement('div');
+      placeholder.className = 'chem-3d-placeholder-overlay';
+
+      // Try to find a preview image from search results
+      let previewImage = moleculeData.image ||
+        (moleculeData.searchResult && moleculeData.searchResult.image) ||
+        moleculeData.image_url;
+
+      // Ensure HTTPS to prevent mixed content blocking
+      if (previewImage && previewImage.startsWith('http://')) {
+        previewImage = previewImage.replace('http://', 'https://');
+      }
+
+      placeholder.style.cssText = `
+        width: 100%;
+        height: 100%;
+        background: ${previewImage ?
+          `linear-gradient(rgba(26, 26, 46, 0.6), rgba(22, 33, 62, 0.8)), url('${previewImage}') center/cover no-repeat` :
+          'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'};
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+      `;
+
+      // Play button icon
+      const playBtn = document.createElement('div');
+      playBtn.innerHTML = '<svg viewBox="0 0 24 24" width="48" height="48" fill="white"><path d="M8 5v14l11-7z"/></svg>';
+      playBtn.style.cssText = `
+        width: 80px;
+        height: 80px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      `;
+
+      // Label
+      const label = document.createElement('div');
+      label.textContent = "Load 3D Model";
+      label.style.cssText = `
+        color: rgba(255, 255, 255, 0.9);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        pointer-events: none;
+      `;
+
+      // Type badge (Protein/Mineral/Compound)
+      if (moleculeData.primary_type) {
+        const badge = document.createElement('div');
+        badge.textContent = moleculeData.primary_type.toUpperCase();
+        badge.style.cssText = `
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          background: rgba(0, 0, 0, 0.4);
+          color: rgba(255, 255, 255, 0.8);
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 10px;
+          font-weight: bold;
+          letter-spacing: 1px;
+        `;
+        placeholder.appendChild(badge);
+      }
+
+      placeholder.appendChild(playBtn);
+      placeholder.appendChild(label);
+
+      // Hover effects
+      placeholder.onmouseenter = () => {
+        playBtn.style.transform = 'scale(1.1)';
+        playBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+        placeholder.style.background = 'linear-gradient(135deg, #20203a 0%, #1a2644 100%)';
+      };
+      placeholder.onmouseleave = () => {
+        playBtn.style.transform = 'scale(1)';
+        playBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        placeholder.style.background = 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)';
+      };
+
+      // Click handler - The magic happens here
+      placeholder.onclick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        // Show loading state
+        playBtn.style.transform = 'scale(0.8)';
+        label.textContent = "Loading...";
+
+        // Small delay to allow UI update, then load iframe
+        setTimeout(() => {
+          // Create Close/2D button
+          const closeBtn = document.createElement('div');
+          closeBtn.innerHTML = '<span style="font-size: 14px; margin-right: 4px;">✕</span> 2D View';
+          closeBtn.title = "Close 3D Viewer";
+          closeBtn.style.cssText = `
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            color: rgba(255, 255, 255, 0.9);
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            user-select: none;
+          `;
+
+          closeBtn.onmouseenter = () => {
+            closeBtn.style.background = 'rgba(0, 0, 0, 0.8)';
+            closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+          };
+          closeBtn.onmouseleave = () => {
+            closeBtn.style.background = 'rgba(0, 0, 0, 0.6)';
+            closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+          };
+
+          closeBtn.onclick = (ev) => {
+            ev.stopPropagation();
+            // Clear container (removes iframe and button)
+            viewer3DContainer.innerHTML = '';
+            // Reset placeholder state
+            label.textContent = "Load 3D Model";
+            playBtn.style.transform = 'scale(1)';
+            // Restore placeholder
+            viewer3DContainer.appendChild(placeholder);
+          };
+
+          // Clear placeholder
+          viewer3DContainer.innerHTML = '';
+
+          // Append the iframe and close button
+          viewer3DContainer.appendChild(viewer3DIframe);
+          viewer3DContainer.appendChild(closeBtn);
+
+          // Set src to trigger load
+          viewer3DIframe.src = viewerUrl;
+          console.log('%c🚀 3D Viewer Loaded on user click', 'color: #00FF00; font-weight: bold;');
+        }, 50);
+      };
+
+      // Append placeholder initially
+      viewer3DContainer.appendChild(placeholder);
 
       // Replace original element with 3D viewer
       if (container.parentNode) {
@@ -3202,7 +3573,7 @@ function setupLazyLoading() {
     // Replace the original image with the processed one
     const newImageSrc = canvas.toDataURL('image/png');
     imgElement.src = newImageSrc;
-    console.log('%c🎨 Background removal applied to element' + (darkMode ? ' (dark mode)' : ''), 'color: #9B59B6;');
+    // console.log('%c🎨 Background removal applied to element' + (darkMode ? ' (dark mode)' : ''), 'color: #9B59B6;');
   }
 
 
@@ -3493,7 +3864,118 @@ function setupLazyLoading() {
     controlPanel.appendChild(view3DBtn);
   }
 
-  // Helper function to load MolView Search with autocorrect
+  // ============================================
+  // UNIVERSAL SEARCH API PREPROCESSOR
+  // ============================================
+  // This function queries the search API (port 8001) BEFORE any rendering
+  // It provides:
+  // - Autocorrect for typos
+  // - Intelligent filtering (minerals, proteins, compounds)
+  // - Canonical & Isomeric SMILES
+  // - Compound metadata
+  // ALL rendering engines should use this first!
+  async function querySearchAPI(moleculeData) {
+    // Determine the query string (nomenclature or SMILES)
+    let queryString = '';
+    if (moleculeData.nomenclature) {
+      queryString = moleculeData.nomenclature;
+    } else if (moleculeData.smiles) {
+      queryString = moleculeData.smiles;
+    } else if (moleculeData.type === 'chemfig' && moleculeData.fallback && moleculeData.fallback.smiles) {
+      queryString = moleculeData.fallback.smiles;
+    } else {
+      throw new Error('No valid compound identifier found');
+    }
+
+    // Call the MolView Search API
+    const searchUrl = `${MOLVIEW_SEARCH_API}/search?q=${encodeURIComponent(queryString)}&format=compact`;
+    const searchResult = await backgroundFetchJSON(searchUrl);
+
+    if (searchResult.error) {
+      console.error('%c❌ Search API Error:', 'color: red; font-weight: bold;', searchResult.error);
+      throw new Error(searchResult.error);
+    }
+
+    // FIX: Ensure embed_url points to v2 embed endpoint for minerals and proteins
+    // We prioritize constructing the URL from IDs if available to avoid using full app URLs
+    if (searchResult.codid) {
+      searchResult.embed_url = `${MOLVIEW_API}/embed/v2/?codid=${searchResult.codid}`;
+      // console.log(`%c💎 Constructed Mineral Embed URL: ${searchResult.embed_url}`, 'color: #00BCD4; font-weight: bold;');
+    } else if (searchResult.pdbid) {
+      searchResult.embed_url = `${MOLVIEW_API}/embed/v2/?pdbid=${searchResult.pdbid}`;
+      // console.log(`%c🧬 Constructed Protein Embed URL: ${searchResult.embed_url}`, 'color: #E91E63; font-weight: bold;');
+    } else if (searchResult.embed_url) {
+      // Fallback: If we have an embed_url but no ID, try to fix it if it's pointing to main app
+      if (searchResult.embed_url.includes('localhost:8000') && !searchResult.embed_url.includes('/embed/v2/')) {
+        // Try to extract ID from query params if possible
+        const urlObj = new URL(searchResult.embed_url);
+        const cid = urlObj.searchParams.get('cid');
+        const codid = urlObj.searchParams.get('codid');
+        const pdbid = urlObj.searchParams.get('pdbid');
+
+        if (codid) {
+          searchResult.embed_url = `${MOLVIEW_API}/embed/v2/?codid=${codid}`;
+        } else if (pdbid) {
+          searchResult.embed_url = `${MOLVIEW_API}/embed/v2/?pdbid=${pdbid}`;
+        } else if (cid) {
+          searchResult.embed_url = `${MOLVIEW_API}/embed/v2/?cid=${cid}`;
+        } else {
+          // Just rewrite the path if no ID found (risky but better than main app)
+          searchResult.embed_url = searchResult.embed_url.replace('localhost:8000/', 'localhost:8000/embed/v2/');
+          if (!searchResult.embed_url.includes('/embed/v2/')) {
+            searchResult.embed_url = searchResult.embed_url.replace('localhost:8000', 'localhost:8000/embed/v2');
+          }
+        }
+      }
+    }
+
+    // Determine corrected name
+    const correctedName = searchResult.corrected_query || searchResult.name;
+    const wasCorrected = searchResult.corrected_query !== null;
+
+    // Use isomeric SMILES if 3D stereochemistry is enabled, otherwise canonical
+    const useSMILES = settings.mvUse3DSmiles && searchResult.isomeric_smiles ?
+      searchResult.isomeric_smiles :
+      searchResult.canonical_smiles;
+
+    // ONLY LOG THE CRITICAL INFO
+    // console.log(`%c🔍 SEARCH: "${queryString}" → ${wasCorrected ? `"${correctedName}" (autocorrected)` : 'OK'}`, 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
+    // console.log(`%c📊 SMILES: ${useSMILES || 'N/A'}`, 'background: #FF9800; color: white; font-weight: bold; padding: 4px;');
+    // console.log(`%c🏷️ Type: ${searchResult.primary_type || 'unknown'}`, 'background: #673AB7; color: white; font-weight: bold; padding: 4px;');
+    // console.log(`%c🔗 EMBED URL: ${searchResult.embed_url || 'NOT FOUND'}`, 'background: #FF5722; color: white; font-weight: bold; padding: 4px; font-size: 14px;');
+
+    return {
+      searchResult,
+      correctedName,
+      wasCorrected,
+      originalQuery: queryString,
+      smiles: useSMILES,
+      compoundType: searchResult.primary_type
+    };
+  }
+
+  // Helper function to show autocorrect notice
+  function showAutocorrectNotice(img, originalQuery, correctedName) {
+    const correctedNotice = document.createElement('div');
+    correctedNotice.className = 'chemfig-autocorrect-notice';
+    correctedNotice.style.cssText = `
+      font-size: 11px;
+      color: #9C27B0;
+      margin-bottom: 4px;
+      padding: 4px 8px;
+      background: rgba(156, 39, 176, 0.1);
+      border-left: 3px solid #9C27B0;
+      border-radius: 3px;
+      font-weight: 500;
+    `;
+    correctedNotice.innerHTML = `✓ Autocorrected: <em>${originalQuery}</em> → <strong>${correctedName}</strong>`;
+
+    // Insert notice before the image
+    img.parentNode.insertBefore(correctedNotice, img);
+  }
+
+  // DEPRECATED: This function is no longer used as a separate renderer
+  // Instead, all renderers now use querySearchAPI() as a preprocessor
   async function loadMolViewSearchImage(img) {
     activeLoads++;
     console.log('%c🔍 LOADMOLVIEWSEARCHIMAGE CALLED!', 'background: #222; color: #9C27B0; font-size: 20px; padding: 10px;');
@@ -3532,65 +4014,57 @@ function setupLazyLoading() {
             throw new Error(searchResult.error);
           }
 
-          // Show autocorrect info if query was corrected
-          let correctedInfo = '';
-          if (searchResult.corrected_query) {
-            correctedInfo = `<div style="font-size: 12px; color: #9C27B0; margin-bottom: 4px;">
-              ✓ Autocorrected: <em>${queryString}</em> → <strong>${searchResult.corrected_query}</strong>
-            </div>`;
-          }
+          // Update molecule data with corrected information from search API
+          const correctedName = searchResult.corrected_query || searchResult.name;
+          const wasCorrected = searchResult.corrected_query !== null;
 
-          // Create an iframe to embed the MolView visualization
-          const embedContainer = document.createElement('div');
-          embedContainer.className = 'chemfig-diagram molview-search-embed';
-          embedContainer.style.cssText = `
-            display: inline-block;
-            max-width: 600px;
-            margin: 0 12px 8px 0;
-            vertical-align: middle;
-          `;
+          // Use isomeric SMILES if 3D stereochemistry is enabled, otherwise canonical
+          const useSMILES = settings.mvUse3DSmiles && searchResult.isomeric_smiles ?
+            searchResult.isomeric_smiles :
+            searchResult.canonical_smiles;
 
-          // Add autocorrect info if present
-          if (correctedInfo) {
-            embedContainer.innerHTML = correctedInfo;
-          }
+          console.log(`%c✅ Autocorrect: "${queryString}" → "${correctedName}"`,
+            wasCorrected ? 'color: #9C27B0; font-weight: bold;' : 'color: #666;');
+          console.log(`%c🧬 Using SMILES: ${useSMILES}`, 'color: #4CAF50; font-weight: bold;');
 
-          // Create iframe for MolView embed
-          const iframe = document.createElement('iframe');
-          iframe.src = searchResult.embed_url;
-          iframe.style.cssText = `
-            width: 600px;
-            height: 450px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: white;
-          `;
-          iframe.title = `MolView: ${searchResult.name}`;
+          // Create updated molecule data with search results
+          const updatedMoleculeData = {
+            ...moleculeData,
+            type: 'smiles',
+            smiles: useSMILES,
+            nomenclature: correctedName,
+            searchResult: searchResult,  // Store full search result
+            wasCorrected: wasCorrected,
+            originalQuery: queryString
+          };
 
-          embedContainer.appendChild(iframe);
+          // Update the img dataset with corrected data
+          img.dataset.moleculeViewer = btoa(JSON.stringify(updatedMoleculeData));
 
-          // Add compound info below
-          const infoDiv = document.createElement('div');
-          infoDiv.style.cssText = `
-            font-size: 12px;
-            color: #666;
-            margin-top: 4px;
-          `;
-          infoDiv.innerHTML = `
-            <strong>${searchResult.name}</strong> (${searchResult.primary_type})
-            ${searchResult.canonical_smiles ? `<br/>SMILES: <code>${searchResult.canonical_smiles}</code>` : ''}
-            <br/><a href="${searchResult.source_url}" target="_blank" style="color: #9C27B0;">View source ↗</a>
-          `;
-          embedContainer.appendChild(infoDiv);
+          // Add autocorrect notice if query was corrected
+          // DISABLED: User doesn't want to see autocorrect notifications
+          // if (wasCorrected) {
+          //   const correctedNotice = document.createElement('div');
+          //   correctedNotice.style.cssText = `
+          //     font-size: 11px;
+          //     color: #9C27B0;
+          //     margin-bottom: 4px;
+          //     padding: 4px 8px;
+          //     background: rgba(156, 39, 176, 0.1);
+          //     border-left: 3px solid #9C27B0;
+          //     border-radius: 3px;
+          //   `;
+          //   correctedNotice.innerHTML = `✓ Autocorrected: <em>${queryString}</em> → <strong>${correctedName}</strong>`;
+          //
+          //   // Insert notice before the image
+          //   img.parentNode.insertBefore(correctedNotice, img);
+          // }
 
-          // Mark as loaded
-          img.dataset.loaded = 'true';
+          // Now render using MoleculeViewer with the corrected SMILES
+          activeLoads--;  // Decrement before calling renderer (it will increment again)
+          await loadMoleculeViewerImage(img);
 
-          // Replace the placeholder image with the embed
-          img.replaceWith(embedContainer);
-
-          console.log('%c✅ MolView Search embed loaded successfully', 'color: green; font-weight: bold;');
-          activeLoads--;
+          console.log('%c✅ MolView Search complete, rendered with MoleculeViewer', 'color: green; font-weight: bold;');
         })
         .catch(error => {
           console.error('%c❌ MolView Search failed:', 'color: red; font-weight: bold;', error);
@@ -3608,6 +4082,7 @@ function setupLazyLoading() {
   }
 
   // Helper function to load mol2chemfig rendering with caching
+  // NOW USES UNIVERSAL SEARCH API (port 8001) for autocorrect and intelligent filtering
   async function loadMol2chemfigImage(img) {
     activeLoads++;
     console.log('%c📐 LOADMOL2CHEMFIGIMAGE CALLED!', 'background: #222; color: #00FF00; font-size: 20px; padding: 10px;');
@@ -3619,10 +4094,33 @@ function setupLazyLoading() {
       const moleculeData = JSON.parse(atob(img.dataset.moleculeViewer));
       console.log('%c📦 Decoded molecule data:', 'color: #0088FF; font-weight: bold;', moleculeData);
 
+      // ========================================
+      // STEP 1: Query Search API (port 8001)
+      // ========================================
+      // Skip search API if we already have chemfig code (direct LaTeX input)
+      const isChemfig = moleculeData.type === 'chemfig' && moleculeData.chemfig;
+
+      if (!isChemfig) {
+        console.log('%c🔍 STEP 1: Querying Universal Search API...', 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
+        const searchData = await querySearchAPI(moleculeData);
+
+        // Show autocorrect notice if needed
+        // DISABLED: User doesn't want to see autocorrect notifications
+        // if (searchData.wasCorrected) {
+        //   showAutocorrectNotice(img, searchData.originalQuery, searchData.correctedName);
+        // }
+
+        // Update moleculeData with search results
+        moleculeData.type = 'smiles';
+        moleculeData.smiles = searchData.smiles;
+        moleculeData.nomenclature = searchData.correctedName;
+
+        console.log('%c✅ Search API complete, rendering with corrected SMILES...', 'color: #4CAF50; font-weight: bold;');
+      }
+
       // Determine input data based on type
       const isSMILES = moleculeData.type === 'smiles' && moleculeData.smiles;
       const isNomenclature = moleculeData.type === 'nomenclature' && moleculeData.nomenclature;
-      const isChemfig = moleculeData.type === 'chemfig' && moleculeData.chemfig;
 
       console.log('%c📐 MOL2CHEMFIG Type Detection:', 'color: #FF6B00; font-weight: bold;', {
         type: moleculeData.type,
@@ -3729,26 +4227,26 @@ function setupLazyLoading() {
       }
 
       // Log mol2chemfig options being used
-      console.log('%c⚙️ mol2chemfig Rendering Options:', 'color: #FF6B00; font-weight: bold;', {
-        aromaticCircles: aromaticCircles,
-        showCarbons: showCarbons,
-        showMethyls: showMethyls,
-        atomNumbers: atomNumbers,
-        addH2: addH2,
-        flipHorizontal: flipHorizontal,
-        flipVertical: flipVertical,
-        hasAsymmetricalText: hasAsymmetricalText,
-        useServerFlipH: useServerFlipH,
-        useServerFlipV: useServerFlipV,
-        selectionsArray: selections
-      });
+      // console.log('%c⚙️ mol2chemfig Rendering Options:', 'color: #FF6B00; font-weight: bold;', {
+      //   aromaticCircles: aromaticCircles,
+      //   showCarbons: showCarbons,
+      //   showMethyls: showMethyls,
+      //   atomNumbers: atomNumbers,
+      //   addH2: addH2,
+      //   flipHorizontal: flipHorizontal,
+      //   flipVertical: flipVertical,
+      //   hasAsymmetricalText: hasAsymmetricalText,
+      //   useServerFlipH: useServerFlipH,
+      //   useServerFlipV: useServerFlipV,
+      //   selectionsArray: selections
+      // });
 
       const requestBody = {
         textAreaData: inputData,
         selections: selections,
         h2: addH2 ? 'add' : (settings.m2cfHydrogensMode || 'keep')
       };
-      console.log('%c📤 POST Body:', 'color: #9B59B6; font-weight: bold;', requestBody);
+      // console.log('%c📤 POST Body:', 'color: #9B59B6; font-weight: bold;', requestBody);
 
       // Use background fetch to bypass CSP
       backgroundFetchJSON(`${MOL2CHEMFIG_API}/m2cf/submit`, {
@@ -3757,7 +4255,7 @@ function setupLazyLoading() {
         body: JSON.stringify(requestBody)
       })
         .then(async (data) => {
-          console.log('%c📊 Response data:', 'color: #FFAA00; font-weight: bold;', data);
+          // console.log('%c📊 Response data:', 'color: #FFAA00; font-weight: bold;', data);
 
           if (data.error) {
             throw new Error(data.error);
@@ -4161,7 +4659,10 @@ function setupLazyLoading() {
   }
 
   // Helper function to load molecule image based on configured renderer engine
+  // ALL engines now automatically use Universal Search API (port 8001) for autocorrect
   function loadMoleculeImage(img) {
+    console.log('%c🔍 Universal Search API enabled - autocorrect active for ALL engines', 'background: #9C27B0; color: white; padding: 3px 6px;');
+
     // First check if the image has a specific renderer class (takes priority)
     if (img.classList.contains('chemfig-pubchem')) {
       console.log('%c🌐 Using PUBCHEM renderer (from class)', 'background: #4CAF50; color: #FFF; font-size: 14px; padding: 5px;');
@@ -4169,12 +4670,6 @@ function setupLazyLoading() {
     } else if (img.classList.contains('chemfig-mol2chemfig')) {
       console.log('%c📐 Using MOL2CHEMFIG renderer (from class)', 'background: #FF6B00; color: #FFF; font-size: 14px; padding: 5px;');
       loadMol2chemfigImage(img);
-    } else if (img.classList.contains('chemfig-molview-search')) {
-      console.log('%c🔍 Using MOLVIEW SEARCH renderer (from class)', 'background: #9C27B0; color: #FFF; font-size: 14px; padding: 5px;');
-      loadMolViewSearchImage(img);
-    } else if (settings.rendererEngine === 'molview-search') {
-      console.log('%c🔍 Using MOLVIEW SEARCH renderer engine', 'background: #9C27B0; color: #FFF; font-size: 14px; padding: 5px;');
-      loadMolViewSearchImage(img);
     } else if (settings.rendererEngine === 'mol2chemfig') {
       console.log('%c📐 Using MOL2CHEMFIG renderer engine', 'background: #FF6B00; color: #FFF; font-size: 14px; padding: 5px;');
       loadMol2chemfigImage(img);

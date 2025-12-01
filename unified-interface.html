@@ -1,2077 +1,318 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChemParser - Unified Interface</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px 40px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .header h1 {
-            color: #667eea;
-            font-size: 32px;
-            margin-bottom: 5px;
-        }
-
-        .header p {
-            color: #666;
-            font-size: 14px;
-        }
-
-        .tabs {
-            background: rgba(255, 255, 255, 0.95);
-            display: flex;
-            gap: 5px;
-            padding: 10px 40px 0;
-            overflow-x: auto;
-        }
-
-        .tab-button {
-            background: transparent;
-            border: none;
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 600;
-            color: #666;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-
-        .tab-button:hover {
-            color: #667eea;
-        }
-
-        .tab-button.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-        }
-
-        .tab-content {
-            display: none;
-            padding: 30px 40px;
-            background: white;
-            margin: 0 40px 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            min-height: 600px;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .iframe-container {
-            width: 100%;
-            height: 800px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .iframe-container iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        .control-panel {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .control-group {
-            margin-bottom: 15px;
-        }
-
-        .control-group label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #333;
-        }
-
-        .control-group input[type="text"],
-        .control-group input[type="number"],
-        .control-group select {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .control-group input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            margin-right: 8px;
-            cursor: pointer;
-        }
-
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-right: 10px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-        }
-
-        .result-container {
-            margin-top: 20px;
-            padding: 20px;
-            background: white;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            min-height: 200px;
-        }
-
-        .result-container img {
-            max-width: 100%;
-            height: auto;
-        }
-
-        .test-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 15px;
-        }
-
-        .test-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            border: 2px solid #e0e0e0;
-            transition: all 0.3s;
-        }
-
-        .test-card:hover {
-            border-color: #667eea;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-        }
-
-        .test-card h3 {
-            color: #333;
-            font-size: 16px;
-            margin-bottom: 8px;
-        }
-
-        .test-card p {
-            color: #666;
-            font-size: 13px;
-            margin-bottom: 12px;
-        }
-
-        .test-card button {
-            width: 100%;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-
-        .status-online {
-            background: #10b981;
-            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
-        }
-
-        .status-offline {
-            background: #ef4444;
-        }
-
-        /* Flow Diagram Styles */
-        .flow-node {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 15px 20px;
-            min-width: 140px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            border: 3px solid transparent;
-        }
-
-        .flow-node:hover {
-            transform: translateY(-5px) scale(1.05);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-        }
-
-        .flow-node.highlighted {
-            border-color: #fbbf24;
-            box-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
-        }
-
-        .flow-node.dimmed {
-            opacity: 0.3;
-        }
-
-        .node-icon {
-            font-size: 32px;
-            margin-bottom: 8px;
-        }
-
-        .node-title {
-            font-weight: 700;
-            font-size: 14px;
-            color: #1a1a2e;
-            margin-bottom: 4px;
-        }
-
-        .node-subtitle {
-            font-size: 11px;
-            color: #666;
-        }
-
-        .node-status {
-            margin-top: 8px;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-
-        .node-status.online {
-            background: #d1fae5;
-            color: #059669;
-        }
-
-        .node-status.offline {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-
-        .node-status.checking {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        /* Node type specific styles */
-        .user-node { border-left: 4px solid #3b82f6; }
-        .page-node { border-left: 4px solid #8b5cf6; }
-        .extension-node {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-            border: 3px solid #667eea;
-        }
-        .selector-node { border-left: 4px solid #f59e0b; }
-        .server-node {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
-            border: 3px solid #10b981;
-        }
-        .docker-node {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.1));
-            border: 3px solid #8b5cf6;
-        }
-        .api-node {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.1));
-            border: 3px solid #f59e0b;
-        }
-        .library-node {
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(8, 145, 178, 0.1));
-            border: 3px solid #06b6d4;
-        }
-        .output-node { border-left: 4px solid #10b981; }
-        .process-node { border-left: 4px solid #6366f1; }
-        .options-node { border-left: 4px solid #ec4899; }
-        .cache-node { border-left: 4px solid #14b8a6; }
-        .bridge-node {
-            background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15));
-            border: 3px solid #f59e0b;
-        }
-
-        .flow-section {
-            position: absolute;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .section-title {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-align: center;
-        }
-
-        /* Connection line styles */
-        .flow-line {
-            stroke-width: 2;
-            fill: none;
-            opacity: 0.7;
-            transition: all 0.3s ease;
-        }
-
-        .flow-line:hover {
-            stroke-width: 4;
-            opacity: 1;
-        }
-
-        .flow-line.highlighted {
-            stroke-width: 4;
-            opacity: 1;
-            filter: drop-shadow(0 0 6px currentColor);
-        }
-
-        .flow-line.dimmed {
-            opacity: 0.15;
-        }
-
-        .flow-line-label {
-            fill: white;
-            font-size: 10px;
-            font-weight: 600;
-            text-anchor: middle;
-        }
-
-        /* Draggable nodes */
-        .flow-node.draggable {
-            cursor: grab;
-            user-select: none;
-        }
-
-        .flow-node.draggable:active {
-            cursor: grabbing;
-        }
-
-        .flow-node.dragging {
-            opacity: 0.8;
-            z-index: 1000;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-        }
-
-        .viewer-container {
-            width: 100%;
-            height: 600px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .viewer-container iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        #molview-3dmol-container {
-            width: 100%;
-            height: 600px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #1a1a2e;
-        }
-    </style>
-
-    <!-- 3Dmol.js for molecular visualization -->
+    <title>QuintessenLabs | Professional Suite</title>
+    <link rel="stylesheet" href="quintessen-v2.css">
+    <!-- 3Dmol.js -->
     <script src="https://3dmol.org/build/3Dmol-min.js"></script>
     <script src="advanced_molviewer_3dmol.js"></script>
 </head>
 
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px 40px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .header h1 {
-            color: #667eea;
-            font-size: 32px;
-            margin-bottom: 5px;
-        }
-
-        .header p {
-            color: #666;
-            font-size: 14px;
-        }
-
-        .tabs {
-            background: rgba(255, 255, 255, 0.95);
-            display: flex;
-            gap: 5px;
-            padding: 10px 40px 0;
-            overflow-x: auto;
-        }
-
-        .tab-button {
-            background: transparent;
-            border: none;
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 600;
-            color: #666;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-
-        .tab-button:hover {
-            color: #667eea;
-        }
-
-        .tab-button.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-        }
-
-        .tab-content {
-            display: none;
-            padding: 30px 40px;
-            background: white;
-            margin: 0 40px 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            min-height: 600px;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .iframe-container {
-            width: 100%;
-            height: 800px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .iframe-container iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        .control-panel {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .control-group {
-            margin-bottom: 15px;
-        }
-
-        .control-group label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #333;
-        }
-
-        .control-group input[type="text"],
-        .control-group input[type="number"],
-        .control-group select {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .control-group input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            margin-right: 8px;
-            cursor: pointer;
-        }
-
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-right: 10px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-        }
-
-        .result-container {
-            margin-top: 20px;
-            padding: 20px;
-            background: white;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            min-height: 200px;
-        }
-
-        .result-container img {
-            max-width: 100%;
-            height: auto;
-        }
-
-        .test-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 15px;
-        }
-
-        .test-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            border: 2px solid #e0e0e0;
-            transition: all 0.3s;
-        }
-
-        .test-card:hover {
-            border-color: #667eea;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-        }
-
-        .test-card h3 {
-            color: #333;
-            font-size: 16px;
-            margin-bottom: 8px;
-        }
-
-        .test-card p {
-            color: #666;
-            font-size: 13px;
-            margin-bottom: 12px;
-        }
-
-        .test-card button {
-            width: 100%;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-
-        .status-online {
-            background: #10b981;
-            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
-        }
-
-        .status-offline {
-            background: #ef4444;
-        }
-
-        /* Flow Diagram Styles */
-        .flow-node {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 15px 20px;
-            min-width: 140px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            border: 3px solid transparent;
-        }
-
-        .flow-node:hover {
-            transform: translateY(-5px) scale(1.05);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-        }
-
-        .flow-node.highlighted {
-            border-color: #fbbf24;
-            box-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
-        }
-
-        .flow-node.dimmed {
-            opacity: 0.3;
-        }
-
-        .node-icon {
-            font-size: 32px;
-            margin-bottom: 8px;
-        }
-
-        .node-title {
-            font-weight: 700;
-            font-size: 14px;
-            color: #1a1a2e;
-            margin-bottom: 4px;
-        }
-
-        .node-subtitle {
-            font-size: 11px;
-            color: #666;
-        }
-
-        .node-status {
-            margin-top: 8px;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-
-        .node-status.online {
-            background: #d1fae5;
-            color: #059669;
-        }
-
-        .node-status.offline {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-
-        .node-status.checking {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        /* Node type specific styles */
-        .user-node { border-left: 4px solid #3b82f6; }
-        .page-node { border-left: 4px solid #8b5cf6; }
-        .extension-node {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-            border: 3px solid #667eea;
-        }
-        .selector-node { border-left: 4px solid #f59e0b; }
-        .server-node {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
-            border: 3px solid #10b981;
-        }
-        .docker-node {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.1));
-            border: 3px solid #8b5cf6;
-        }
-        .api-node {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.1));
-            border: 3px solid #f59e0b;
-        }
-        .library-node {
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(8, 145, 178, 0.1));
-            border: 3px solid #06b6d4;
-        }
-        .output-node { border-left: 4px solid #10b981; }
-        .process-node { border-left: 4px solid #6366f1; }
-        .options-node { border-left: 4px solid #ec4899; }
-        .cache-node { border-left: 4px solid #14b8a6; }
-        .bridge-node {
-            background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15));
-            border: 3px solid #f59e0b;
-        }
-
-        .flow-section {
-            position: absolute;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .section-title {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-align: center;
-        }
-
-        /* Connection line styles */
-        .flow-line {
-            stroke-width: 2;
-            fill: none;
-            opacity: 0.7;
-            transition: all 0.3s ease;
-        }
-
-        .flow-line:hover {
-            stroke-width: 4;
-            opacity: 1;
-        }
-
-        .flow-line.highlighted {
-            stroke-width: 4;
-            opacity: 1;
-            filter: drop-shadow(0 0 6px currentColor);
-        }
-
-        .flow-line.dimmed {
-            opacity: 0.15;
-        }
-
-        .flow-line-label {
-            fill: white;
-            font-size: 10px;
-            font-weight: 600;
-            text-anchor: middle;
-        }
-
-        /* Draggable nodes */
-        .flow-node.draggable {
-            cursor: grab;
-            user-select: none;
-        }
-
-        .flow-node.draggable:active {
-            cursor: grabbing;
-        }
-
-        .flow-node.dragging {
-            opacity: 0.8;
-            z-index: 1000;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-        }
-    </style>
-</head>
 <body>
-    <div class="header">
-        <h1>🧪 ChemParser - Unified Interface</h1>
-        <p>Complete chemistry rendering and visualization platform</p>
-    </div>
-
-    <div class="tabs">
-        <button class="tab-button" onclick="switchTab('flow')">🔄 Flow</button>
-        <button class="tab-button" onclick="switchTab('mol2chemfig')">📐 Mol2ChemFig</button>
-        <button class="tab-button" onclick="switchTab('moleculeviewer')">🧬 MoleculeViewer</button>
-        <button class="tab-button" onclick="switchTab('pubchem')">🌐 PubChem</button>
-        <button class="tab-button" onclick="switchTab('molview')">🔮 MolView 3D</button>
-        <button class="tab-button" onclick="switchTab('3d-smiles')">🔬 3D SMILES</button>
-        <button class="tab-button" onclick="switchTab('tests')">🧪 Tests</button>
-        <button class="tab-button" onclick="switchTab('designs')">🎨 Designs</button>
-        <button class="tab-button" onclick="switchTab('control')">🎮 Control Panel</button>
-    </div>
-
-    <!-- Flow Tab -->
-    <div id="flow" class="tab-content">
-        <h2>🔄 ChemParser Data Flow Diagram</h2>
-        <p style="margin-bottom: 20px; color: #666;">
-            Interactive visualization of how data flows through the ChemParser system.
-            Click on nodes to see details. Hover over connections to see data being transferred.
-        </p>
-
-        <!-- Flow Controls -->
-        <div class="control-panel" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
-            <div>
-                <label style="font-weight: 600; margin-right: 10px;">Highlight Flow:</label>
-                <select id="flow-select" onchange="highlightFlow(this.value)" style="padding: 8px 12px; border-radius: 6px; border: 2px solid #ddd;">
-                    <option value="all">All Connections</option>
-                    <option value="moleculeviewer">MoleculeViewer Flow</option>
-                    <option value="mol2chemfig">Mol2ChemFig Flow</option>
-                    <option value="pubchem">PubChem Flow</option>
-                </select>
-            </div>
-            <button class="btn" onclick="checkAllServers()">🔍 Check Server Status</button>
-            <button class="btn btn-secondary" onclick="resetFlowView()">Reset View</button>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-logo">QuintessenLabs</div>
+            <div class="brand-tagline">Advanced Chemical Intelligence</div>
         </div>
 
-        <!-- Main Flow Diagram -->
-        <div id="flow-diagram" style="position: relative; width: 100%; height: 750px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 12px; overflow: hidden; margin-top: 20px;">
+        <nav class="nav-links">
+            <a class="nav-item active" onclick="switchTab('flow')">
+                <span class="nav-icon">🔄</span>
+                <span>System Architecture</span>
+            </a>
+            <a class="nav-item" onclick="switchTab('mol2chemfig')">
+                <span class="nav-icon">📐</span>
+                <span>Mol2ChemFig</span>
+            </a>
+            <a class="nav-item" onclick="switchTab('moleculeviewer')">
+                <span class="nav-icon">🧬</span>
+                <span>MoleculeViewer</span>
+            </a>
+            <a class="nav-item" onclick="switchTab('pubchem')">
+                <span class="nav-icon">🌐</span>
+                <span>PubChem Fetcher</span>
+            </a>
+            <a class="nav-item" onclick="switchTab('molview')">
+                <span class="nav-icon">🔮</span>
+                <span>QLabs - MolView</span>
+            </a>
+            <a class="nav-item" onclick="switchTab('smilesdrawer')">
+                <span class="nav-icon">✏️</span>
+                <span>QLabs - SmilesDrawer</span>
+            </a>
+            <a class="nav-item" onclick="switchTab('3d-smiles')">
+                <span class="nav-icon">🔬</span>
+                <span>3D SMILES</span>
+            </a>
+            <a class="nav-item" onclick="switchTab('tests')">
+                <span class="nav-icon">🧪</span>
+                <span>System Tests</span>
+            </a>
+            <a class="nav-item" onclick="switchTab('designs')">
+                <span class="nav-icon">🎨</span>
+                <span>Design Gallery</span>
+            </a>
+            <a class="nav-item" onclick="switchTab('control')">
+                <span class="nav-icon">🎮</span>
+                <span>Control Panel</span>
+            </a>
+        </nav>
+    </aside>
 
-            <!-- Instructions -->
-            <div style="position: absolute; top: 10px; left: 10px; color: rgba(255,255,255,0.6); font-size: 12px; z-index: 100;">
-                💡 Drag nodes to rearrange • Click for details • Use dropdown to filter flows
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="header">
+            <h1 class="page-title" id="page-title">System Architecture</h1>
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                <span>System Online</span>
             </div>
+        </header>
 
-            <!-- SVG for connections -->
-            <svg id="flow-connections" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
-                <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                        <polygon points="0 0, 10 3.5, 0 7" fill="#667eea" />
-                    </marker>
-                </defs>
-            </svg>
+        <div class="content-area">
 
-            <!-- LAYER 1: Input (Top Left) -->
-            <div class="flow-node page-node draggable" id="node-page" style="left: 30px; top: 80px;" onclick="showNodeDetails('page')">
-                <div class="node-icon">📄</div>
-                <div class="node-title">Web Page</div>
-                <div class="node-subtitle">chem:histamine:</div>
-            </div>
+            <!-- Flow Tab -->
+            <div id="flow" class="tab-pane active">
+                <div class="card">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <div>
+                            <h2 class="section-title">Data Flow Visualization</h2>
+                            <p class="section-desc">Real-time visualization of chemical data processing pipelines.</p>
+                        </div>
+                        <button class="btn btn-secondary" onclick="checkAllServers()">Refresh Status</button>
+                    </div>
 
-            <div class="flow-node options-node draggable" id="node-options" style="left: 30px; top: 220px;" onclick="showNodeDetails('options')">
-                <div class="node-icon">⚙️</div>
-                <div class="node-title">User Options</div>
-                <div class="node-subtitle">3D? Engine? Settings</div>
-            </div>
+                    <div id="flow-diagram" style="position: relative; width: 100%; height: 700px; overflow: hidden;">
+                        <svg id="flow-connections"
+                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></svg>
 
-            <!-- LAYER 2: Extension -->
-            <div class="flow-node extension-node draggable" id="node-extension" style="left: 220px; top: 150px;" onclick="showNodeDetails('extension')">
-                <div class="node-icon">🧩</div>
-                <div class="node-title">Chrome Extension</div>
-                <div class="node-subtitle">Detects chem:X: patterns</div>
-                <div class="node-status" id="status-extension">Active</div>
-            </div>
+                        <!-- Nodes -->
+                        <div class="flow-node draggable" id="node-page"
+                            style="position: absolute; left: 50px; top: 80px; padding: 1rem; border-radius: 12px; color: #1F2937;">
+                            <div style="font-size: 1.5rem;">📄</div>
+                            <div style="font-weight: 700;">Web Page</div>
+                        </div>
 
-            <!-- LAYER 3: SMILES Bridge (Central Hub) -->
-            <div class="flow-node bridge-node draggable" id="node-smiles-bridge" style="left: 450px; top: 150px;" onclick="showNodeDetails('smiles-bridge')">
-                <div class="node-icon">🌉</div>
-                <div class="node-title">SMILES Bridge</div>
-                <div class="node-subtitle">Name → SMILES conversion</div>
-            </div>
+                        <div class="flow-node draggable" id="node-extension"
+                            style="position: absolute; left: 250px; top: 150px; padding: 1rem; border-radius: 12px; color: #1F2937;">
+                            <div style="font-size: 1.5rem;">🧩</div>
+                            <div style="font-weight: 700;">Extension</div>
+                        </div>
 
-            <!-- LAYER 4: SMILES Sources (Behind Bridge) -->
-            <div class="flow-node api-node draggable" id="node-opsin-3d" style="left: 620px; top: 50px;" onclick="showNodeDetails('opsin-3d')">
-                <div class="node-icon">🔮</div>
-                <div class="node-title">OPSIN 3D</div>
-                <div class="node-subtitle">Stereochemistry SMILES</div>
-            </div>
+                        <div class="flow-node draggable" id="node-moleculeviewer"
+                            style="position: absolute; left: 750px; top: 420px; padding: 1rem; border-radius: 12px; color: #1F2937;">
+                            <div style="font-size: 1.5rem;">🧬</div>
+                            <div style="font-weight: 700;">MoleculeViewer</div>
+                            <div id="status-moleculeviewer" style="font-size: 0.8rem; margin-top: 4px;">Checking...
+                            </div>
+                        </div>
 
-            <div class="flow-node api-node draggable" id="node-opsin" style="left: 620px; top: 170px;" onclick="showNodeDetails('opsin')">
-                <div class="node-icon">🔬</div>
-                <div class="node-title">OPSIN 2D</div>
-                <div class="node-subtitle">ebi.ac.uk API</div>
-            </div>
+                        <div class="flow-node draggable" id="node-mol2chemfig"
+                            style="position: absolute; left: 950px; top: 420px; padding: 1rem; border-radius: 12px; color: #1F2937;">
+                            <div style="font-size: 1.5rem;">📐</div>
+                            <div style="font-weight: 700;">Mol2ChemFig</div>
+                            <div id="status-mol2chemfig" style="font-size: 0.8rem; margin-top: 4px;">Checking...</div>
+                        </div>
 
-            <div class="flow-node api-node draggable" id="node-pubchem-api" style="left: 620px; top: 290px;" onclick="showNodeDetails('pubchem-api')">
-                <div class="node-icon">☁️</div>
-                <div class="node-title">PubChem API</div>
-                <div class="node-subtitle">Fallback SMILES</div>
-            </div>
+                        <div class="flow-node draggable" id="node-pubchem-local"
+                            style="position: absolute; left: 1150px; top: 420px; padding: 1rem; border-radius: 12px; color: #1F2937;">
+                            <div style="font-size: 1.5rem;">🌐</div>
+                            <div style="font-weight: 700;">PubChem</div>
+                            <div id="status-pubchem" style="font-size: 0.8rem; margin-top: 4px;">Checking...</div>
+                        </div>
 
-            <!-- LAYER 5: Renderer Selector -->
-            <div class="flow-node selector-node draggable" id="node-selector" style="left: 450px; top: 350px;" onclick="showNodeDetails('selector')">
-                <div class="node-icon">🔀</div>
-                <div class="node-title">Renderer Selector</div>
-                <div class="node-subtitle">Which engine?</div>
-            </div>
-
-            <!-- LAYER 6: Renderers -->
-            <div class="flow-node server-node draggable" id="node-moleculeviewer" style="left: 620px; top: 420px;" onclick="showNodeDetails('moleculeviewer')">
-                <div class="node-icon">🧬</div>
-                <div class="node-title">MoleculeViewer</div>
-                <div class="node-subtitle">:5000 + RDKit</div>
-                <div class="node-status" id="status-moleculeviewer">Checking...</div>
-            </div>
-
-            <div class="flow-node server-node draggable" id="node-mol2chemfig" style="left: 800px; top: 420px;" onclick="showNodeDetails('mol2chemfig')">
-                <div class="node-icon">📐</div>
-                <div class="node-title">Mol2ChemFig</div>
-                <div class="node-subtitle">:5001 + Docker</div>
-                <div class="node-status" id="status-mol2chemfig">Checking...</div>
-            </div>
-
-            <div class="flow-node server-node draggable" id="node-pubchem-local" style="left: 980px; top: 420px;" onclick="showNodeDetails('pubchem-local')">
-                <div class="node-icon">🌐</div>
-                <div class="node-title">PubChem Renderer</div>
-                <div class="node-subtitle">:5002 Images</div>
-                <div class="node-status" id="status-pubchem">Checking...</div>
-            </div>
-
-            <!-- LAYER 7: Backend Processing -->
-            <div class="flow-node library-node draggable" id="node-rdkit" style="left: 620px; top: 550px;" onclick="showNodeDetails('rdkit')">
-                <div class="node-icon">⚗️</div>
-                <div class="node-title">RDKit</div>
-                <div class="node-subtitle">SMILES→SVG</div>
-            </div>
-
-            <div class="flow-node docker-node draggable" id="node-docker" style="left: 800px; top: 550px;" onclick="showNodeDetails('docker')">
-                <div class="node-icon">🐳</div>
-                <div class="node-title">Docker :8000</div>
-                <div class="node-subtitle">LaTeX→PDF→SVG</div>
-                <div class="node-status" id="status-docker">Checking...</div>
-            </div>
-
-            <div class="flow-node api-node draggable" id="node-molview" style="left: 980px; top: 550px;" onclick="showNodeDetails('molview')">
-                <div class="node-icon">🎮</div>
-                <div class="node-title">MolView.org</div>
-                <div class="node-subtitle">3D Viewer (iframe)</div>
-            </div>
-
-            <!-- LAYER 8: Cache -->
-            <div class="flow-node cache-node draggable" id="node-cache" style="left: 710px; top: 670px;" onclick="showNodeDetails('cache')">
-                <div class="node-icon">💾</div>
-                <div class="node-title">Cache</div>
-                <div class="node-subtitle">SVG URLs stored</div>
-            </div>
-
-            <!-- LAYER 9: Output -->
-            <div class="flow-node output-node draggable" id="node-output" style="left: 220px; top: 420px;" onclick="showNodeDetails('output')">
-                <div class="node-icon">🖼️</div>
-                <div class="node-title">SVG/PNG Image</div>
-                <div class="node-subtitle">Cached URL</div>
-            </div>
-
-            <div class="flow-node process-node draggable" id="node-darkmode" style="left: 220px; top: 550px;" onclick="showNodeDetails('darkmode')">
-                <div class="node-icon">🌙</div>
-                <div class="node-title">Dark Mode</div>
-                <div class="node-subtitle">Invert colors</div>
-            </div>
-
-        </div>
-
-        <!-- Node Details Panel -->
-        <div id="node-details" style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; display: none;">
-            <h3 id="details-title" style="margin-bottom: 15px; color: #333;"></h3>
-            <div id="details-content"></div>
-        </div>
-
-        <!-- Legend -->
-        <div style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-            <h3 style="margin-bottom: 15px; color: #333;">📖 Legend</h3>
-            <div style="display: flex; flex-wrap: wrap; gap: 20px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 4px;"></div>
-                    <span>Extension</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #f59e0b, #fbbf24); border-radius: 4px;"></div>
-                    <span>SMILES Bridge (Shared)</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 4px;"></div>
-                    <span>Local Servers</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 4px;"></div>
-                    <span>External APIs</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 4px;"></div>
-                    <span>Docker</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #06b6d4, #0891b2); border-radius: 4px;"></div>
-                    <span>Libraries</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="width: 20px; height: 20px; background: linear-gradient(135deg, #14b8a6, #0d9488); border-radius: 4px;"></div>
-                    <span>Cache</span>
+                        <div class="flow-node draggable" id="node-docker"
+                            style="position: absolute; left: 950px; top: 550px; padding: 1rem; border-radius: 12px; color: #1F2937;">
+                            <div style="font-size: 1.5rem;">🐳</div>
+                            <div style="font-weight: 700;">Docker</div>
+                            <div id="status-docker" style="font-size: 0.8rem; margin-top: 4px;">Checking...</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <h4 style="margin-top: 20px; margin-bottom: 10px; color: #333;">📝 Correct Data Flow:</h4>
-            <div style="background: #1a1a2e; color: #e2e8f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; line-height: 1.8;">
-                <div>1️⃣ <span style="color: #8b5cf6;">Page</span> has <code>chem:histamine:</code> pattern</div>
-                <div>2️⃣ <span style="color: #667eea;">Extension</span> detects it, reads <span style="color: #ec4899;">User Options</span> (3D? which engine?)</div>
-                <div>3️⃣ <span style="color: #fbbf24;">SMILES Bridge</span> converts "histamine" → "NCCC1=CN=CN1"</div>
-                <div style="padding-left: 20px; color: #9ca3af;">↳ Tries: OPSIN 3D (if enabled) → OPSIN 2D → PubChem API</div>
-                <div>4️⃣ <span style="color: #f59e0b;">Renderer Selector</span> picks engine based on user choice</div>
-                <div>5️⃣ <span style="color: #10b981;">Server</span> (MoleculeViewer/Mol2ChemFig/PubChem) generates image</div>
-                <div>6️⃣ <span style="color: #14b8a6;">Cache</span> stores SVG, returns URL</div>
-                <div>7️⃣ <span style="color: #6366f1;">Dark Mode</span> inverts colors if needed (client-side)</div>
-                <div>8️⃣ <span style="color: #10b981;">Image</span> replaces original text on page</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Mol2ChemFig Tab -->
-    <div id="mol2chemfig" class="tab-content active">
-        <h2>Mol2ChemFig Generator - Full Interface with ALL 8 Options</h2>
-        <p style="margin-bottom: 15px; color: #666;">
-            Complete ChemFig conversion tool with aromatic, fancy bonds, compact view, show carbon, show methyl, flip, flop, and atom numbers options.
-            Includes Kekule.js drawing, PubChem search, reaction schemes, and multiple export formats.
-        </p>
-        <div class="iframe-container" style="height: 1200px;">
-            <iframe src="mol2chemfig-full-interface.html"></iframe>
-        </div>
-    </div>
-
-    <!-- MoleculeViewer Tab -->
-    <div id="moleculeviewer" class="tab-content">
-        <h2>MoleculeViewer</h2>
-        <div class="control-panel">
-            <div class="control-group">
-                <label>Enter SMILES:</label>
-                <input type="text" id="mv-smiles" placeholder="e.g., CCO or c1ccccc1" value="CCO">
-            </div>
-            <div class="control-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="mv-3d-toggle">
-                    <span>Generate 3D SMILES (using OPSIN)</span>
-                </label>
-            </div>
-            <div class="control-group">
-                <label>Size:</label>
-                <input type="number" id="mv-width" placeholder="Width" value="400" style="width: 48%; display: inline-block;">
-                <input type="number" id="mv-height" placeholder="Height" value="300" style="width: 48%; display: inline-block; margin-left: 4%;">
-            </div>
-            <button class="btn" onclick="generateMoleculeViewer()">🚀 Generate</button>
-            <button class="btn btn-secondary" onclick="clearMoleculeViewer()">Clear</button>
-        </div>
-        <div id="mv-result" class="result-container">
-            Results will appear here...
-        </div>
-    </div>
-
-    <!-- PubChem Tab -->
-    <div id="pubchem" class="tab-content">
-        <h2>PubChem Image Fetcher</h2>
-        <div class="control-panel">
-            <div class="control-group">
-                <label>Enter Compound Name:</label>
-                <input type="text" id="pubchem-name" placeholder="e.g., histamine, aspirin, caffeine" value="histamine">
-            </div>
-            <div class="control-group">
-                <label>Image Type:</label>
-                <select id="pubchem-type">
-                    <option value="2d">2D Structure</option>
-                    <option value="3d">3D Structure</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>Image Size:</label>
-                <select id="pubchem-size">
-                    <option value="small">Small</option>
-                    <option value="large" selected>Large</option>
-                </select>
-            </div>
-            <button class="btn" onclick="fetchPubChem()">🚀 Fetch Image</button>
-            <button class="btn" onclick="open3DViewer()">🔮 Open 3D Viewer</button>
-            <button class="btn btn-secondary" onclick="clearPubChem()">Clear</button>
-        </div>
-        <div id="pubchem-result" class="result-container">
-            <p>Status: <span class="status-indicator status-offline" id="pubchem-status"></span><span id="pubchem-status-text">Checking server...</span></p>
-            <div id="pubchem-image"></div>
-        </div>
-    </div>
-
-    <!-- MolView Tab -->
-    <div id="molview" class="tab-content">
-        <h2>🔮 MolView 3D Structure Viewer</h2>
-        <div class="control-panel">
-            <div class="control-group">
-                <label>Enter SMILES, InChI, or Compound Name:</label>
-                <input type="text" id="molview-input" placeholder="e.g., CC, CCO, benzene, aspirin" value="CCO">
-            </div>
-            <div class="control-group">
-                <label>View Options:</label>
-                <div style="display: flex; gap: 15px; align-items: center;">
-                    <button class="btn" onclick="loadMolView()">🚀 Load Structure</button>
-                    <button class="btn btn-secondary" onclick="resetMolView()">Reset View</button>
-                    <select id="molview-representation">
-                        <option value="ball-stick">Ball & Stick</option>
-                        <option value="stick">Stick</option>
-                        <option value="wireframe">Wireframe</option>
-                        <option value="vdw">van der Waals</option>
-                    </select>
+            <!-- Mol2ChemFig Tab -->
+            <div id="mol2chemfig" class="tab-pane">
+                <div class="card">
+                    <h2 class="section-title">Mol2ChemFig Generator</h2>
+                    <p class="section-desc">Professional LaTeX chemical structure generation.</p>
+                    <div class="iframe-wrapper">
+                        <iframe src="mol2chemfig-full-interface.html"></iframe>
+                    </div>
                 </div>
             </div>
+
+            <!-- MoleculeViewer Tab -->
+            <div id="moleculeviewer" class="tab-pane">
+                <div class="card">
+                    <h2 class="section-title">MoleculeViewer</h2>
+                    <p class="section-desc">RDKit-based molecular rendering engine.</p>
+
+                    <div class="control-grid">
+                        <div class="input-group">
+                            <label class="input-label">SMILES String</label>
+                            <input type="text" class="input-field" id="mv-smiles" value="CCO">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Dimensions</label>
+                            <div style="display: flex; gap: 1rem;">
+                                <input type="number" class="input-field" id="mv-width" value="400" placeholder="W">
+                                <input type="number" class="input-field" id="mv-height" value="300" placeholder="H">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 2rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" id="mv-3d-toggle">
+                            <span style="font-weight: 600; color: var(--text-main);">Enable 3D Stereochemistry
+                                (OPSIN)</span>
+                        </label>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn btn-primary" onclick="generateMoleculeViewer()">
+                            <span>🚀</span> Generate Structure
+                        </button>
+                        <button class="btn btn-secondary" onclick="clearMoleculeViewer()">Clear</button>
+                    </div>
+                </div>
+
+                <div id="mv-result" class="result-box">
+                    <span style="color: var(--text-light);">Visualization will appear here</span>
+                </div>
+            </div>
+
+            <!-- PubChem Tab -->
+            <div id="pubchem" class="tab-pane">
+                <div class="card">
+                    <h2 class="section-title">PubChem Integration</h2>
+                    <div class="control-grid">
+                        <div class="input-group">
+                            <label class="input-label">Compound Name</label>
+                            <input type="text" class="input-field" id="pubchem-name" value="histamine">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Format</label>
+                            <select class="input-field" id="pubchem-type">
+                                <option value="2d">2D Structure</option>
+                                <option value="3d">3D Structure</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn btn-primary" onclick="fetchPubChem()">Fetch Image</button>
+                        <button class="btn btn-primary"
+                            style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);"
+                            onclick="open3DViewer()">Open 3D Viewer</button>
+                    </div>
+                </div>
+                <div id="pubchem-image" class="result-box"></div>
+            </div>
+
+            <!-- MolView Tab -->
+            <div id="molview" class="tab-pane">
+                <div class="card">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <h2 class="section-title">QLabs - MolView Modified</h2>
+                        <div style="display: flex; gap: 1rem;">
+                            <input type="text" class="input-field" id="molview-input" value="CCO"
+                                placeholder="SMILES/Name" style="width: 200px;">
+                            <button class="btn btn-primary" onclick="loadMolView()">Load</button>
+                        </div>
+                    </div>
+                    <div class="iframe-wrapper">
+                        <iframe id="molview-iframe" src="http://localhost:5003/"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SmilesDrawer Tab -->
+            <div id="smilesdrawer" class="tab-pane">
+                <div class="card"
+                    style="text-align: center; padding: 6rem 2rem; display: flex; flex-direction: column; align-items: center;">
+                    <div
+                        style="font-size: 4rem; margin-bottom: 1.5rem; background: var(--primary-fade); width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+                        ✏️</div>
+                    <h2 class="section-title" style="color: var(--primary-dark);">QLabs - SmilesDrawer</h2>
+                    <p class="section-desc" style="max-width: 500px; margin: 0 auto;">
+                        Advanced 2D rendering engine with explicit hydrogen support and carbon labeling.
+                        <br><br>
+                        <span
+                            style="display: inline-block; padding: 0.5rem 1rem; background: #FEF3C7; color: #D97706; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">Coming
+                            Soon</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- 3D SMILES Tab -->
+            <div id="3d-smiles" class="tab-pane">
+                <div class="card">
+                    <h2 class="section-title">OPSIN 3D Generator</h2>
+                    <div class="control-grid">
+                        <div class="input-group">
+                            <label class="input-label">Chemical Name</label>
+                            <input type="text" class="input-field" id="opsin-name" value="glucose">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="generate3DSMILES()">Generate 3D SMILES</button>
+                </div>
+                <div id="opsin-result" class="result-box"></div>
+            </div>
+
+            <!-- Tests Tab -->
+            <div id="tests" class="tab-pane">
+                <div class="card">
+                    <h2 class="section-title">System Verification</h2>
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; margin-top: 2rem;">
+                        <button class="btn btn-secondary" onclick="openTest('test_3d_smiles.html')">🧪 3D SMILES
+                            Test</button>
+                        <button class="btn btn-secondary" onclick="openTest('test_opsin_3d.html')">🧪 OPSIN
+                            Integration</button>
+                        <button class="btn btn-secondary" onclick="openTest('test_pubchem_3d.html')">🧪 PubChem
+                            3D</button>
+                        <button class="btn btn-secondary" onclick="openTest('test_m2cf_full.html')">🧪 Mol2ChemFig
+                            Full</button>
+                        <button class="btn btn-secondary" onclick="openTest('test_dark_mode.html')">🧪 Dark
+                            Mode</button>
+                        <button class="btn btn-secondary" onclick="openTest('test_all_features_demo.html')">🧪 All
+                            Features Demo</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Designs Tab -->
+            <div id="designs" class="tab-pane">
+                <div class="card">
+                    <h2 class="section-title">Design Gallery</h2>
+                    <div class="iframe-wrapper">
+                        <iframe src="chem-extension/designs/index.html"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Tab -->
+            <div id="control" class="tab-pane">
+                <div class="card">
+                    <h2 class="section-title">Server Control Panel</h2>
+                    <div class="iframe-wrapper">
+                        <iframe src="http://localhost:3000/launcher.html"></iframe>
+                    </div>
+                </div>
+            </div>
+
         </div>
-        <div class="viewer-container">
-            <iframe id="molview-iframe" src="http://localhost:5003/"
-                    title="MolView 3D Structure Viewer"></iframe>
-        </div>
-        <div class="control-panel" style="margin-top: 20px;">
-            <h3>Direct MolView Integration</h3>
-            <p>Use this iframe directly in the Chrome extension to avoid CORS issues when loading structures.</p>
-        </div>
-    </div>
+    </main>
 
-    <!-- 3D SMILES Tab -->
-    <div id="3d-smiles" class="tab-content">
-        <h2>3D SMILES Generator (OPSIN)</h2>
-        <div class="control-panel">
-            <div class="control-group">
-                <label>Enter Chemical Name:</label>
-                <input type="text" id="opsin-name" placeholder="e.g., glucose, benzene, ethanol" value="glucose">
-            </div>
-            <button class="btn" onclick="generate3DSMILES()">🚀 Generate 3D SMILES</button>
-            <button class="btn btn-secondary" onclick="clear3DSMILES()">Clear</button>
-        </div>
-        <div id="opsin-result" class="result-container">
-            Results will appear here...
-        </div>
-    </div>
-
-    <!-- Tests Tab -->
-    <div id="tests" class="tab-content">
-        <h2>Test Files</h2>
-        <div class="test-list">
-            <div class="test-card">
-                <h3>3D SMILES Test</h3>
-                <p>Test OPSIN 3D SMILES generation</p>
-                <button class="btn" onclick="openTest('test_3d_smiles.html')">Open Test</button>
-            </div>
-            <div class="test-card">
-                <h3>OPSIN 3D Integration</h3>
-                <p>Complete OPSIN 3D testing</p>
-                <button class="btn" onclick="openTest('test_opsin_3d.html')">Open Test</button>
-            </div>
-            <div class="test-card">
-                <h3>PubChem 3D</h3>
-                <p>Test PubChem 3D viewer</p>
-                <button class="btn" onclick="openTest('test_pubchem_3d.html')">Open Test</button>
-            </div>
-            <div class="test-card">
-                <h3>PubChem Basic</h3>
-                <p>Test PubChem API integration</p>
-                <button class="btn" onclick="openTest('test_pubchem.html')">Open Test</button>
-            </div>
-            <div class="test-card">
-                <h3>Mol2ChemFig Full</h3>
-                <p>Complete Mol2ChemFig testing</p>
-                <button class="btn" onclick="openTest('test_m2cf_full.html')">Open Test</button>
-            </div>
-            <div class="test-card">
-                <h3>Dark Mode</h3>
-                <p>Test dark theme interface</p>
-                <button class="btn" onclick="openTest('test_dark_mode.html')">Open Test</button>
-            </div>
-            <div class="test-card">
-                <h3>Options Persistence</h3>
-                <p>Test settings persistence</p>
-                <button class="btn" onclick="openTest('test_options_persistence.html')">Open Test</button>
-            </div>
-            <div class="test-card">
-                <h3>All Features Demo</h3>
-                <p>Complete feature showcase</p>
-                <button class="btn" onclick="openTest('test_all_features_demo.html')">Open Test</button>
-            </div>
-            <div class="test-card">
-                <h3>MoleculeViewer Frontend</h3>
-                <p>Test MoleculeViewer UI</p>
-                <button class="btn" onclick="openTest('test_frontend.html')">Open Test</button>
-            </div>
-            <div class="test-card">
-                <h3>3D Viewer</h3>
-                <p>Test 3D molecular viewer</p>
-                <button class="btn" onclick="openTest('test_3d_viewer.html')">Open Test</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Designs Tab -->
-    <div id="designs" class="tab-content">
-        <h2>UI Design Gallery</h2>
-        <div class="iframe-container">
-            <iframe src="chem-extension/designs/index.html"></iframe>
-        </div>
-    </div>
-
-    <!-- Control Panel Tab -->
-    <div id="control" class="tab-content">
-        <h2>Server Control Panel</h2>
-        <div class="iframe-container">
-            <iframe src="http://localhost:3000/launcher.html"></iframe>
-        </div>
-    </div>
-
-    <script>
-        // Tab switching
-        function switchTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Remove active from all buttons
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // Show selected tab
-            document.getElementById(tabName).classList.add('active');
-            
-            // Activate button
-            event.target.classList.add('active');
-        }
-
-        // Mol2ChemFig Functions
-        async function generateMol2ChemFig() {
-            const input = document.getElementById('m2cf-input').value;
-            const use3D = document.getElementById('m2cf-3d-toggle').checked;
-            const resultDiv = document.getElementById('m2cf-result');
-            
-            resultDiv.innerHTML = '<p>Generating...</p>';
-            
-            try {
-                let smiles = input;
-                
-                // If 3D is enabled, convert name to 3D SMILES first
-                if (use3D) {
-                    resultDiv.innerHTML = '<p>Converting to 3D SMILES via OPSIN...</p>';
-                    const opsinResponse = await fetch(`http://localhost:5001/api/opsin?name=${encodeURIComponent(input)}`);
-                    const opsinData = await opsinResponse.json();
-                    
-                    if (opsinData.smiles_3d) {
-                        smiles = opsinData.smiles_3d;
-                        resultDiv.innerHTML += `<p>✓ 3D SMILES: <code>${smiles}</code></p>`;
-                    }
-                }
-                
-                // Generate with Mol2ChemFig
-                const response = await fetch('http://localhost:5001/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ smiles: smiles })
-                });
-                
-                const data = await response.json();
-                
-                if (data.svg) {
-                    resultDiv.innerHTML = `
-                        <h3>✓ Generated Successfully</h3>
-                        <p><strong>Input:</strong> ${input} ${use3D ? '(3D)' : ''}</p>
-                        <p><strong>SMILES:</strong> <code>${smiles}</code></p>
-                        <div>${data.svg}</div>
-                    `;
-                } else {
-                    resultDiv.innerHTML = `<p style="color: red;">Error: ${data.error || 'Failed to generate'}</p>`;
-                }
-            } catch (error) {
-                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-            }
-        }
-
-        function clearMol2ChemFig() {
-            document.getElementById('m2cf-result').innerHTML = 'Results will appear here...';
-        }
-
-        // MoleculeViewer Functions
-        async function generateMoleculeViewer() {
-            const smiles = document.getElementById('mv-smiles').value;
-            const use3D = document.getElementById('mv-3d-toggle').checked;
-            const width = document.getElementById('mv-width').value;
-            const height = document.getElementById('mv-height').value;
-            const resultDiv = document.getElementById('mv-result');
-            
-            resultDiv.innerHTML = '<p>Generating...</p>';
-            
-            try {
-                let finalSmiles = smiles;
-                
-                // If 3D is enabled, convert to 3D SMILES first
-                if (use3D) {
-                    resultDiv.innerHTML = '<p>Converting to 3D SMILES via OPSIN...</p>';
-                    const opsinResponse = await fetch(`http://localhost:5001/api/opsin?name=${encodeURIComponent(smiles)}`);
-                    const opsinData = await opsinResponse.json();
-                    
-                    if (opsinData.smiles_3d) {
-                        finalSmiles = opsinData.smiles_3d;
-                        resultDiv.innerHTML += `<p>✓ 3D SMILES: <code>${finalSmiles}</code></p>`;
-                    }
-                }
-                
-                // Generate image
-                const imageUrl = `http://localhost:5000/img/smiles?smiles=${encodeURIComponent(finalSmiles)}&width=${width}&height=${height}`;
-                
-                resultDiv.innerHTML = `
-                    <h3>✓ Generated Successfully</h3>
-                    <p><strong>SMILES:</strong> <code>${finalSmiles}</code> ${use3D ? '(3D)' : ''}</p>
-                    <img src="${imageUrl}" alt="Molecule" style="max-width: 100%;">
-                    <p><a href="${imageUrl}" target="_blank">Open in new tab</a></p>
-                `;
-            } catch (error) {
-                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-            }
-        }
-
-        function clearMoleculeViewer() {
-            document.getElementById('mv-result').innerHTML = 'Results will appear here...';
-        }
-
-        // PubChem Functions
-        async function fetchPubChem() {
-            const name = document.getElementById('pubchem-name').value;
-            const type = document.getElementById('pubchem-type').value;
-            const size = document.getElementById('pubchem-size').value;
-            const imageDiv = document.getElementById('pubchem-image');
-            
-            imageDiv.innerHTML = '<p>Fetching from PubChem...</p>';
-            
-            try {
-                const imageUrl = `http://localhost:5002/img/${encodeURIComponent(name)}?size=${size}&type=${type}`;
-                
-                imageDiv.innerHTML = `
-                    <h3>✓ ${name} (${type.toUpperCase()})</h3>
-                    <img src="${imageUrl}" alt="${name}" style="max-width: 100%; background: white; padding: 20px; border-radius: 8px;">
-                    <p><a href="${imageUrl}" target="_blank">Open in new tab</a></p>
-                `;
-            } catch (error) {
-                imageDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-            }
-        }
-
-        function open3DViewer() {
-            const name = document.getElementById('pubchem-name').value;
-
-            // Try to use the local MolView server first, fallback to the old method
-            fetch('http://localhost:5000/')
-                .then(response => {
-                    if (response.ok) {
-                        // Local MolView server is available, use it
-                        window.open(`http://localhost:5000/?q=${encodeURIComponent(name)}`, '_blank');
-                    } else {
-                        // Fallback to old method
-                        window.open(`http://localhost:5002/static/viewer-3d.html?name=${encodeURIComponent(name)}&embed=true`, '_blank');
-                    }
-                })
-                .catch(error => {
-                    // Server not available, use fallback
-                    console.log('Local MolView server not available, using fallback');
-                    window.open(`http://localhost:5002/static/viewer-3d.html?name=${encodeURIComponent(name)}&embed=true`, '_blank');
-                });
-        }
-
-        function clearPubChem() {
-            document.getElementById('pubchem-image').innerHTML = '';
-        }
-
-        // Check PubChem server status
-        async function checkPubChemStatus() {
-            try {
-                const response = await fetch('http://localhost:5002/health');
-                if (response.ok) {
-                    document.getElementById('pubchem-status').className = 'status-indicator status-online';
-                    document.getElementById('pubchem-status-text').textContent = 'Online';
-                } else {
-                    throw new Error('Not responding');
-                }
-            } catch {
-                document.getElementById('pubchem-status').className = 'status-indicator status-offline';
-                document.getElementById('pubchem-status-text').textContent = 'Offline';
-            }
-        }
-
-        // 3D SMILES Functions
-        async function generate3DSMILES() {
-            const name = document.getElementById('opsin-name').value;
-            const resultDiv = document.getElementById('opsin-result');
-            
-            resultDiv.innerHTML = '<p>Converting to 3D SMILES via OPSIN...</p>';
-            
-            try {
-                const response = await fetch(`http://localhost:5001/api/opsin?name=${encodeURIComponent(name)}`);
-                const data = await response.json();
-                
-                if (data.smiles_3d) {
-                    resultDiv.innerHTML = `
-                        <h3>✓ 3D SMILES Generated</h3>
-                        <p><strong>Name:</strong> ${name}</p>
-                        <p><strong>2D SMILES:</strong> <code>${data.smiles || 'N/A'}</code></p>
-                        <p><strong>3D SMILES:</strong> <code>${data.smiles_3d}</code></p>
-                        <button class="btn" onclick="useSMILES('${data.smiles_3d}')">Use in Mol2ChemFig</button>
-                        <button class="btn" onclick="useSMILESMV('${data.smiles_3d}')">Use in MoleculeViewer</button>
-                    `;
-                } else {
-                    resultDiv.innerHTML = `<p style="color: red;">Error: ${data.error || 'Failed to generate 3D SMILES'}</p>`;
-                }
-            } catch (error) {
-                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-            }
-        }
-
-        function clear3DSMILES() {
-            document.getElementById('opsin-result').innerHTML = 'Results will appear here...';
-        }
-
-        function useSMILES(smiles) {
-            switchTab('mol2chemfig');
-            document.getElementById('m2cf-input').value = smiles;
-            setTimeout(() => document.querySelector('.tab-button').click(), 100);
-        }
-
-        function useSMILESMV(smiles) {
-            switchTab('moleculeviewer');
-            document.getElementById('mv-smiles').value = smiles;
-            setTimeout(() => document.querySelectorAll('.tab-button')[1].click(), 100);
-        }
-
-        // Test Functions
-        function openTest(filename) {
-            window.open(filename, '_blank');
-        }
-
-        // Initialize
-        window.addEventListener('load', () => {
-            checkPubChemStatus();
-            setInterval(checkPubChemStatus, 10000); // Check every 10 seconds
-            drawFlowConnections();
-            checkAllServers();
-        });
-
-        // ========================================
-        // FLOW DIAGRAM FUNCTIONS
-        // ========================================
-
-        // Connection definitions with data flow information
-        // ACCURATE FLOW based on actual code analysis
-        const flowConnections = [
-            // === INPUT STAGE ===
-            { from: 'page', to: 'extension', label: '"histamine"', color: '#8b5cf6', flow: 'all' },
-            { from: 'options', to: 'extension', label: '3D? Engine?', color: '#ec4899', flow: 'all' },
-
-            // === EXTENSION TO BRIDGE ===
-            { from: 'extension', to: 'smiles-bridge', label: 'Name + Options', color: '#667eea', flow: 'all' },
-
-            // === SMILES BRIDGE TO SOURCES (Priority Order) ===
-            { from: 'smiles-bridge', to: 'opsin-3d', label: 'If 3D enabled', color: '#f59e0b', flow: 'all' },
-            { from: 'smiles-bridge', to: 'opsin', label: 'Try first', color: '#f59e0b', flow: 'all' },
-            { from: 'smiles-bridge', to: 'pubchem-api', label: 'Fallback', color: '#f59e0b', flow: 'all' },
-
-            // === BRIDGE TO SELECTOR (with SMILES) ===
-            { from: 'smiles-bridge', to: 'selector', label: 'SMILES string', color: '#fbbf24', flow: 'all' },
-
-            // === SELECTOR TO RENDERERS ===
-            { from: 'selector', to: 'moleculeviewer', label: 'SMILES', color: '#10b981', flow: 'moleculeviewer' },
-            { from: 'selector', to: 'mol2chemfig', label: 'SMILES+opts', color: '#10b981', flow: 'mol2chemfig' },
-            { from: 'selector', to: 'pubchem-local', label: 'Name/CID', color: '#10b981', flow: 'pubchem' },
-
-            // === RENDERER TO BACKEND ===
-            { from: 'moleculeviewer', to: 'rdkit', label: 'Generate', color: '#06b6d4', flow: 'moleculeviewer' },
-            { from: 'mol2chemfig', to: 'docker', label: 'ChemFig', color: '#8b5cf6', flow: 'mol2chemfig' },
-            { from: 'pubchem-local', to: 'molview', label: '3D View', color: '#f59e0b', flow: 'pubchem' },
-
-            // === BACKEND TO CACHE ===
-            { from: 'rdkit', to: 'cache', label: 'SVG', color: '#14b8a6', flow: 'moleculeviewer' },
-            { from: 'docker', to: 'cache', label: 'SVG', color: '#14b8a6', flow: 'mol2chemfig' },
-
-            // === CACHE/RENDERER TO OUTPUT ===
-            { from: 'cache', to: 'output', label: 'URL', color: '#10b981', flow: 'all' },
-            { from: 'pubchem-local', to: 'output', label: 'PNG', color: '#10b981', flow: 'pubchem' },
-
-            // === OUTPUT PROCESSING ===
-            { from: 'output', to: 'darkmode', label: 'If dark', color: '#6366f1', flow: 'all' },
-
-            // === BACK TO PAGE ===
-            { from: 'darkmode', to: 'extension', label: 'Final image', color: '#8b5cf6', flow: 'all' },
-            { from: 'output', to: 'extension', label: 'Final image', color: '#10b981', flow: 'all' },
-        ];
-
-        // Node details information
-        const nodeDetails = {
-            'page': {
-                title: '📄 Web Page',
-                content: `
-                    <p><strong>Role:</strong> Contains text with chemical notation patterns that trigger rendering.</p>
-                    <h4>Supported Patterns:</h4>
-                    <ul>
-                        <li><code>chem:ethanol:</code> - Chemical name</li>
-                        <li><code>chem:CCO:</code> - Direct SMILES notation</li>
-                        <li><code>\\chemfig{C-C-O}</code> - ChemFig LaTeX</li>
-                    </ul>
-                    <p><strong>Output:</strong> Patterns are replaced with rendered molecular structure images.</p>
-                `
-            },
-            'options': {
-                title: '⚙️ User Options',
-                content: `
-                    <p><strong>File:</strong> <code>popup.js</code> + <code>popup.html</code></p>
-                    <h4>Key Settings:</h4>
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                        <tr style="background: #e5e7eb;"><th style="padding: 8px; text-align: left;">Setting</th><th style="padding: 8px; text-align: left;">Effect</th></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>use3DSmiles</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">Routes to OPSIN 3D for stereochemistry</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>rendererEngine</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">moleculeviewer / mol2chemfig / pubchem</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>m2cfAromatic</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">Show aromatic rings as circles</td></tr>
-                        <tr><td style="padding: 8px;"><strong>m2cfShowMethyl</strong></td><td style="padding: 8px;">Display CH3 groups</td></tr>
-                    </table>
-                `
-            },
-            'extension': {
-                title: '🧩 Chrome Extension',
-                content: `
-                    <p><strong>Role:</strong> Central hub - detects patterns, reads user options, coordinates all requests.</p>
-                    <h4>Key Files:</h4>
-                    <ul>
-                        <li><code>content.js</code> - Pattern detection, API calls, DOM manipulation</li>
-                        <li><code>background.js</code> - CSP bypass for cross-origin requests</li>
-                        <li><code>popup.js</code> - Settings UI</li>
-                    </ul>
-                    <h4>Main Functions:</h4>
-                    <ul>
-                        <li><code>loadMoleculeViewerImage()</code></li>
-                        <li><code>loadMol2chemfigImage()</code></li>
-                        <li><code>loadPubChemImage()</code></li>
-                        <li><code>invertSvgForDarkMode()</code></li>
-                    </ul>
-                `
-            },
-            'smiles-bridge': {
-                title: '🌉 SMILES Bridge (Common Node)',
-                content: `
-                    <p><strong>Role:</strong> Central conversion hub shared by ALL renderers. Converts chemical names to SMILES strings.</p>
-                    <h4>Priority Order:</h4>
-                    <ol>
-                        <li><strong>OPSIN 3D</strong> (if user enabled 3D SMILES) - Preserves stereochemistry</li>
-                        <li><strong>OPSIN 2D</strong> - Fast, reliable IUPAC name conversion</li>
-                        <li><strong>PubChem API</strong> - Fallback for common names</li>
-                    </ol>
-                    <h4>Why This Node Exists:</h4>
-                    <p>Both MoleculeViewer and Mol2ChemFig need SMILES strings. Instead of each server implementing name→SMILES conversion separately, this bridge handles it centrally.</p>
-                    <pre style="background: #1a1a2e; color: #fbbf24; padding: 10px; border-radius: 6px; font-size: 12px;">
-"histamine" → SMILES Bridge → "NCCC1=CN=CN1"
-                ↓
-    [OPSIN 3D] → [OPSIN 2D] → [PubChem]
-         (priority order, fallback chain)</pre>
-                `
-            },
-            'opsin-3d': {
-                title: '🔮 OPSIN 3D (Stereochemistry)',
-                content: `
-                    <p><strong>Purpose:</strong> Generate SMILES with 3D stereochemistry information (E/Z isomers, R/S chirality).</p>
-                    <h4>When Used:</h4>
-                    <p>Only when user enables "3D SMILES" option in extension settings.</p>
-                    <h4>Endpoint:</h4>
-                    <pre style="background: #1a1a2e; color: #10b981; padding: 10px; border-radius: 6px;">
-GET ${MOL2CHEMFIG_API}/m2cf/opsin-3d?name=glucose
-→ { "smiles": "OC[C@H]1...", "has_stereochemistry": true }</pre>
-                    <h4>Example:</h4>
-                    <ul>
-                        <li>Input: "glucose"</li>
-                        <li>Output: <code>OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O</code></li>
-                        <li>The @ symbols indicate stereochemistry!</li>
-                    </ul>
-                `
-            },
-            'opsin': {
-                title: '🔬 OPSIN 2D (Standard)',
-                content: `
-                    <p><strong>URL:</strong> <code>https://www.ebi.ac.uk/opsin/ws/{name}.smi</code></p>
-                    <h4>Purpose:</h4>
-                    <p>Convert IUPAC chemical names to canonical SMILES (without stereochemistry).</p>
-                    <h4>Usage:</h4>
-                    <pre style="background: #1a1a2e; color: #10b981; padding: 10px; border-radius: 6px;">
-GET https://www.ebi.ac.uk/opsin/ws/ethanol.smi
-→ "CCO"</pre>
-                    <h4>Advantages:</h4>
-                    <ul>
-                        <li>Fast response</li>
-                        <li>Handles complex IUPAC names</li>
-                        <li>No API key needed</li>
-                    </ul>
-                `
-            },
-            'pubchem-api': {
-                title: '☁️ PubChem API (Fallback)',
-                content: `
-                    <p><strong>URL:</strong> <code>https://pubchem.ncbi.nlm.nih.gov/rest/pug/</code></p>
-                    <h4>Used When:</h4>
-                    <p>OPSIN fails (common names like "aspirin" that aren't strict IUPAC).</p>
-                    <h4>Endpoints Used:</h4>
-                    <ul>
-                        <li><code>/compound/name/{name}/property/CanonicalSMILES/JSON</code></li>
-                        <li><code>/compound/name/{name}/cids/JSON</code></li>
-                        <li><code>/compound/cid/{cid}/PNG</code></li>
-                    </ul>
-                    <h4>Rate Limit:</h4>
-                    <p>5 requests/second - handled by local caching</p>
-                `
-            },
-            'selector': {
-                title: '🔀 Renderer Selector',
-                content: `
-                    <p><strong>Role:</strong> Routes the SMILES to the appropriate rendering engine based on user's choice.</p>
-                    <h4>Selection Logic:</h4>
-                    <pre style="background: #1a1a2e; color: #10b981; padding: 10px; border-radius: 6px; overflow-x: auto;">
-if (settings.rendererEngine === 'mol2chemfig') {
-    loadMol2chemfigImage(smiles);
-} else if (settings.rendererEngine === 'pubchem') {
-    loadPubChemImage(name); // Uses name, not SMILES
-} else {
-    loadMoleculeViewerImage(smiles);
-}</pre>
-                    <p><strong>Note:</strong> PubChem renderer uses the original name, not SMILES, because PubChem has its own image database.</p>
-                `
-            },
-            'moleculeviewer': {
-                title: '🧬 MoleculeViewer Server',
-                content: `
-                    <p><strong>Port:</strong> 5000 (Node.js/Express)</p>
-                    <p><strong>File:</strong> <code>MoleculeViewer/server.js</code></p>
-                    <h4>Endpoints:</h4>
-                    <ul>
-                        <li><code>GET /img/smiles?smiles=CCO</code> - SMILES to SVG</li>
-                        <li><code>GET /img/nomenclature?name=ethanol</code> - Name to SVG</li>
-                        <li><code>GET /cache/{hash}.svg</code> - Serve cached SVGs</li>
-                    </ul>
-                    <h4>Backend:</h4>
-                    <p>Uses <strong>RDKit</strong> (Python) for SMILES→SVG rendering</p>
-                    <h4>Caching:</h4>
-                    <p>✅ YES - SVGs cached in <code>MoleculeViewer/cache/moleculeviewer/</code></p>
-                `
-            },
-            'mol2chemfig': {
-                title: '📐 Mol2ChemFig Server',
-                content: `
-                    <p><strong>Port:</strong> 5001 (Python/Flask)</p>
-                    <p><strong>File:</strong> <code>mol2chemfig_server.py</code></p>
-                    <h4>Endpoints:</h4>
-                    <ul>
-                        <li><code>POST /m2cf/submit</code> - SMILES + options → SVG</li>
-                        <li><code>GET /m2cf/search</code> - Search compounds</li>
-                        <li><code>GET /images/{hash}.svg</code> - Serve cached SVGs</li>
-                    </ul>
-                    <h4>Backend:</h4>
-                    <p>Uses <strong>Docker :8000</strong> for LaTeX→PDF→SVG conversion</p>
-                    <h4>Caching:</h4>
-                    <p>✅ YES - SVGs cached in <code>cache/mol2chemfig/</code></p>
-                `
-            },
-            'pubchem-local': {
-                title: '🌐 PubChem Renderer Server',
-                content: `
-                    <p><strong>Port:</strong> 5002 (Python/Flask)</p>
-                    <p><strong>File:</strong> <code>pubchem_server.py</code></p>
-                    <h4>Endpoints:</h4>
-                    <ul>
-                        <li><code>GET /pubchem/img/{name}</code> - Get 2D image (PNG)</li>
-                        <li><code>GET /pubchem/3d-model</code> - Get 3D conformer data</li>
-                    </ul>
-                    <h4>3D Viewer:</h4>
-                    <p>Uses <strong>MolView.org</strong> iframe for interactive 3D viewing</p>
-                    <h4>Caching:</h4>
-                    <p>✅ YES - Images cached in <code>pubchem-cache/</code></p>
-                `
-            },
-            'docker': {
-                title: '🐳 Docker Backend',
-                content: `
-                    <p><strong>Port:</strong> 8000 (Docker container)</p>
-                    <p><strong>Config:</strong> <code>docker-compose.yml</code></p>
-                    <h4>Process:</h4>
-                    <ol>
-                        <li>Receive SMILES + chemfig options</li>
-                        <li>Generate ChemFig LaTeX code</li>
-                        <li>Compile with <code>pdflatex</code></li>
-                        <li>Convert PDF→SVG with <code>dvisvgm</code></li>
-                        <li>Return SVG + PDF base64</li>
-                    </ol>
-                    <p style="color: #dc2626;"><strong>⚠️ Requires Docker Desktop running!</strong></p>
-                `
-            },
-            'rdkit': {
-                title: '⚗️ RDKit Library',
-                content: `
-                    <p><strong>Location:</strong> Python subprocess in MoleculeViewer</p>
-                    <h4>Key Functions:</h4>
-                    <ul>
-                        <li><code>Chem.MolFromSmiles()</code> - Parse SMILES</li>
-                        <li><code>Draw.MolToSVG()</code> - Render to SVG</li>
-                        <li><code>Chem.CanonSmiles()</code> - Canonicalize for caching</li>
-                    </ul>
-                    <h4>Why RDKit?</h4>
-                    <ul>
-                        <li>Fast, local rendering (no network latency)</li>
-                        <li>Customizable colors/sizes</li>
-                        <li>No external API dependency</li>
-                    </ul>
-                `
-            },
-            'molview': {
-                title: '🎮 MolView.org (3D Viewer)',
-                content: `
-                    <p><strong>URL:</strong> <code>https://embed.molview.org/v1/</code></p>
-                    <h4>How It's Used:</h4>
-                    <p>When user wants 3D view, we embed MolView.org as an iframe:</p>
-                    <pre style="background: #1a1a2e; color: #10b981; padding: 10px; border-radius: 6px; font-size: 11px;">
-https://embed.molview.org/v1/?mode=balls&smiles=NCCC1=CN=CN1</pre>
-                    <h4>Features:</h4>
-                    <ul>
-                        <li>Interactive 3D rotation</li>
-                        <li>Ball-and-stick model</li>
-                        <li>No server needed - client-side WebGL</li>
-                    </ul>
-                    <h4>Used By:</h4>
-                    <p>PubChem renderer's "Enable 3D Viewer" option</p>
-                `
-            },
-            'output': {
-                title: '🖼️ Rendered Output',
-                content: `
-                    <p><strong>Role:</strong> Final rendered image ready for display.</p>
-                    <h4>Output Formats:</h4>
-                    <ul>
-                        <li><strong>MoleculeViewer:</strong> Inline SVG (data URI)</li>
-                        <li><strong>Mol2ChemFig:</strong> SVG URL (cached on server)</li>
-                        <li><strong>PubChem:</strong> PNG image (proxied)</li>
-                    </ul>
-                    <h4>Post-Processing:</h4>
-                    <ul>
-                        <li>Dark mode color inversion (if enabled)</li>
-                        <li>Size controls wrapper</li>
-                        <li>Click handlers for zoom/download</li>
-                    </ul>
-                `
-            },
-            'darkmode': {
-                title: '🌙 Dark Mode Handler',
-                content: `
-                    <p><strong>Location:</strong> <code>content.js</code> - <code>invertSvgForDarkMode()</code></p>
-                    <h4>Detection Methods:</h4>
-                    <ol>
-                        <li><code>prefers-color-scheme: dark</code> media query</li>
-                        <li>Page background luminance check</li>
-                        <li>Dark mode CSS classes (.dark, .dark-mode)</li>
-                    </ol>
-                    <h4>Color Replacements:</h4>
-                    <ul>
-                        <li><code>#000000</code> → <code>#FFFFFF</code></li>
-                        <li><code>stroke: black</code> → <code>stroke: white</code></li>
-                        <li><code>fill: black</code> → <code>fill: white</code></li>
-                        <li>CSS style blocks in SVG</li>
-                        <li>Text elements without explicit fill</li>
-                    </ul>
-                `
-            },
-            'options': {
-                title: '⚙️ User Options',
-                content: `
-                    <p><strong>File:</strong> <code>popup.js</code> + <code>popup.html</code></p>
-                    <h4>Available Settings:</h4>
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                        <tr style="background: #e5e7eb;"><th style="padding: 8px; text-align: left;">Setting</th><th style="padding: 8px; text-align: left;">Values</th></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">Renderer Engine</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">moleculeviewer, mol2chemfig, pubchem</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">3D SMILES</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">true/false</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">M2CF: Aromatic Circles</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">true/false (-o flag)</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">M2CF: Fancy Bonds</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">true/false (-f flag)</td></tr>
-                        <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;">M2CF: Show Carbons</td><td style="padding: 8px; border-bottom: 1px solid #ddd;">true/false (-c flag)</td></tr>
-                        <tr><td style="padding: 8px;">M2CF: Show Methyls</td><td style="padding: 8px;">true/false (-m flag)</td></tr>
-                    </table>
-                `
-            },
-            'cache': {
-                title: '💾 Cache System',
-                content: `
-                    <p><strong>Purpose:</strong> Store rendered images to avoid re-rendering.</p>
-                    <h4>Cache Locations:</h4>
-                    <ul>
-                        <li><code>MoleculeViewer/cache/</code> - MoleculeViewer SVGs</li>
-                        <li><code>cache/mol2chemfig/</code> - Mol2ChemFig SVGs</li>
-                        <li><code>pubchem-cache/</code> - PubChem images</li>
-                    </ul>
-                    <h4>Cache Key:</h4>
-                    <p>SHA256 hash of canonicalized SMILES + rendering options</p>
-                    <h4>Benefits:</h4>
-                    <ul>
-                        <li>Faster repeat requests</li>
-                        <li>Reduced API calls</li>
-                        <li>Persistent URLs for sharing</li>
-                    </ul>
-                `
-            }
-        };
-
-        // Draw flow connections
-        function drawFlowConnections() {
-            const svg = document.getElementById('flow-connections');
-            const diagram = document.getElementById('flow-diagram');
-
-            // Clear existing lines
-            svg.querySelectorAll('path, text').forEach(el => el.remove());
-
-            flowConnections.forEach((conn, index) => {
-                const fromNode = document.getElementById(`node-${conn.from}`);
-                const toNode = document.getElementById(`node-${conn.to}`);
-
-                if (!fromNode || !toNode) return;
-
-                const fromRect = fromNode.getBoundingClientRect();
-                const toRect = toNode.getBoundingClientRect();
-                const diagramRect = diagram.getBoundingClientRect();
-
-                // Calculate center points relative to diagram
-                const x1 = fromRect.left + fromRect.width / 2 - diagramRect.left;
-                const y1 = fromRect.top + fromRect.height / 2 - diagramRect.top;
-                const x2 = toRect.left + toRect.width / 2 - diagramRect.left;
-                const y2 = toRect.top + toRect.height / 2 - diagramRect.top;
-
-                // Create curved path
-                const midX = (x1 + x2) / 2;
-                const midY = (y1 + y2) / 2;
-                const dx = x2 - x1;
-                const dy = y2 - y1;
-
-                // Control point offset for curve
-                const offset = Math.min(Math.abs(dx), Math.abs(dy)) * 0.3;
-                const cx = midX + (dy > 0 ? offset : -offset);
-                const cy = midY + (dx > 0 ? -offset : offset);
-
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
-                path.setAttribute('stroke', conn.color);
-                path.setAttribute('class', `flow-line flow-${conn.flow}`);
-                path.setAttribute('marker-end', `url(#arrowhead)`);
-
-                if (conn.dashed) {
-                    path.setAttribute('stroke-dasharray', '5,5');
-                }
-
-                path.style.pointerEvents = 'stroke';
-                svg.appendChild(path);
-
-                // Add label
-                if (conn.label) {
-                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                    text.setAttribute('x', cx);
-                    text.setAttribute('y', cy - 5);
-                    text.setAttribute('class', `flow-line-label flow-${conn.flow}`);
-                    text.textContent = conn.label;
-                    svg.appendChild(text);
-                }
-            });
-        }
-
-        // Highlight specific flow
-        function highlightFlow(flowType) {
-            const nodes = document.querySelectorAll('.flow-node');
-            const lines = document.querySelectorAll('.flow-line');
-            const labels = document.querySelectorAll('.flow-line-label');
-
-            if (flowType === 'all') {
-                nodes.forEach(n => { n.classList.remove('dimmed', 'highlighted'); });
-                lines.forEach(l => { l.classList.remove('dimmed', 'highlighted'); });
-                labels.forEach(l => { l.classList.remove('dimmed'); });
-            } else {
-                lines.forEach(l => {
-                    if (l.classList.contains(`flow-${flowType}`) || l.classList.contains('flow-all')) {
-                        l.classList.add('highlighted');
-                        l.classList.remove('dimmed');
-                    } else {
-                        l.classList.add('dimmed');
-                        l.classList.remove('highlighted');
-                    }
-                });
-                labels.forEach(l => {
-                    if (l.classList.contains(`flow-${flowType}`) || l.classList.contains('flow-all')) {
-                        l.classList.remove('dimmed');
-                    } else {
-                        l.classList.add('dimmed');
-                    }
-                });
-            }
-        }
-
-        // Show node details
-        function showNodeDetails(nodeId) {
-            const details = nodeDetails[nodeId];
-            if (!details) return;
-
-            const panel = document.getElementById('node-details');
-            const title = document.getElementById('details-title');
-            const content = document.getElementById('details-content');
-
-            title.textContent = details.title;
-            content.innerHTML = details.content;
-            panel.style.display = 'block';
-
-            // Scroll to details
-            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        // Check all server statuses
-        async function checkAllServers() {
-            const servers = [
-                { id: 'moleculeviewer', url: 'http://localhost:5000/health' },
-                { id: 'mol2chemfig', url: 'http://localhost:5001/health' },
-                { id: 'pubchem', url: 'http://localhost:5002/health' },
-                { id: 'molview', url: 'http://localhost:5003/' },
-                { id: 'docker', url: 'http://localhost:8000/m2cf/reset', method: 'POST' }
-            ];
-
-            for (const server of servers) {
-                const statusEl = document.getElementById(`status-${server.id}`);
-                if (!statusEl) continue;
-
-                statusEl.textContent = 'Checking...';
-                statusEl.className = 'node-status checking';
-
-                try {
-                    const response = await fetch(server.url, {
-                        method: server.method || 'GET',
-                        mode: 'cors'
-                    });
-
-                    if (response.ok) {
-                        statusEl.textContent = 'Online';
-                        statusEl.className = 'node-status online';
-                    } else {
-                        throw new Error('Not OK');
-                    }
-                } catch (e) {
-                    statusEl.textContent = 'Offline';
-                    statusEl.className = 'node-status offline';
-                }
-            }
-        }
-
-        // Reset flow view
-        function resetFlowView() {
-            document.getElementById('flow-select').value = 'all';
-            highlightFlow('all');
-            document.getElementById('node-details').style.display = 'none';
-        }
-
-        // Redraw connections on window resize
-        window.addEventListener('resize', () => {
-            drawFlowConnections();
-        });
-
-        // ========================================
-        // DRAG AND DROP FUNCTIONALITY
-        // ========================================
-        let draggedNode = null;
-        let dragOffset = { x: 0, y: 0 };
-        let isDragging = false;
-
-        function initDraggable() {
-            const nodes = document.querySelectorAll('.flow-node.draggable');
-            const diagram = document.getElementById('flow-diagram');
-
-            nodes.forEach(node => {
-                node.addEventListener('mousedown', startDrag);
-                node.addEventListener('touchstart', startDrag, { passive: false });
-            });
-
-            document.addEventListener('mousemove', drag);
-            document.addEventListener('touchmove', drag, { passive: false });
-            document.addEventListener('mouseup', stopDrag);
-            document.addEventListener('touchend', stopDrag);
-        }
-
-        function startDrag(e) {
-            if (e.target.closest('.node-status')) return; // Don't drag when clicking status
-
-            draggedNode = e.currentTarget;
-            isDragging = false;
-
-            const diagram = document.getElementById('flow-diagram');
-            const diagramRect = diagram.getBoundingClientRect();
-            const nodeRect = draggedNode.getBoundingClientRect();
-
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-            dragOffset.x = clientX - nodeRect.left;
-            dragOffset.y = clientY - nodeRect.top;
-
-            draggedNode.classList.add('dragging');
-
-            if (e.touches) {
-                e.preventDefault();
-            }
-        }
-
-        function drag(e) {
-            if (!draggedNode) return;
-
-            isDragging = true;
-
-            const diagram = document.getElementById('flow-diagram');
-            const diagramRect = diagram.getBoundingClientRect();
-
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-            let newX = clientX - diagramRect.left - dragOffset.x;
-            let newY = clientY - diagramRect.top - dragOffset.y;
-
-            // Keep within bounds
-            const nodeRect = draggedNode.getBoundingClientRect();
-            newX = Math.max(0, Math.min(newX, diagramRect.width - nodeRect.width));
-            newY = Math.max(0, Math.min(newY, diagramRect.height - nodeRect.height));
-
-            draggedNode.style.left = newX + 'px';
-            draggedNode.style.top = newY + 'px';
-
-            // Redraw connections while dragging
-            drawFlowConnections();
-
-            if (e.touches) {
-                e.preventDefault();
-            }
-        }
-
-        function stopDrag(e) {
-            if (draggedNode) {
-                draggedNode.classList.remove('dragging');
-
-                // If we didn't drag much, treat it as a click
-                if (!isDragging) {
-                    const nodeId = draggedNode.id.replace('node-', '');
-                    showNodeDetails(nodeId);
-                }
-
-                draggedNode = null;
-                isDragging = false;
-            }
-        }
-
-        // MolView Functions
-        function loadMolView() {
-            const input = document.getElementById('molview-input').value;
-            if (!input.trim()) {
-                alert('Please enter a compound name, SMILES, or InChI');
-                return;
-            }
-
-            // Update the iframe src with the query parameter
-            const iframe = document.getElementById('molview-iframe');
-            const representation = document.getElementById('molview-representation').value;
-
-            // For MolView, we'll use the q parameter to search for compounds
-            // The MolView server will handle the query and display the structure
-            iframe.src = `http://localhost:5003/?q=${encodeURIComponent(input)}`;
-        }
-
-        function resetMolView() {
-            const iframe = document.getElementById('molview-iframe');
-            iframe.src = 'http://localhost:5003/';
-        }
-
-        // Initialize draggable on load
-        window.addEventListener('load', () => {
-            initDraggable();
-        });
-    </script>
+    <script src="unified-logic.js"></script>
+    <script src="quintessen-v2.js"></script>
 </body>
+
 </html>

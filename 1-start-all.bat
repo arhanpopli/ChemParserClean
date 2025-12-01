@@ -20,10 +20,12 @@ echo ============================================================
 echo   CHEMPARSER - COMPLETE SYSTEM STARTUP
 echo ============================================================
 echo   Starting all services:
-echo   0. Docker Backend         (Docker, Port 8000) - for mol2chemfig
-echo   1. Mol2ChemFig Server     (Flask, Port 5001)
+echo   0. Docker Backend         (Docker, Port 8000) - DEPRECATED
+echo   1. Mol2ChemFig Server     (Flask, Port 1000)
 echo   2. MoleculeViewer Backend (Node.js, Port 5000)
 echo   3. PubChem Server         (Node.js, Port 5002)
+echo   4. MolView PHP Server     (PHP, Port 8000) - Main viewer
+echo   5. MolView Search API     (Node.js, Port 8001) - Unified search
 echo   Then: Unified Interface in your browser
 echo ============================================================
 echo.
@@ -32,23 +34,15 @@ REM Kill existing processes to avoid port conflicts
 echo [PRE] Cleaning up existing processes...
 taskkill /F /IM node.exe >nul 2>&1
 taskkill /F /IM python.exe >nul 2>&1
+taskkill /F /IM php.exe >nul 2>&1
 timeout /t 2 >nul
 
 echo.
-echo [0/5] Starting Docker Backend (Port 8000)...
-echo       NOTE: Docker is OPTIONAL - local mol2chemfig processing is available!
-docker-compose up -d 2>nul
-if errorlevel 1 (
-    echo       [INFO] Docker not running - using LOCAL mol2chemfig processing
-    echo       Local processing uses mol2chemfigPy3 + MiKTeX LaTeX
-) else (
-    echo       Docker backend starting (will be used as fallback)...
-    timeout /t 5 >nul
-)
-
+echo [SKIPPED] Docker Backend (Port 8000) - Using MolView PHP server instead
 echo.
-echo [1/5] Starting Mol2ChemFig Server (Port 5001)...
-start "Mol2ChemFig (5001)" /D "%ROOT_DIR%" cmd /k python mol2chemfig_server.py
+
+echo [1/5] Starting Mol2ChemFig Server (Port 1000)...
+start "Mol2ChemFig (1000)" /D "%ROOT_DIR%" cmd /k python mol2chemfig_server.py
 timeout /t 3 >nul
 
 echo [2/5] Starting MoleculeViewer Backend (Port 5000)...
@@ -59,7 +53,15 @@ echo [3/5] Starting PubChem Server (Port 5002)...
 start "PubChem (5002)" /D "%ROOT_DIR%MoleculeViewer\pubchem" cmd /k node server.js
 timeout /t 3 >nul
 
-echo [4/5] Opening Unified Interface...
+echo [4/5] Starting MolView PHP Server (Port 8000)...
+start "MolView PHP (8000)" /D "%ROOT_DIR%Molview\molview" cmd /k php -S localhost:8000
+timeout /t 3 >nul
+
+echo [5/5] Starting MolView Search API (Port 8001)...
+start "MolView Search (8001)" /D "%ROOT_DIR%Molview\molview" cmd /k node search-server.js
+timeout /t 3 >nul
+
+echo [6/6] Opening Unified Interface...
 timeout /t 2 >nul
 start http://localhost:5000/unified-interface.html
 
@@ -72,10 +74,15 @@ echo   Access the system at:
 echo   http://localhost:5000/unified-interface.html
 echo.
 echo   Individual servers:
-echo   Docker Backend:    http://localhost:8000 (mol2chemfig core)
-echo   Mol2ChemFig:       http://localhost:5001 (Flask wrapper)
+echo   MolView PHP:       http://localhost:8000 (main viewer)
+echo   MolView Search:    http://localhost:8001 (unified search API)
+echo   Mol2ChemFig:       http://localhost:1000 (Flask wrapper)
 echo   MoleculeViewer:    http://localhost:5000
 echo   PubChem:           http://localhost:5002
+echo.
+echo   Extension uses:
+echo   - Port 8001 for ALL queries (with autocorrect)
+echo   - Port 8000 for MolView embeds
 echo.
 echo   To stop servers: run util-stop-all.bat
 echo   To check status: run util-status.bat

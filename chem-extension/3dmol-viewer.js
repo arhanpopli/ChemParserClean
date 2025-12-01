@@ -1,6 +1,7 @@
 // Get CID from URL parameters
 const urlParams = new URLSearchParams(window.location.search);
 const cid = urlParams.get('cid');
+const codid = urlParams.get('codid');
 const name = urlParams.get('name');
 const style = urlParams.get('style') || 'stick:sphere';
 const stickRadius = parseFloat(urlParams.get('stickRadius') || '0.15');
@@ -10,6 +11,9 @@ const bgColor = decodeURIComponent(urlParams.get('bgColor') || '#1a1a2e');
 
 // Set body background color from URL parameter
 document.documentElement.style.setProperty('--bg-color', bgColor);
+
+const MOLVIEW_API = 'http://localhost:8000';
+
 
 // Van der Waals radii (in Angstroms) - scientifically accurate atomic radii
 // These are the actual physical sizes of atoms used in chemistry
@@ -134,6 +138,8 @@ const vanDerWaalsRadii = {
 
 if (cid) {
     loadMolecule(cid);
+} else if (codid) {
+    fallbackToMolView(codid, 'codid');
 } else if (name) {
     resolveAndLoad(name);
 } else {
@@ -143,16 +149,16 @@ if (cid) {
 async function resolveAndLoad(name) {
     console.log(`🔍 Resolving molecule: ${name}`);
 
-    // STEP 1: Query local MolView API for intelligent molecule detection
-    const MOLVIEW_API = 'http://localhost:5003';
+    // STEP 1: Query Search API (port 8001) for intelligent molecule detection
+    const SEARCH_API = 'http://localhost:8001';
 
     try {
-        console.log(`🌐 Querying local MolView API: ${MOLVIEW_API}/api/search?q=${encodeURIComponent(name)}`);
-        const response = await fetch(`${MOLVIEW_API}/api/search?q=${encodeURIComponent(name)}`);
+        console.log(`🌐 Querying Search API: ${SEARCH_API}/search?q=${encodeURIComponent(name)}`);
+        const response = await fetch(`${SEARCH_API}/search?q=${encodeURIComponent(name)}`);
 
         if (response.ok) {
             const data = await response.json();
-            console.log('📦 MolView API response:', data);
+            console.log('📦 Search API response:', data);
 
             if (data.found) {
                 const category = data.category?.toLowerCase();
@@ -160,6 +166,18 @@ async function resolveAndLoad(name) {
                 // CASE 1: Compound or Mineral → Use SMILES/SDF with local 3Dmol.js
                 if (category === 'compound' || category === 'mineral') {
                     console.log(`✅ Found ${category}: ${name}`);
+
+                    // Check for mineral ID (codid)
+                    if (category === 'mineral' && (data.codid || data.id)) {
+                        const mineralId = data.codid || data.id;
+                        console.log('💎 Mineral detected with ID:', mineralId);
+
+                        // If no direct 3D data, use MolView with codid
+                        if (!data.sdf && !data.smiles) {
+                            fallbackToMolView(mineralId, 'codid');
+                            return;
+                        }
+                    }
 
                     if (data.sdf) {
                         // Render SDF directly with 3Dmol.js
@@ -182,7 +200,7 @@ async function resolveAndLoad(name) {
                     console.log(`🧬 Found ${category}: ${name}`);
 
                     // Use local MolView embed with the query
-                    const molviewUrl = `${MOLVIEW_API}/?q=${encodeURIComponent(name)}`;
+                    const molviewUrl = `${MOLVIEW_API}/embed/v2/?q=${encodeURIComponent(name)}`;
                     embedMolView(molviewUrl, name);
                     return;
                 }
@@ -291,8 +309,8 @@ function embedMolView(url, name) {
     console.log(`✅ MolView embedded for: ${name}`);
 }
 
-function fallbackToMolView(query, isCid) {
-    console.warn(`⚠️ Falling back to MolView for ${isCid ? 'CID' : 'Name'}: ${query}`);
+function fallbackToMolView(query, type = 'q') {
+    console.warn(`⚠️ Falling back to MolView for ${type}: ${query}`);
 
     // Clear the viewer container
     document.body.innerHTML = '';
@@ -301,13 +319,21 @@ function fallbackToMolView(query, isCid) {
     document.body.style.overflow = 'hidden';
 
     // Create MolView iframe pointing to LOCAL MolView instance
-    const MOLVIEW_API = 'http://localhost:5003';
     const iframe = document.createElement('iframe');
 
-    // Use local MolView /embed endpoint with query parameter
-    // If isCid is true, use cid=... else use q=...
-    const param = isCid ? `cid=${query}` : `q=${encodeURIComponent(query)}`;
-    iframe.src = `${MOLVIEW_API}/embed?${param}`;
+    // Use local MolView /embed/v2/ endpoint with query parameter
+    let param;
+    if (type === 'cid' || type === true) {
+        param = `cid=${query}`;
+    } else if (type === 'codid') {
+        param = `codid=${query}`;
+    } else {
+        param = `q=${encodeURIComponent(query)}`;
+    }
+    iframe.src = `${MOLVIEW_API}/embed/v2/?${param}`;
+
+    console.log('%c🔗 3D VIEWER IFRAME SRC:', 'background: #FF5722; color: white; font-weight: bold; padding: 4px; font-size: 14px;');
+    console.log(`   ${iframe.src}`);
 
     iframe.style.width = '100vw';
     iframe.style.height = '100vh';
@@ -315,8 +341,6 @@ function fallbackToMolView(query, isCid) {
     iframe.style.display = 'block';
 
     document.body.appendChild(iframe);
-
-    console.log(`✅ Switched to LOCAL MolView /embed endpoint for ${isCid ? 'CID' : 'Name'} ${query}`);
 }
 
 

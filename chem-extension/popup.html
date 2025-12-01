@@ -563,15 +563,20 @@
               <small>Offline rendering (SmilesDrawer)</small>
             </div>
           </label>
+        </div>
 
-          <input type="radio" name="renderingEngine" value="molview-search" id="engine5">
-          <label for="engine5" class="radio-option">
-            <div class="radio-indicator"></div>
-            <div>
-              <strong>MolView Search</strong>
-              <small>Unified search with autocorrect (port 8001)</small>
-            </div>
+        <div class="info-box" style="background: rgba(156, 39, 176, 0.1); border-left: 3px solid #9C27B0; margin-top: 8px;">
+          <strong>🔍 Universal Search API (Port 8001)</strong><br>
+          <small>ALL engines now use intelligent search with autocorrect for typos, minerals, proteins, and compounds!</small>
+        </div>
+
+        <div class="option" style="margin-top: 12px; padding: 12px; background: rgba(33, 150, 243, 0.08); border-radius: 8px; border-left: 3px solid #2196F3;">
+          <label class="option-label" for="molviewOnlyModeToggle">
+            <strong>🌐 MolView-Only Mode</strong>
+            <small>Fetch ALL data from localhost:8000 (no external PubChem/OPSIN calls)</small>
           </label>
+          <input type="checkbox" id="molviewOnlyModeToggle">
+          <label class="toggle" for="molviewOnlyModeToggle"></label>
         </div>
 
         <div class="info-box" id="engineInfo">

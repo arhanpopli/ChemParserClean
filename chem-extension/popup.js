@@ -63,6 +63,9 @@ const viewer3DStickRadiusSelect = document.getElementById('viewer3DStickRadiusSe
 const viewer3DSphereRadiusSelect = document.getElementById('viewer3DSphereRadiusSelect');
 const viewer3DAutoRotateToggle = document.getElementById('viewer3DAutoRotateToggle');
 
+// MolView-Only Mode toggle
+const molviewOnlyModeToggle = document.getElementById('molviewOnlyModeToggle');
+
 // Safe selector function
 function safeGetElement(id) {
   const el = document.getElementById(id);
@@ -128,7 +131,9 @@ chrome.storage.sync.get({
     'cartoon': {}
   },
   // AI Molecular Control
-  enableAIMolecularControl: false
+  enableAIMolecularControl: false,
+  // MolView-Only Mode
+  molviewOnlyMode: false
 }, (settings) => {
   enabledToggle.checked = settings.enabled;
   mhchemToggle.checked = settings.renderMhchem;
@@ -190,6 +195,9 @@ chrome.storage.sync.get({
   if (viewer3DAutoRotateToggle) viewer3DAutoRotateToggle.checked = settings.viewer3DAutoRotate !== false;
   if (viewer3DSizeSelect) viewer3DSizeSelect.value = settings.viewer3DSize || 'normal';
   if (viewer3DBgColorSelect) viewer3DBgColorSelect.value = settings.viewer3DBgColor || '#1a1a2e';
+
+  // Load MolView-Only Mode option
+  if (molviewOnlyModeToggle) molviewOnlyModeToggle.checked = settings.molviewOnlyMode;
 
   // Load per-style settings for the current style
   const currentStyle = settings.viewer3DStyle || 'stick:sphere';
@@ -531,6 +539,15 @@ if (aiMolecularControlToggle) {
   });
 }
 
+// MolView-Only Mode event listener
+if (molviewOnlyModeToggle) {
+  molviewOnlyModeToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ molviewOnlyMode: e.target.checked }, () => {
+      showStatus('MolView-Only Mode ' + (e.target.checked ? 'enabled' : 'disabled') + '. All data will fetch from localhost:8000. Reload page to apply.', 'success');
+    });
+  });
+}
+
 // 3D Viewer event listeners
 if (enable3DViewerToggle) {
   enable3DViewerToggle.addEventListener('change', (e) => {
@@ -676,8 +693,7 @@ engineRadios.forEach(radio => {
           'moleculeviewer': 'MoleculeViewer',
           'mol2chemfig': 'mol2chemfig',
           'pubchem': 'PubChem',
-          'client-side': 'Client-Side',
-          'molview-search': 'MolView Search'
+          'client-side': 'Client-Side'
         };
         showStatus(`Switched to ${engineNames[engine]}. Reload page to apply.`, 'success');
       });
@@ -723,14 +739,6 @@ function updateEngineInfo(engine) {
     if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
     if (molviewProteinOptions) molviewProteinOptions.style.display = 'none';
     updateClientSideNote(true); // Show client-side limitations note
-  } else if (engine === 'molview-search') {
-    if (engineInfo) engineInfo.textContent = '🔍 MolView Search Server (localhost:8001) - Unified search with autocorrect';
-    if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
-    if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
-    if (pubchemOptions) pubchemOptions.style.display = 'none';
-    if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
-    if (molviewProteinOptions) molviewProteinOptions.style.display = 'none';
-    updateClientSideNote(false);
   }
 }
 

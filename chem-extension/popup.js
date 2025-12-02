@@ -57,11 +57,18 @@ const molviewRepresentationSelect = document.getElementById('molviewRepresentati
 const molviewEngineSelect = document.getElementById('molviewEngineSelect');
 const molviewCrystallographySelect = document.getElementById('molviewCrystallographySelect');
 
-// MolView Protein Options
+// Protein Options
+const proteinRemoveWhiteBgToggle = document.getElementById('proteinRemoveWhiteBgToggle');
 const molviewBioAssemblyToggle = document.getElementById('molviewBioAssemblyToggle');
 const molviewChainTypeSelect = document.getElementById('molviewChainTypeSelect');
 const molviewChainBondsToggle = document.getElementById('molviewChainBondsToggle');
 const molviewChainColorSelect = document.getElementById('molviewChainColorSelect');
+const proteinMolviewBgColorSelect = document.getElementById('proteinMolviewBgColorSelect');
+
+// Mineral Options
+const mineralRepresentationSelect = document.getElementById('mineralRepresentationSelect');
+const mineralMolviewBgColorSelect = document.getElementById('mineralMolviewBgColorSelect');
+const mineralCrystallographySelect = document.getElementById('mineralCrystallographySelect');
 
 // Image size control options
 const saveSizePerImageToggle = document.getElementById('saveSizePerImageToggle');
@@ -138,11 +145,17 @@ chrome.storage.sync.get({
   molviewRepresentation: 'ballAndStick',
   molviewEngine: 'glmol',
   molviewCrystallography: 'none',
-  // MolView Protein Options
+  // Protein Options
+  proteinRemoveWhiteBg: false,
   molviewBioAssembly: false,
   molviewChainType: 'ribbon',
   molviewChainBonds: false,
   molviewChainColor: 'ss',
+  proteinMolviewBgColor: 'black',
+  // Mineral Options
+  mineralRepresentation: 'ballAndStick',
+  mineralMolviewBgColor: 'black',
+  mineralCrystallography: 'supercell_2x2x2',
   // Per-style settings for stick and sphere radius
   viewer3DStyleSettings: {
     'stick': { stickRadius: '0.15' },
@@ -223,11 +236,18 @@ chrome.storage.sync.get({
   if (molviewEngineSelect) molviewEngineSelect.value = settings.molviewEngine || 'glmol';
   if (molviewCrystallographySelect) molviewCrystallographySelect.value = settings.molviewCrystallography || 'none';
 
-  // Load MolView Protein Options
+  // Load Protein Options
+  if (proteinRemoveWhiteBgToggle) proteinRemoveWhiteBgToggle.checked = settings.proteinRemoveWhiteBg;
   if (molviewBioAssemblyToggle) molviewBioAssemblyToggle.checked = settings.molviewBioAssembly;
   if (molviewChainTypeSelect) molviewChainTypeSelect.value = settings.molviewChainType || 'ribbon';
   if (molviewChainBondsToggle) molviewChainBondsToggle.checked = settings.molviewChainBonds;
   if (molviewChainColorSelect) molviewChainColorSelect.value = settings.molviewChainColor || 'ss';
+  if (proteinMolviewBgColorSelect) proteinMolviewBgColorSelect.value = settings.proteinMolviewBgColor || 'black';
+
+  // Load Mineral Options
+  if (mineralRepresentationSelect) mineralRepresentationSelect.value = settings.mineralRepresentation || 'ballAndStick';
+  if (mineralMolviewBgColorSelect) mineralMolviewBgColorSelect.value = settings.mineralMolviewBgColor || 'black';
+  if (mineralCrystallographySelect) mineralCrystallographySelect.value = settings.mineralCrystallography || 'supercell_2x2x2';
 
   // Show/hide MolView options based on current source
   if (molviewOptions) {
@@ -750,7 +770,15 @@ if (molviewCrystallographySelect) {
   });
 }
 
-// MolView Protein Options event listeners
+// Protein Options event listeners
+if (proteinRemoveWhiteBgToggle) {
+  proteinRemoveWhiteBgToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ proteinRemoveWhiteBg: e.target.checked }, () => {
+      showStatus('White background removal ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
 if (molviewBioAssemblyToggle) {
   molviewBioAssemblyToggle.addEventListener('change', (e) => {
     chrome.storage.sync.set({ molviewBioAssembly: e.target.checked }, () => {
@@ -783,6 +811,39 @@ if (molviewChainColorSelect) {
   });
 }
 
+if (proteinMolviewBgColorSelect) {
+  proteinMolviewBgColorSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ proteinMolviewBgColor: e.target.value }, () => {
+      showStatus('Protein background color set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+// Mineral Options event listeners
+if (mineralRepresentationSelect) {
+  mineralRepresentationSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ mineralRepresentation: e.target.value }, () => {
+      showStatus('Mineral representation set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (mineralMolviewBgColorSelect) {
+  mineralMolviewBgColorSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ mineralMolviewBgColor: e.target.value }, () => {
+      showStatus('Mineral background color set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (mineralCrystallographySelect) {
+  mineralCrystallographySelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ mineralCrystallography: e.target.value }, () => {
+      showStatus('Mineral crystallography set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
 // Add event listeners for rendering engine radio buttons
 const engineRadios = document.querySelectorAll('input[name="renderingEngine"]');
 engineRadios.forEach(radio => {
@@ -807,6 +868,7 @@ engineRadios.forEach(radio => {
  * Update engine info display
  */
 const molviewProteinOptions = document.getElementById('molviewProteinOptions');
+const mineralOptions = document.getElementById('mineralOptions');
 
 function updateEngineInfo(engine) {
   if (engine === 'moleculeviewer') {
@@ -814,34 +876,31 @@ function updateEngineInfo(engine) {
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'block';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
     if (pubchemOptions) pubchemOptions.style.display = 'none';
-    if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
-    if (molviewProteinOptions) molviewProteinOptions.style.display = 'none';
     updateClientSideNote(false);
   } else if (engine === 'mol2chemfig') {
     if (engineInfo) engineInfo.textContent = '📐 mol2chemfig Server (localhost:8000)';
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'block';
     if (pubchemOptions) pubchemOptions.style.display = 'none';
-    if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
-    if (molviewProteinOptions) molviewProteinOptions.style.display = 'none';
     updateClientSideNote(false);
   } else if (engine === 'pubchem') {
     if (engineInfo) engineInfo.textContent = '🌐 PubChem Server (localhost:5002)';
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
     if (pubchemOptions) pubchemOptions.style.display = 'block';
-    if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
-    if (molviewProteinOptions) molviewProteinOptions.style.display = 'block'; // Show protein options for PubChem
     updateClientSideNote(false);
   } else if (engine === 'client-side') {
     if (engineInfo) engineInfo.textContent = '💻 Client-Side (SmilesDrawer SVG) - No Server Required!';
     if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
     if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'block'; // Show mol2chemfig options for rendering settings
     if (pubchemOptions) pubchemOptions.style.display = 'none';
-    if (viewer3DSettings) viewer3DSettings.style.display = 'block'; // Always show
-    if (molviewProteinOptions) molviewProteinOptions.style.display = 'none';
     updateClientSideNote(true); // Show client-side limitations note
   }
+
+  // Always show 3D Viewer Settings, Protein Options, and Mineral Options (independent of compound renderer)
+  if (viewer3DSettings) viewer3DSettings.style.display = 'block';
+  if (molviewProteinOptions) molviewProteinOptions.style.display = 'block';
+  if (mineralOptions) mineralOptions.style.display = 'block';
 }
 
 /**

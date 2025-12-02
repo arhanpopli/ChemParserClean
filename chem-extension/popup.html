@@ -1075,7 +1075,7 @@
       </div>
 
       <!-- MolView Protein Options -->
-      <div id="molviewProteinOptions" class="section" style="display: none;">
+      <div id="molviewProteinOptions" class="section">
         <div class="section-title">
           <span>MolView Protein Options</span>
           <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1083,6 +1083,15 @@
           </svg>
         </div>
         <div class="section-content">
+          <div class="option">
+            <label class="option-label" for="proteinRemoveWhiteBgToggle">
+              <strong>Remove White Background</strong>
+              <small>Remove white (#FFFFFF) background from RCSB protein images</small>
+            </label>
+            <input type="checkbox" id="proteinRemoveWhiteBgToggle">
+            <label class="toggle" for="proteinRemoveWhiteBgToggle"></label>
+          </div>
+
           <div class="option">
             <label class="option-label" for="molviewBioAssemblyToggle">
               <strong>Show Biological Assembly</strong>
@@ -1128,6 +1137,68 @@
             <option value="residue">By Residue</option>
             <option value="polarity">By Polarity</option>
             <option value="bfactor">B-factor (temperature)</option>
+          </select>
+
+          <div class="option">
+            <label class="option-label">
+              <strong>Background Color (MolView)</strong>
+              <small>Background for MolView 3D viewer (proteins only)</small>
+            </label>
+          </div>
+          <select id="proteinMolviewBgColorSelect">
+            <option value="black" selected>Black</option>
+            <option value="gray">Gray</option>
+            <option value="white">White</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Mineral Options -->
+      <div id="mineralOptions" class="section">
+        <div class="section-title">
+          <span>Mineral Options</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
+        </div>
+        <div class="section-content">
+          <div class="option">
+            <label class="option-label">
+              <strong>Representation</strong>
+              <small>How to display mineral structure</small>
+            </label>
+          </div>
+          <select id="mineralRepresentationSelect">
+            <option value="ballAndStick" selected>Ball and Stick</option>
+            <option value="stick">Stick</option>
+            <option value="vdwSpheres">van der Waals Spheres</option>
+            <option value="wireframe">Wireframe</option>
+            <option value="line">Line</option>
+          </select>
+
+          <div class="option">
+            <label class="option-label">
+              <strong>Background Color (MolView)</strong>
+              <small>Background for MolView 3D viewer (minerals only)</small>
+            </label>
+          </div>
+          <select id="mineralMolviewBgColorSelect">
+            <option value="black" selected>Black</option>
+            <option value="gray">Gray</option>
+            <option value="white">White</option>
+          </select>
+
+          <div class="option">
+            <label class="option-label">
+              <strong>Crystallography</strong>
+              <small>Unit cell or supercell display</small>
+            </label>
+          </div>
+          <select id="mineralCrystallographySelect">
+            <option value="none">None</option>
+            <option value="unitcell">Load unit cell</option>
+            <option value="supercell_2x2x2" selected>Load 2×2×2 supercell</option>
+            <option value="supercell_1x3x3">Load 1×3×3 supercell</option>
           </select>
         </div>
       </div>

@@ -2799,9 +2799,10 @@ function setupLazyLoading() {
 
       // Parse the response and return structured data
       return {
-        compoundType: data.compoundType || 'compound',
+        compoundType: data.compoundType || data.primary_type || 'compound',
         correctedName: data.name || searchTerm,
-        smiles: data.smiles || data.canonical_smiles || data.isomeric_smiles || moleculeData.smiles,
+        // Prefer isomeric SMILES for stereochemical accuracy
+        smiles: data.isomeric_smiles || data.canonical_smiles || moleculeData.smiles,
         searchResult: data // Full response for embed_url, image_url, etc.
       };
     } catch (error) {
@@ -2844,19 +2845,46 @@ function setupLazyLoading() {
       // ========================================
       // STEP 2: Check compound type and route accordingly
       // ========================================
-      // Proteins and minerals use MolView embed viewer (same as 3D viewer for compounds)
+      // Proteins and minerals: Check if we have SMILES for rendering
       if (searchData.compoundType === 'biomolecule' || searchData.compoundType === 'mineral') {
-        console.log(`%c🔮 ${searchData.compoundType} detected: Using 2D preview with 3D toggle`, 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
+        console.log(`%c🔮 ${searchData.compoundType} detected`, 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
 
-        // Set up moleculeData with embed URL for show3DViewerInline
-        moleculeData.nomenclature = searchData.correctedName;
-        moleculeData.embedUrl = searchData.searchResult.embed_url; // Direct embed URL
-        moleculeData.compoundType = searchData.compoundType;
-        moleculeData.searchResult = searchData.searchResult;
-        moleculeData.imageUrl = searchData.searchResult.image_url; // 2D preview image
+        // For minerals with SMILES, render them like compounds
+        if (searchData.compoundType === 'mineral' && searchData.smiles) {
+          console.log(`%c💎 Mineral has SMILES: Rendering 2D structure`, 'background: #00BCD4; color: white; font-weight: bold; padding: 4px;');
+          console.log(`%c📊 SMILES: ${searchData.smiles}`, 'color: #00BCD4; font-weight: bold;');
 
-        // If we have a 2D image, display it first with a "3D" button
-        if (moleculeData.imageUrl) {
+          // Update moleculeData with SMILES and continue to compound rendering
+          moleculeData.smiles = searchData.smiles;
+          moleculeData.nomenclature = searchData.correctedName;
+          moleculeData.searchResult = searchData.searchResult;
+          moleculeData.formula = searchData.searchResult.formula; // Keep formula for reference
+
+          // Fall through to compound rendering logic below
+          // (Don't return here, let it continue to STEP 3)
+        }
+        // For minerals without SMILES but with formula, create a simple formula display
+        else if (searchData.compoundType === 'mineral' && searchData.searchResult.formula) {
+          console.log(`%c💎 Mineral without SMILES: Creating formula display`, 'background: #FF9800; color: white; font-weight: bold; padding: 4px;');
+          console.log(`%c🧪 Formula: ${searchData.searchResult.formula}`, 'color: #FF9800; font-weight: bold;');
+
+          // Create a simple SVG showing the formula
+          const formula = searchData.searchResult.formula;
+          const mineralName = searchData.correctedName;
+
+          // Generate a simple SVG with the formula
+          const svgContent = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="300" height="150" viewBox="0 0 300 150">
+              <rect width="300" height="150" fill="#f5f5f5" rx="8"/>
+              <text x="150" y="60" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#333">${mineralName}</text>
+              <text x="150" y="95" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#666">${formula}</text>
+              <text x="150" y="125" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#999">Click 3D button for structure</text>
+            </svg>
+          `;
+
+          const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+          const svgUrl = URL.createObjectURL(svgBlob);
+
           // Create wrapper
           const wrapper = document.createElement('div');
           wrapper.className = 'chem-2d-preview-wrapper';
@@ -2865,17 +2893,16 @@ function setupLazyLoading() {
           wrapper.style.margin = '5px';
 
           // Create image element
-          const previewImg = document.createElement('img');
-          previewImg.src = moleculeData.imageUrl;
-          previewImg.alt = moleculeData.nomenclature;
-          previewImg.className = 'chemfig-diagram';
-          // Apply hard limits consistent with other renderers
-          previewImg.style.maxWidth = '600px';
-          previewImg.style.maxHeight = '500px';
-          previewImg.style.display = 'block';
-          previewImg.style.borderRadius = '8px';
+          const formulaImg = document.createElement('img');
+          formulaImg.src = svgUrl;
+          formulaImg.alt = mineralName;
+          formulaImg.className = 'chemfig-diagram mineral-formula';
+          formulaImg.style.maxWidth = '300px';
+          formulaImg.style.maxHeight = '150px';
+          formulaImg.style.display = 'block';
+          formulaImg.style.borderRadius = '8px';
 
-          wrapper.appendChild(previewImg);
+          wrapper.appendChild(formulaImg);
 
           // Add "3D" button
           const btn3d = document.createElement('button');
@@ -2908,11 +2935,17 @@ function setupLazyLoading() {
             btn3d.style.borderColor = 'rgba(255, 255, 255, 0.4)';
           };
 
+          // Set up moleculeData for 3D viewer
+          moleculeData.nomenclature = searchData.correctedName;
+          moleculeData.embedUrl = searchData.searchResult.embed_url;
+          moleculeData.compoundType = searchData.compoundType;
+          moleculeData.searchResult = searchData.searchResult;
+
           btn3d.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
             btn3d.innerHTML = 'Loading...';
-            show3DViewerInline(moleculeData, wrapper); // Replace wrapper with 3D viewer
+            show3DViewerInline(moleculeData, wrapper);
           };
           wrapper.appendChild(btn3d);
 
@@ -2923,11 +2956,122 @@ function setupLazyLoading() {
           activeLoads--;
           return;
         }
+        // For proteins or minerals with image_url from search API
+        else if (searchData.searchResult.image_url) {
+          console.log(`%c🔮 Using 2D preview with 3D toggle`, 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
 
-        // Fallback: Use the same 3D viewer function that compounds use (load 3D immediately)
-        activeLoads--;
-        await show3DViewerInline(moleculeData, img);
-        return;
+          // Set up moleculeData with embed URL for show3DViewerInline
+          moleculeData.nomenclature = searchData.correctedName;
+          moleculeData.embedUrl = searchData.searchResult.embed_url; // Direct embed URL
+          moleculeData.compoundType = searchData.compoundType;
+          moleculeData.searchResult = searchData.searchResult;
+          moleculeData.imageUrl = searchData.searchResult.image_url; // 2D preview image
+
+          // If we have a 2D image, display it first with a "3D" button
+          if (moleculeData.imageUrl) {
+            // Get viewer size from settings to match 3D viewer width
+            const viewerSize = settings.viewer3DSize || 'normal';
+            const sizeDimensions = {
+              'small': { width: 200, height: 150 },
+              'medium': { width: 300, height: 250 },
+              'normal': { width: 400, height: 350 },
+              'large': { width: 600, height: 450 },
+              'xlarge': { width: 800, height: 600 }
+            };
+            const dimensions = sizeDimensions[viewerSize] || sizeDimensions['normal'];
+
+            // Create wrapper
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chem-2d-preview-wrapper';
+            wrapper.style.position = 'relative';
+            wrapper.style.display = 'inline-block';
+            wrapper.style.margin = '5px';
+
+            // Create image element
+            const previewImg = document.createElement('img');
+            previewImg.src = moleculeData.imageUrl;
+            previewImg.alt = moleculeData.nomenclature;
+            previewImg.className = 'chemfig-diagram';
+            // Match 3D viewer width from settings, but keep original aspect ratio
+            // Use max-width to prevent enlargement beyond original size
+            previewImg.style.maxWidth = `${dimensions.width}px`;
+            previewImg.style.height = 'auto';
+            previewImg.style.display = 'block';
+            previewImg.style.borderRadius = '8px';
+
+            // Apply background removal filter if enabled (for RCSB protein images)
+            if (settings.proteinRemoveWhiteBg) {
+              // Use CSS filter to make white pixels transparent
+              previewImg.style.mixBlendMode = 'multiply';
+              previewImg.style.backgroundColor = 'transparent';
+            }
+
+            wrapper.appendChild(previewImg);
+
+            // Add "3D" button
+            const btn3d = document.createElement('button');
+            btn3d.innerHTML = '<span>3D</span>';
+            btn3d.title = 'Switch to interactive 3D view';
+            btn3d.style.cssText = `
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                background: rgba(0, 0, 0, 0.6);
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                border-radius: 4px;
+                padding: 4px 8px;
+                cursor: pointer;
+                font-family: system-ui, -apple-system, sans-serif;
+                font-size: 12px;
+                font-weight: bold;
+                z-index: 10;
+                backdrop-filter: blur(2px);
+                transition: all 0.2s ease;
+            `;
+
+            btn3d.onmouseover = () => {
+              btn3d.style.background = 'rgba(0, 0, 0, 0.8)';
+              btn3d.style.borderColor = '#fff';
+            };
+            btn3d.onmouseout = () => {
+              btn3d.style.background = 'rgba(0, 0, 0, 0.6)';
+              btn3d.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+            };
+
+            btn3d.onclick = (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              btn3d.innerHTML = 'Loading...';
+              show3DViewerInline(moleculeData, wrapper); // Replace wrapper with 3D viewer
+            };
+            wrapper.appendChild(btn3d);
+
+            // Replace original img
+            if (img.parentNode) {
+              img.parentNode.replaceChild(wrapper, img);
+            }
+            activeLoads--;
+            return;
+          }
+
+          // Fallback: Use the same 3D viewer function that compounds use (load 3D immediately)
+          activeLoads--;
+          await show3DViewerInline(moleculeData, img);
+          return;
+        }
+        // Final fallback for biomolecules/minerals without image or SMILES
+        else {
+          console.log(`%c⚠️ No 2D preview or SMILES available, loading 3D viewer directly`, 'background: #FF5722; color: white; font-weight: bold; padding: 4px;');
+          moleculeData.nomenclature = searchData.correctedName;
+          moleculeData.embedUrl = searchData.searchResult.embed_url;
+          moleculeData.compoundType = searchData.compoundType;
+          moleculeData.searchResult = searchData.searchResult;
+
+          activeLoads--;
+          await show3DViewerInline(moleculeData, img);
+          return;
+        }
       }
 
       // ========================================
@@ -3256,19 +3400,29 @@ function setupLazyLoading() {
   }
 
   // Helper to append MolView parameters
-  function appendMolViewParams(url, settings) {
+  function appendMolViewParams(url, settings, compoundType) {
     try {
       const urlObj = new URL(url);
 
-      // Background Color
-      if (settings.viewer3DBgColor) {
+      // Determine if this is a protein or mineral
+      const isProtein = compoundType === 'biomolecule';
+      const isMineral = compoundType === 'mineral';
+
+      // Background Color - use type-specific settings
+      if (isProtein && settings.proteinMolviewBgColor) {
+        urlObj.searchParams.set('bg', settings.proteinMolviewBgColor);
+      } else if (isMineral && settings.mineralMolviewBgColor) {
+        urlObj.searchParams.set('bg', settings.mineralMolviewBgColor);
+      } else if (settings.viewer3DBgColor) {
         let bg = settings.viewer3DBgColor;
         if (bg.startsWith('#')) bg = bg.substring(1); // Remove # for MolView
         urlObj.searchParams.set('bg', bg);
       }
 
-      // Representation
-      if (settings.molviewRepresentation) {
+      // Representation - use mineral-specific or default
+      if (isMineral && settings.mineralRepresentation) {
+        urlObj.searchParams.set('representation', settings.mineralRepresentation);
+      } else if (settings.molviewRepresentation) {
         urlObj.searchParams.set('representation', settings.molviewRepresentation);
       }
 
@@ -3277,26 +3431,34 @@ function setupLazyLoading() {
         urlObj.searchParams.set('engine', settings.molviewEngine);
       }
 
-      // Crystallography
-      if (settings.molviewCrystallography && settings.molviewCrystallography !== 'none') {
-        urlObj.searchParams.set('crystallography', settings.molviewCrystallography);
+      // Crystallography - use mineral-specific or default
+      if (isMineral) {
+        if (settings.mineralCrystallography && settings.mineralCrystallography !== 'none') {
+          urlObj.searchParams.set('crystallography', settings.mineralCrystallography);
+        }
+      } else {
+        if (settings.molviewCrystallography && settings.molviewCrystallography !== 'none') {
+          urlObj.searchParams.set('crystallography', settings.molviewCrystallography);
+        }
       }
 
-      // Protein Options
-      if (settings.molviewBioAssembly) {
-        urlObj.searchParams.set('bioAssembly', '1');
-      }
+      // Protein Options (only for biomolecules)
+      if (isProtein) {
+        if (settings.molviewBioAssembly) {
+          urlObj.searchParams.set('bioAssembly', '1');
+        }
 
-      if (settings.molviewChainType) {
-        urlObj.searchParams.set('chainType', settings.molviewChainType);
-      }
+        if (settings.molviewChainType) {
+          urlObj.searchParams.set('chainType', settings.molviewChainType);
+        }
 
-      if (settings.molviewChainBonds) {
-        urlObj.searchParams.set('chainBonds', '1');
-      }
+        if (settings.molviewChainBonds) {
+          urlObj.searchParams.set('chainBonds', '1');
+        }
 
-      if (settings.molviewChainColor) {
-        urlObj.searchParams.set('chainColor', settings.molviewChainColor);
+        if (settings.molviewChainColor) {
+          urlObj.searchParams.set('chainColor', settings.molviewChainColor);
+        }
       }
 
       return urlObj.toString();
@@ -3412,7 +3574,7 @@ function setupLazyLoading() {
       // Check if this is a protein/mineral with a direct embed URL
       if (moleculeData.embedUrl) {
         console.log('%c🔮 Using direct embed URL for protein/mineral:', 'color: #9C27B0; font-weight: bold;', moleculeData.embedUrl);
-        viewerUrl = appendMolViewParams(moleculeData.embedUrl, settings);
+        viewerUrl = appendMolViewParams(moleculeData.embedUrl, settings, moleculeData.compoundType);
 
         // Ensure iframe has necessary permissions for WebGL and interaction
         viewer3DIframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen; xr-spatial-tracking');
@@ -3429,7 +3591,7 @@ function setupLazyLoading() {
             const cidMolview = await getPubChemCID(compoundName);
             if (cidMolview) {
               // Use local MolView server /embed/v2/ endpoint for clean 3D-only viewer
-              viewerUrl = appendMolViewParams(`http://localhost:8000/embed/v2/?cid=${cidMolview}`, settings);
+              viewerUrl = appendMolViewParams(`http://localhost:8000/embed/v2/?cid=${cidMolview}`, settings, 'compound');
               console.log('%c📍 Local MolView /embed/v2/ URL:', 'color: #0066cc; font-weight: bold;', viewerUrl);
             } else {
               console.warn('%c⚠️ CID not found for MolView, using 3Dmol.js fallback', 'color: orange;');
@@ -3500,255 +3662,136 @@ function setupLazyLoading() {
       // Store reference to original 2D element for toggling
       viewer3DContainer._original2DElement = container;
 
-      // Assemble container (no toggle button or name label - handled by hover controls)
-      // viewer3DContainer.appendChild(viewer3DIframe);
-      // viewer3DIframe.src = viewerUrl;
-
       // =================================================================================
-      // 🚀 CLICK-TO-LOAD IMPLEMENTATION (Prevents "Aw Snap" / WebGL context crashes)
+      // 🚀 DIRECT LOAD IMPLEMENTATION
       // =================================================================================
 
-      // Create a placeholder container
-      const placeholder = document.createElement('div');
-      placeholder.className = 'chem-3d-placeholder-overlay';
+      // Create Close/2D button
+      const closeBtn = document.createElement('div');
+      closeBtn.innerHTML = '<span style="font-size: 14px; margin-right: 4px;">✕</span> 2D View';
+      closeBtn.title = "Close 3D Viewer";
+      closeBtn.style.cssText = `
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(0, 0, 0, 0.6);
+        color: rgba(255, 255, 255, 0.9);
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        z-index: 10000;
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        user-select: none;
+      `;
 
-      // Try to find a preview image from search results
-      let previewImage = moleculeData.image ||
-        (moleculeData.searchResult && moleculeData.searchResult.image) ||
-        moleculeData.image_url;
+      closeBtn.onmouseenter = () => {
+        closeBtn.style.background = 'rgba(0, 0, 0, 0.8)';
+        closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+      };
+      closeBtn.onmouseleave = () => {
+        closeBtn.style.background = 'rgba(0, 0, 0, 0.6)';
+        closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+      };
 
-      // Ensure HTTPS to prevent mixed content blocking
-      if (previewImage && previewImage.startsWith('http://')) {
-        previewImage = previewImage.replace('http://', 'https://');
-      }
+      closeBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        // Restore original 2D view
+        const original2D = viewer3DContainer._original2DElement;
+        if (original2D && viewer3DContainer.parentNode) {
+          viewer3DContainer.parentNode.replaceChild(original2D, viewer3DContainer);
+          console.log('✅ Restored original 2D view');
+        }
+      };
 
-      placeholder.style.cssText = `
-        width: 100%;
-        height: 100%;
-        background: ${previewImage ?
-          `linear-gradient(rgba(26, 26, 46, 0.6), rgba(22, 33, 62, 0.8)), url('${previewImage}') center/cover no-repeat` :
-          'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'};
+      // Append the iframe and close button
+      viewer3DContainer.appendChild(viewer3DIframe);
+      viewer3DContainer.appendChild(closeBtn);
+
+      // Add Corrected Name Label (Bottom Right)
+      const nameLabel = document.createElement('div');
+      nameLabel.textContent = compoundName;
+      nameLabel.style.cssText = `
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        pointer-events: none;
+        z-index: 1000;
+        font-family: system-ui, sans-serif;
+      `;
+      viewer3DContainer.appendChild(nameLabel);
+
+      // Add Size Controls (Bottom Left)
+      const controlsDiv = document.createElement('div');
+      controlsDiv.className = 'chem-size-controls';
+      controlsDiv.style.cssText = `
+        position: absolute;
+        bottom: 4px;
+        left: 4px;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        position: relative;
-        border-radius: 8px;
-        transition: all 0.3s ease;
+        gap: 2px;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.2s;
       `;
 
-      // Play button icon
-      const playBtn = document.createElement('div');
-      playBtn.innerHTML = '<svg viewBox="0 0 24 24" width="48" height="48" fill="white"><path d="M8 5v14l11-7z"/></svg>';
-      playBtn.style.cssText = `
-        width: 80px;
-        height: 80px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 12px;
-        backdrop-filter: blur(4px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      `;
+      // Show controls on hover
+      viewer3DContainer.onmouseenter = () => controlsDiv.style.opacity = '1';
+      viewer3DContainer.onmouseleave = () => controlsDiv.style.opacity = '0';
 
-      // Label
-      const label = document.createElement('div');
-      label.textContent = "Load 3D Model";
-      label.style.cssText = `
-        color: rgba(255, 255, 255, 0.9);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        font-size: 14px;
-        font-weight: 500;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        pointer-events: none;
-      `;
-
-      // Type badge (Protein/Mineral/Compound)
-      if (moleculeData.primary_type) {
-        const badge = document.createElement('div');
-        badge.textContent = moleculeData.primary_type.toUpperCase();
-        badge.style.cssText = `
-          position: absolute;
-          top: 12px;
-          right: 12px;
-          background: rgba(0, 0, 0, 0.4);
-          color: rgba(255, 255, 255, 0.8);
-          padding: 4px 8px;
+      const createBtn = (text, delta) => {
+        const btn = document.createElement('button');
+        btn.innerHTML = text;
+        btn.style.cssText = `
+          width: 24px;
+          height: 24px;
+          border: none;
+          background: rgba(0, 0, 0, 0.7);
+          color: white;
           border-radius: 4px;
+          cursor: pointer;
           font-size: 10px;
-          font-weight: bold;
-          letter-spacing: 1px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.2s;
         `;
-        placeholder.appendChild(badge);
-      }
+        btn.onmouseenter = () => btn.style.background = 'rgba(0, 0, 0, 0.9)';
+        btn.onmouseleave = () => btn.style.background = 'rgba(0, 0, 0, 0.7)';
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const currentWidth = parseInt(viewer3DContainer.style.width);
+          const currentHeight = parseInt(viewer3DContainer.style.height);
+          // Limit min size
+          if (delta < 0 && currentWidth < 200) return;
 
-      placeholder.appendChild(playBtn);
-      placeholder.appendChild(label);
-
-      // Hover effects
-      placeholder.onmouseenter = () => {
-        playBtn.style.transform = 'scale(1.1)';
-        playBtn.style.background = 'rgba(255, 255, 255, 0.2)';
-        placeholder.style.background = 'linear-gradient(135deg, #20203a 0%, #1a2644 100%)';
-      };
-      placeholder.onmouseleave = () => {
-        playBtn.style.transform = 'scale(1)';
-        playBtn.style.background = 'rgba(255, 255, 255, 0.1)';
-        placeholder.style.background = 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)';
+          const scale = 1 + (delta / 100); // 10% change
+          viewer3DContainer.style.width = `${Math.round(currentWidth * scale)}px`;
+          viewer3DContainer.style.height = `${Math.round(currentHeight * scale)}px`;
+        };
+        return btn;
       };
 
-      // Click handler - The magic happens here
-      placeholder.onclick = (e) => {
-        e.stopPropagation();
-        e.preventDefault();
+      controlsDiv.appendChild(createBtn('▲', 10));
+      controlsDiv.appendChild(createBtn('▼', -10));
+      viewer3DContainer.appendChild(controlsDiv);
 
-        // Show loading state
-        playBtn.style.transform = 'scale(0.8)';
-        label.textContent = "Loading...";
-
-        // Small delay to allow UI update, then load iframe
-        setTimeout(() => {
-          // Create Close/2D button
-          const closeBtn = document.createElement('div');
-          closeBtn.innerHTML = '<span style="font-size: 14px; margin-right: 4px;">✕</span> 2D View';
-          closeBtn.title = "Close 3D Viewer";
-          closeBtn.style.cssText = `
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: rgba(0, 0, 0, 0.6);
-            color: rgba(255, 255, 255, 0.9);
-            padding: 6px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 11px;
-            font-weight: 600;
-            z-index: 10000;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            user-select: none;
-          `;
-
-          closeBtn.onmouseenter = () => {
-            closeBtn.style.background = 'rgba(0, 0, 0, 0.8)';
-            closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-          };
-          closeBtn.onmouseleave = () => {
-            closeBtn.style.background = 'rgba(0, 0, 0, 0.6)';
-            closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-          };
-
-          closeBtn.onclick = (ev) => {
-            ev.stopPropagation();
-            // Clear container (removes iframe and button)
-            viewer3DContainer.innerHTML = '';
-            // Reset placeholder state
-            label.textContent = "Load 3D Model";
-            playBtn.style.transform = 'scale(1)';
-            // Restore placeholder
-            viewer3DContainer.appendChild(placeholder);
-          };
-
-          // Clear placeholder
-          viewer3DContainer.innerHTML = '';
-
-          // Append the iframe and close button
-          viewer3DContainer.appendChild(viewer3DIframe);
-          viewer3DContainer.appendChild(closeBtn);
-
-          // Add Corrected Name Label (Bottom Right)
-          const nameLabel = document.createElement('div');
-          nameLabel.textContent = compoundName;
-          nameLabel.style.cssText = `
-            position: absolute;
-            bottom: 4px;
-            right: 4px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            pointer-events: none;
-            z-index: 1000;
-            font-family: system-ui, sans-serif;
-          `;
-          viewer3DContainer.appendChild(nameLabel);
-
-          // Add Size Controls (Bottom Left)
-          const controlsDiv = document.createElement('div');
-          controlsDiv.className = 'chem-size-controls';
-          controlsDiv.style.cssText = `
-            position: absolute;
-            bottom: 4px;
-            left: 4px;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.2s;
-          `;
-
-          // Show controls on hover
-          viewer3DContainer.onmouseenter = () => controlsDiv.style.opacity = '1';
-          viewer3DContainer.onmouseleave = () => controlsDiv.style.opacity = '0';
-
-          const createBtn = (text, delta) => {
-            const btn = document.createElement('button');
-            btn.innerHTML = text;
-            btn.style.cssText = `
-              width: 24px;
-              height: 24px;
-              border: none;
-              background: rgba(0, 0, 0, 0.7);
-              color: white;
-              border-radius: 4px;
-              cursor: pointer;
-              font-size: 10px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: background 0.2s;
-            `;
-            btn.onmouseenter = () => btn.style.background = 'rgba(0, 0, 0, 0.9)';
-            btn.onmouseleave = () => btn.style.background = 'rgba(0, 0, 0, 0.7)';
-            btn.onclick = (e) => {
-              e.stopPropagation();
-              const currentWidth = parseInt(viewer3DContainer.style.width);
-              const currentHeight = parseInt(viewer3DContainer.style.height);
-              // Limit min size
-              if (delta < 0 && currentWidth < 200) return;
-
-              const scale = 1 + (delta / 100); // 10% change
-              viewer3DContainer.style.width = `${Math.round(currentWidth * scale)}px`;
-              viewer3DContainer.style.height = `${Math.round(currentHeight * scale)}px`;
-            };
-            return btn;
-          };
-
-          controlsDiv.appendChild(createBtn('▲', 10));
-          controlsDiv.appendChild(createBtn('▼', -10));
-          viewer3DContainer.appendChild(controlsDiv);
-
-          // Set src to trigger load
-          viewer3DIframe.src = viewerUrl;
-          console.log('%c🚀 3D Viewer Loaded on user click', 'color: #00FF00; font-weight: bold;');
-        }, 50);
-      };
-
-      // Append placeholder initially
-      viewer3DContainer.appendChild(placeholder);
+      // Set src to trigger load IMMEDIATELY
+      viewer3DIframe.src = viewerUrl;
+      console.log('%c🚀 3D Viewer Loaded directly', 'color: #00FF00; font-weight: bold');
 
       // Replace original element with 3D viewer
       if (container.parentNode) {
@@ -3758,7 +3801,7 @@ function setupLazyLoading() {
         addHoverControls(viewer3DContainer, compoundName, moleculeData);
 
         console.log('%c✅ 3D viewer embedded inline', 'color: green; font-weight: bold;');
-      } else {
+      } else{
         console.error('%c❌ Cannot replace image - no parent node', 'color: red; font-weight: bold;');
         // If no parent, insert after the img element as fallback
         if (img.nextSibling) {

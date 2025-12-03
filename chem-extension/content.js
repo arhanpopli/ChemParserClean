@@ -421,9 +421,24 @@ async function smilesBridge(name, options = {}) {
         };
       }
 
-      // Check if it's a mineral - these also should NOT be converted to SMILES
+      // Check if it's a mineral - return SMILES if available, otherwise skip
       if (molviewData.primary_type === 'mineral') {
-        console.log('%c⚠️ [Bridge] Detected mineral - skipping SMILES conversion', 'color: #795548; font-weight: bold;', molviewData);
+        console.log('%c⚠️ [Bridge] Detected mineral', 'color: #795548; font-weight: bold;', molviewData);
+
+        // If mineral has SMILES, return it (many minerals do have SMILES now!)
+        if (molviewData.canonical_smiles || molviewData.isomeric_smiles) {
+          const smiles = use3DSmiles ? (molviewData.isomeric_smiles || molviewData.canonical_smiles) : molviewData.canonical_smiles;
+          console.log('%c✅ [Bridge] Mineral has SMILES:', 'color: #00FF00; font-weight: bold;', smiles);
+          return {
+            smiles: smiles,
+            source: 'MolView-Mineral',
+            molview_data: molviewData,
+            is_mineral: true
+          };
+        }
+
+        // No SMILES available - skip SMILES rendering
+        console.log('%c⚠️ [Bridge] Mineral has no SMILES - will use 3D or formula fallback', 'color: #FF9800;');
         return {
           smiles: null,
           source: 'MolView-Mineral',
@@ -1133,17 +1148,21 @@ async function wrapImageWithSizeControls(svgImg, originalImg, moleculeData, sett
     svgImg.dataset.scale = scale.toString();
 
     // Force a default width if we couldn't detect one, to ensure visibility
-    if (!svgImg.style.width || svgImg.style.width === '0px' || svgImg.style.width === 'auto') {
+    // Skip if image has fixedSize flag (used for protein/mineral images)
+    if (!svgImg.dataset.fixedSize && (!svgImg.style.width || svgImg.style.width === '0px' || svgImg.style.width === 'auto')) {
       svgImg.style.width = '300px'; // Safe default
     }
 
     // Wait for image to load to get natural dimensions
-    if (svgImg.complete) {
-      applyScaleToImage(svgImg, scale);
-    } else {
-      svgImg.onload = () => applyScaleToImage(svgImg, scale);
-      // Fallback: if onload doesn't fire (e.g. cached), force apply after timeout
-      setTimeout(() => applyScaleToImage(svgImg, scale), 100);
+    // Skip scaling for fixed-size images (protein/mineral images)
+    if (!svgImg.dataset.fixedSize) {
+      if (svgImg.complete) {
+        applyScaleToImage(svgImg, scale);
+      } else {
+        svgImg.onload = () => applyScaleToImage(svgImg, scale);
+        // Fallback: if onload doesn't fire (e.g. cached), force apply after timeout
+        setTimeout(() => applyScaleToImage(svgImg, scale), 100);
+      }
     }
 
     if (moleculeData) {
@@ -1611,7 +1630,7 @@ chrome.storage.onChanged.addListener((changes) => {
     } else {
       engineName = '🧪 MoleculeViewer';
     }
-    log.success(`✅ Switched to ${engineName} renderer (with Universal Search API autocorrect)`);
+    log.success(`✅ Switched to ${engineName} renderer (with Univeal Search API autocorrect)`);
 
     // Reload page to apply new renderer to all content
     setTimeout(() => {
@@ -2863,204 +2882,133 @@ function setupLazyLoading() {
           // Fall through to compound rendering logic below
           // (Don't return here, let it continue to STEP 3)
         }
-        // For minerals without SMILES but with formula, create a simple formula display
-        else if (searchData.compoundType === 'mineral' && searchData.searchResult.formula) {
-          console.log(`%c💎 Mineral without SMILES: Creating formula display`, 'background: #FF9800; color: white; font-weight: bold; padding: 4px;');
-          console.log(`%c🧪 Formula: ${searchData.searchResult.formula}`, 'color: #FF9800; font-weight: bold;');
-
-          // Create a simple SVG showing the formula
-          const formula = searchData.searchResult.formula;
-          const mineralName = searchData.correctedName;
-
-          // Generate a simple SVG with the formula
-          const svgContent = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="300" height="150" viewBox="0 0 300 150">
-              <rect width="300" height="150" fill="#f5f5f5" rx="8"/>
-              <text x="150" y="60" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#333">${mineralName}</text>
-              <text x="150" y="95" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#666">${formula}</text>
-              <text x="150" y="125" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#999">Click 3D button for structure</text>
-            </svg>
-          `;
-
-          const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
-          const svgUrl = URL.createObjectURL(svgBlob);
-
-          // Create wrapper
-          const wrapper = document.createElement('div');
-          wrapper.className = 'chem-2d-preview-wrapper';
-          wrapper.style.position = 'relative';
-          wrapper.style.display = 'inline-block';
-          wrapper.style.margin = '5px';
-
-          // Create image element
-          const formulaImg = document.createElement('img');
-          formulaImg.src = svgUrl;
-          formulaImg.alt = mineralName;
-          formulaImg.className = 'chemfig-diagram mineral-formula';
-          formulaImg.style.maxWidth = '300px';
-          formulaImg.style.maxHeight = '150px';
-          formulaImg.style.display = 'block';
-          formulaImg.style.borderRadius = '8px';
-
-          wrapper.appendChild(formulaImg);
-
-          // Add "3D" button
-          const btn3d = document.createElement('button');
-          btn3d.innerHTML = '<span>3D</span>';
-          btn3d.title = 'Switch to interactive 3D view';
-          btn3d.style.cssText = `
-                position: absolute;
-                top: 8px;
-                right: 8px;
-                background: rgba(0, 0, 0, 0.6);
-                color: white;
-                border: 1px solid rgba(255, 255, 255, 0.4);
-                border-radius: 4px;
-                padding: 4px 8px;
-                cursor: pointer;
-                font-family: system-ui, -apple-system, sans-serif;
-                font-size: 12px;
-                font-weight: bold;
-                z-index: 10;
-                backdrop-filter: blur(2px);
-                transition: all 0.2s ease;
-            `;
-
-          btn3d.onmouseover = () => {
-            btn3d.style.background = 'rgba(0, 0, 0, 0.8)';
-            btn3d.style.borderColor = '#fff';
-          };
-          btn3d.onmouseout = () => {
-            btn3d.style.background = 'rgba(0, 0, 0, 0.6)';
-            btn3d.style.borderColor = 'rgba(255, 255, 255, 0.4)';
-          };
-
-          // Set up moleculeData for 3D viewer
-          moleculeData.nomenclature = searchData.correctedName;
-          moleculeData.embedUrl = searchData.searchResult.embed_url;
-          moleculeData.compoundType = searchData.compoundType;
-          moleculeData.searchResult = searchData.searchResult;
-
-          btn3d.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            btn3d.innerHTML = 'Loading...';
-            show3DViewerInline(moleculeData, wrapper);
-          };
-          wrapper.appendChild(btn3d);
-
-          // Replace original img
-          if (img.parentNode) {
-            img.parentNode.replaceChild(wrapper, img);
-          }
-          activeLoads--;
-          return;
-        }
         // For proteins or minerals with image_url from search API
+        // Use the same compound pipeline - create an img element and wrap it with size controls
         else if (searchData.searchResult.image_url) {
-          console.log(`%c🔮 Using 2D preview with 3D toggle`, 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
+          console.log(`%c🔮 Protein/Mineral: Using image_url with compound pipeline`, 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
 
-          // Set up moleculeData with embed URL for show3DViewerInline
+          // Set up moleculeData with all necessary fields
           moleculeData.nomenclature = searchData.correctedName;
-          moleculeData.embedUrl = searchData.searchResult.embed_url; // Direct embed URL
+          moleculeData.embedUrl = searchData.searchResult.embed_url; // For 3D viewer
           moleculeData.compoundType = searchData.compoundType;
           moleculeData.searchResult = searchData.searchResult;
           moleculeData.imageUrl = searchData.searchResult.image_url; // 2D preview image
 
-          // If we have a 2D image, display it first with a "3D" button
-          if (moleculeData.imageUrl) {
-            // Get viewer size from settings to match 3D viewer width
-            const viewerSize = settings.viewer3DSize || 'normal';
-            const sizeDimensions = {
-              'small': { width: 200, height: 150 },
-              'medium': { width: 300, height: 250 },
-              'normal': { width: 400, height: 350 },
-              'large': { width: 600, height: 450 },
-              'xlarge': { width: 800, height: 600 }
-            };
-            const dimensions = sizeDimensions[viewerSize] || sizeDimensions['normal'];
+          // Get viewer size from settings to match 3D viewer dimensions
+          const viewerSize = settings.viewer3DSize || 'normal';
+          const sizeDimensions = {
+            'small': { width: 200, height: 150 },
+            'medium': { width: 300, height: 250 },
+            'normal': { width: 400, height: 350 },
+            'large': { width: 600, height: 450 },
+            'xlarge': { width: 800, height: 600 }
+          };
+          const dimensions = sizeDimensions[viewerSize] || sizeDimensions['normal'];
 
-            // Create wrapper
-            const wrapper = document.createElement('div');
-            wrapper.className = 'chem-2d-preview-wrapper';
-            wrapper.style.position = 'relative';
-            wrapper.style.display = 'inline-block';
-            wrapper.style.margin = '5px';
+          // Create image element for 2D preview
+          const previewImg = document.createElement('img');
 
-            // Create image element
-            const previewImg = document.createElement('img');
-            previewImg.src = moleculeData.imageUrl;
-            previewImg.alt = moleculeData.nomenclature;
-            previewImg.className = 'chemfig-diagram';
-            // Match 3D viewer width from settings, but keep original aspect ratio
-            // Use max-width to prevent enlargement beyond original size
-            previewImg.style.maxWidth = `${dimensions.width}px`;
-            previewImg.style.height = 'auto';
-            previewImg.style.display = 'block';
-            previewImg.style.borderRadius = '8px';
-
-            // Apply background removal filter if enabled (for RCSB protein images)
-            if (settings.proteinRemoveWhiteBg) {
-              // Use CSS filter to make white pixels transparent
-              previewImg.style.mixBlendMode = 'multiply';
-              previewImg.style.backgroundColor = 'transparent';
-            }
-
-            wrapper.appendChild(previewImg);
-
-            // Add "3D" button
-            const btn3d = document.createElement('button');
-            btn3d.innerHTML = '<span>3D</span>';
-            btn3d.title = 'Switch to interactive 3D view';
-            btn3d.style.cssText = `
-                position: absolute;
-                top: 8px;
-                right: 8px;
-                background: rgba(0, 0, 0, 0.6);
-                color: white;
-                border: 1px solid rgba(255, 255, 255, 0.4);
-                border-radius: 4px;
-                padding: 4px 8px;
-                cursor: pointer;
-                font-family: system-ui, -apple-system, sans-serif;
-                font-size: 12px;
-                font-weight: bold;
-                z-index: 10;
-                backdrop-filter: blur(2px);
-                transition: all 0.2s ease;
-            `;
-
-            btn3d.onmouseover = () => {
-              btn3d.style.background = 'rgba(0, 0, 0, 0.8)';
-              btn3d.style.borderColor = '#fff';
-            };
-            btn3d.onmouseout = () => {
-              btn3d.style.background = 'rgba(0, 0, 0, 0.6)';
-              btn3d.style.borderColor = 'rgba(255, 255, 255, 0.4)';
-            };
-
-            btn3d.onclick = (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              btn3d.innerHTML = 'Loading...';
-              show3DViewerInline(moleculeData, wrapper); // Replace wrapper with 3D viewer
-            };
-            wrapper.appendChild(btn3d);
-
-            // Replace original img
-            if (img.parentNode) {
-              img.parentNode.replaceChild(wrapper, img);
-            }
-            activeLoads--;
-            return;
+          // Enable CORS for canvas processing
+          if (settings.proteinRemoveWhiteBg && searchData.compoundType === 'biomolecule') {
+            previewImg.crossOrigin = 'anonymous';
           }
 
-          // Fallback: Use the same 3D viewer function that compounds use (load 3D immediately)
+          previewImg.src = moleculeData.imageUrl;
+          previewImg.alt = moleculeData.nomenclature;
+          previewImg.className = 'chemfig-diagram';
+
+          // Set dimensions to match 3D viewer iframe - use max-width/height to constrain large images
+          previewImg.style.width = `${dimensions.width}px`;
+          previewImg.style.height = `${dimensions.height}px`;
+          previewImg.style.maxWidth = `${dimensions.width}px`;
+          previewImg.style.maxHeight = `${dimensions.height}px`;
+          previewImg.style.objectFit = 'contain';
+          previewImg.style.display = 'inline-block';
+          previewImg.style.margin = '0 12px 8px 0';
+          previewImg.style.verticalAlign = 'middle';
+          previewImg.style.cursor = 'pointer';
+
+          // Mark as fixed size to prevent wrapImageWithSizeControls from changing it
+          previewImg.dataset.fixedSize = 'true';
+
+          // Apply background removal filter if enabled (for RCSB protein images)
+          if (settings.proteinRemoveWhiteBg && searchData.compoundType === 'biomolecule') {
+            // Use canvas to make white pixels transparent
+            previewImg.onload = () => {
+              try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                canvas.width = previewImg.naturalWidth;
+                canvas.height = previewImg.naturalHeight;
+
+                // Draw image to canvas
+                ctx.drawImage(previewImg, 0, 0);
+
+                // Get image data
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+
+                // Make white/near-white pixels transparent with smooth edges
+                // UPDATED: Using Euclidean distance from white for better color accuracy
+                // and a wider ramp to smooth out anti-aliased edges
+                for (let i = 0; i < data.length; i += 4) {
+                  const r = data[i];
+                  const g = data[i + 1];
+                  const b = data[i + 2];
+                  // const alpha = data[i + 3]; // Original alpha is usually 255
+
+                  // Calculate distance from white (255, 255, 255)
+                  // Max distance (Black to White) is ~441.6
+                  const dist = Math.sqrt(
+                    Math.pow(255 - r, 2) +
+                    Math.pow(255 - g, 2) +
+                    Math.pow(255 - b, 2)
+                  );
+
+                  // Thresholds for transparency
+                  // dist < 15: Very close to white -> Fully transparent
+                  // dist > 150: Significant color -> Fully opaque
+                  // 15..150: Smooth alpha ramp (removes halos/pixelation)
+
+                  if (dist < 15) {
+                    data[i + 3] = 0; // Transparent
+                  } else if (dist < 150) {
+                    // Smooth transition
+                    // Map distance 15..150 to alpha 0..255
+                    const alphaRatio = (dist - 15) / (150 - 15);
+                    data[i + 3] = Math.floor(255 * alphaRatio);
+                  }
+                  // else keep original alpha (usually 255)
+                }
+                // Put modified image data back
+                ctx.putImageData(imageData, 0, 0);
+
+                // Replace image src with canvas data
+                previewImg.src = canvas.toDataURL();
+                console.log('✅ Background removed from protein image');
+              } catch (e) {
+                console.error('❌ Failed to remove background (CORS issue):', e);
+                // Fallback: just show the original image
+              }
+            };
+          }
+
+          // Mark as loaded
+          img.dataset.loaded = 'true';
+
+          // Use the same wrapping function as compounds (adds size controls and 3D button)
+          chrome.storage.sync.get({
+            saveSizePerImage: false,
+            saveSizeBySMILES: true
+          }, async (sizeSettings) => {
+            await wrapImageWithSizeControls(previewImg, img, moleculeData, sizeSettings);
+          });
+
           activeLoads--;
-          await show3DViewerInline(moleculeData, img);
           return;
         }
-        // Final fallback for biomolecules/minerals without image or SMILES
+        // Final fallback for biomolecules/minerals without image_url or SMILES
         else {
           console.log(`%c⚠️ No 2D preview or SMILES available, loading 3D viewer directly`, 'background: #FF5722; color: white; font-weight: bold; padding: 4px;');
           moleculeData.nomenclature = searchData.correctedName;
@@ -3408,12 +3356,8 @@ function setupLazyLoading() {
       const isProtein = compoundType === 'biomolecule';
       const isMineral = compoundType === 'mineral';
 
-      // Background Color - use type-specific settings
-      if (isProtein && settings.proteinMolviewBgColor) {
-        urlObj.searchParams.set('bg', settings.proteinMolviewBgColor);
-      } else if (isMineral && settings.mineralMolviewBgColor) {
-        urlObj.searchParams.set('bg', settings.mineralMolviewBgColor);
-      } else if (settings.viewer3DBgColor) {
+      // Background Color - use general 3D viewer background color setting
+      if (settings.viewer3DBgColor) {
         let bg = settings.viewer3DBgColor;
         if (bg.startsWith('#')) bg = bg.substring(1); // Remove # for MolView
         urlObj.searchParams.set('bg', bg);
@@ -3666,72 +3610,8 @@ function setupLazyLoading() {
       // 🚀 DIRECT LOAD IMPLEMENTATION
       // =================================================================================
 
-      // Create Close/2D button
-      const closeBtn = document.createElement('div');
-      closeBtn.innerHTML = '<span style="font-size: 14px; margin-right: 4px;">✕</span> 2D View';
-      closeBtn.title = "Close 3D Viewer";
-      closeBtn.style.cssText = `
-        position: absolute;
-        top: 8px;
-        right: 8px;
-        background: rgba(0, 0, 0, 0.6);
-        color: rgba(255, 255, 255, 0.9);
-        padding: 6px 10px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        font-size: 11px;
-        font-weight: 600;
-        z-index: 10000;
-        backdrop-filter: blur(4px);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        user-select: none;
-      `;
-
-      closeBtn.onmouseenter = () => {
-        closeBtn.style.background = 'rgba(0, 0, 0, 0.8)';
-        closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-      };
-      closeBtn.onmouseleave = () => {
-        closeBtn.style.background = 'rgba(0, 0, 0, 0.6)';
-        closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-      };
-
-      closeBtn.onclick = (ev) => {
-        ev.stopPropagation();
-        // Restore original 2D view
-        const original2D = viewer3DContainer._original2DElement;
-        if (original2D && viewer3DContainer.parentNode) {
-          viewer3DContainer.parentNode.replaceChild(original2D, viewer3DContainer);
-          console.log('✅ Restored original 2D view');
-        }
-      };
-
-      // Append the iframe and close button
+      // Append the iframe
       viewer3DContainer.appendChild(viewer3DIframe);
-      viewer3DContainer.appendChild(closeBtn);
-
-      // Add Corrected Name Label (Bottom Right)
-      const nameLabel = document.createElement('div');
-      nameLabel.textContent = compoundName;
-      nameLabel.style.cssText = `
-        position: absolute;
-        bottom: 4px;
-        right: 4px;
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 10px;
-        pointer-events: none;
-        z-index: 1000;
-        font-family: system-ui, sans-serif;
-      `;
-      viewer3DContainer.appendChild(nameLabel);
 
       // Add Size Controls (Bottom Left)
       const controlsDiv = document.createElement('div');
@@ -3801,7 +3681,7 @@ function setupLazyLoading() {
         addHoverControls(viewer3DContainer, compoundName, moleculeData);
 
         console.log('%c✅ 3D viewer embedded inline', 'color: green; font-weight: bold;');
-      } else{
+      } else {
         console.error('%c❌ Cannot replace image - no parent node', 'color: red; font-weight: bold;');
         // If no parent, insert after the img element as fallback
         if (img.nextSibling) {

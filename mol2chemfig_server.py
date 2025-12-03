@@ -20,6 +20,7 @@ import subprocess
 import shutil
 from rdkit import Chem
 from rdkit.Chem import AllChem
+import re
 
 # Import canonicalization utility
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -320,7 +321,10 @@ def convert_nomenclature_to_smiles(name):
             print(f"[SMILES] PubChem returned status {response.status_code}")
             return None, f"PubChem API error: {response.status_code}"
 
-        data = response.json()
+        try:
+            data = response.json()
+        except:
+            return None, "PubChem returned invalid JSON"
 
         # Extract SMILES from response - try multiple field names
         if 'PropertyTable' in data and 'Properties' in data['PropertyTable']:
@@ -355,9 +359,12 @@ def get_cid_from_name(name):
         url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{encoded_name}/cids/JSON"
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
-            data = response.json()
-            if 'IdentifierList' in data and 'CID' in data['IdentifierList']:
-                return data['IdentifierList']['CID'][0]
+            try:
+                data = response.json()
+                if 'IdentifierList' in data and 'CID' in data['IdentifierList']:
+                    return data['IdentifierList']['CID'][0]
+            except:
+                pass
         return None
     except:
         return None
@@ -373,12 +380,36 @@ def get_smiles_from_cod(codid):
         url = f"http://molview.org/php/cod.php?action=smiles&q={codid}"
         response = requests.get(url, timeout=5)
         if response.status_code == 200:
-            data = response.json()
-            # Format: {"records":[{"id":"9000126","smiles":"[O-][U](=[O+])([O-])=O.[Cu+2].O.O"}]}
-            if 'records' in data and len(data['records']) > 0:
-                return data['records'][0].get('smiles')
+            try:
+                data = response.json()
+                # Format: {"records":[{"id":"9000126","smiles":"[O-][U](=[O+])([O-])=O.[Cu+2].O.O"}]}
+                if 'records' in data and len(data['records']) > 0:
+                    smiles = data['records'][0].get('smiles')
+                    if smiles:
+                        return smiles
+            except Exception as e:
+                print(f"[COD] MolView API returned invalid JSON: {e}")
+        
+        # Fallback: Scrape COD website directly
+        # Example: http://www.crystallography.net/cod/9012360.html
+        print(f"[COD] MolView API failed, scraping COD website for {codid}...")
+        url = f"http://www.crystallography.net/cod/{codid}.html"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            html = response.text
+            # Look for SMILES in table cell
+            # <th>SMILES</th><td>...</td>
+            match = re.search(r'SMILES</th>\s*<td>\s*(.*?)\s*</td>', html, re.IGNORECASE | re.DOTALL)
+            if match:
+                smiles = match.group(1).strip()
+                # Remove any HTML tags
+                smiles = re.sub(r'<[^>]+>', '', smiles)
+                print(f"[COD] Scraped SMILES: {smiles}")
+                return smiles
+                
         return None
-    except:
+    except Exception as e:
+        print(f"[COD] Error fetching SMILES: {e}")
         return None
 
 
@@ -649,7 +680,13 @@ def m2cf_search():
                 )
 
             if response.status_code == 200:
-                result = response.json()
+                try:
+                    result = response.json()
+                except Exception as e:
+                    print(f"[SEARCH] Docker backend returned invalid JSON: {e}")
+                    # Try to see if it's HTML
+                    print(f"[SEARCH] Response start: {response.text[:100]}")
+                    return jsonify({"error": "Docker backend returned invalid response"}), 502
                 
                 # ENHANCEMENT: Handle Biomolecules (PDB)
                 if result.get('pdbid'):
@@ -687,16 +724,25 @@ def m2cf_search():
                             # Use our own SMILES rendering endpoint (MoleculeViewer on port 5000)
                             encoded_smiles = requests.utils.quote(smiles)
                             image_url = f"http://localhost:5000/img/smiles?smiles={encoded_smiles}&width=300&height=250"
+                            
+                            # INJECT SMILES INTO RESULT
+                            result['smiles'] = smiles
+                            result['canonical_smiles'] = smiles
+                            result['isomeric_smiles'] = smiles # Assuming COD provides good SMILES
                         else:
                             print(f"[SEARCH] No 2D representation found for mineral")
 
-                    return jsonify({
-                        "codid": codid,
-                        "name": mineral_name,
+                    # Merge with original result to keep SDF, formula, etc.
+                    response_data = result.copy()
+                    update_dict = {
                         "compoundType": "mineral",
-                        "image_url": image_url, # Might be None, frontend should handle fallback
                         "embed_url": f"http://localhost:8000/embed/v2/?codid={codid}"
-                    })
+                    }
+                    if image_url:
+                        update_dict["image_url"] = image_url
+                        
+                    response_data.update(update_dict)
+                    return jsonify(response_data)
 
                 # Default: Compound/SMILES from Docker
                 # If Docker returned inline SVG, save it to cache (existing logic)

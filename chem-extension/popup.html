@@ -550,15 +550,6 @@
               </div>
             </label>
 
-            <input type="radio" name="renderingEngine" value="pubchem" id="engine3">
-            <label for="engine3" class="radio-option">
-              <div class="radio-indicator"></div>
-              <div>
-                <strong>PubChem</strong>
-                <small>Direct API with 3D models (port 5002)</small>
-              </div>
-            </label>
-
             <input type="radio" name="renderingEngine" value="client-side" id="engine4">
             <label for="engine4" class="radio-option">
               <div class="radio-indicator"></div>
@@ -947,21 +938,27 @@
             <small>No server hosting required! Uses Chemistry Development Kit (CDK) API.</small>
           </div>
 
+          <!-- Show Carbon Atoms -->
           <div class="option">
-            <label class="option-label">
-              <strong>Color Scheme</strong>
-              <small>Choose background and atom colors</small>
+            <label class="option-label" for="cdkShowCarbonsToggle">
+              <strong>Show Carbon Atoms</strong>
+              <small>Display C labels on all carbons</small>
             </label>
+            <input type="checkbox" id="cdkShowCarbonsToggle">
+            <label class="toggle" for="cdkShowCarbonsToggle"></label>
           </div>
-          <select id="cdkColorSchemeSelect">
-            <option value="cow" selected>Color on White</option>
-            <option value="cob">Color on Black</option>
-            <option value="coc">Color on Clear (transparent)</option>
-            <option value="bow">Black on White</option>
-            <option value="wob">White on Black</option>
-            <option value="nob">Neon on Black</option>
-          </select>
 
+          <!-- Show Methyl Groups (same as Show Carbons but more specific) -->
+          <div class="option">
+            <label class="option-label" for="cdkShowMethylsToggle">
+              <strong>Show Methyl Groups (CH₃)</strong>
+              <small>Display terminal carbon labels (methyls)</small>
+            </label>
+            <input type="checkbox" id="cdkShowMethylsToggle">
+            <label class="toggle" for="cdkShowMethylsToggle"></label>
+          </div>
+
+          <!-- Hydrogen Display -->
           <div class="option">
             <label class="option-label">
               <strong>Hydrogen Display</strong>
@@ -969,37 +966,39 @@
             </label>
           </div>
           <select id="cdkHydrogenDisplaySelect">
-            <option value="minimal" selected>Minimal Hydrogens</option>
+            <option value="minimal" selected>Minimal Hydrogens (default)</option>
             <option value="smart">Smart Hydrogens</option>
             <option value="chiral">Chiral Hydrogens Only</option>
-            <option value="explicit">Explicit Hydrogens (show all)</option>
+            <option value="explicit">Explicit Hydrogens (show ALL H)</option>
           </select>
 
+          <!-- Atom Numbers -->
+          <div class="option">
+            <label class="option-label" for="cdkAtomNumbersToggle">
+              <strong>Atom Numbers</strong>
+              <small>Number all atoms (like mol2chemfig -n)</small>
+            </label>
+            <input type="checkbox" id="cdkAtomNumbersToggle">
+            <label class="toggle" for="cdkAtomNumbersToggle"></label>
+          </div>
+
+          <!-- Color Scheme -->
           <div class="option">
             <label class="option-label">
-              <strong>Annotation Type</strong>
-              <small>Add labels to atoms</small>
+              <strong>Color Scheme</strong>
+              <small>Background and atom colors</small>
             </label>
           </div>
-          <select id="cdkAnnotationSelect">
-            <option value="none" selected>No Annotation</option>
-            <option value="atomnumber">Atom Numbers</option>
-            <option value="bondnumber">Bond Numbers</option>
-            <option value="atommapping">Atom Mapping</option>
-            <option value="colmap">Color Map</option>
-            <option value="atomvalue">Atom Value</option>
-            <option value="cip">CIP Stereo Labels</option>
+          <select id="cdkColorSchemeSelect">
+            <option value="coc" selected>Clear/Transparent (recommended)</option>
+            <option value="cow">Color on White</option>
+            <option value="cob">Color on Black</option>
+            <option value="bow">Black on White</option>
+            <option value="wob">White on Black</option>
+            <option value="nob">Neon on Black</option>
           </select>
 
-          <div class="option">
-            <label class="option-label" for="cdkAbbreviateToggle">
-              <strong>Abbreviate Groups</strong>
-              <small>Show common groups (like Me, Ph) abbreviated</small>
-            </label>
-            <input type="checkbox" id="cdkAbbreviateToggle" checked>
-            <label class="toggle" for="cdkAbbreviateToggle"></label>
-          </div>
-
+          <!-- Zoom Level -->
           <div class="option">
             <label class="option-label">
               <strong>Zoom Level</strong>
@@ -1011,6 +1010,22 @@
           <div style="text-align: center; font-size: 12px; color: #666; margin-top: 4px;">
             <span id="cdkZoomValue">1.5x</span>
           </div>
+
+          <!-- Advanced Annotations -->
+          <div class="option" style="margin-top: 12px;">
+            <label class="option-label">
+              <strong>Advanced Annotations</strong>
+              <small>Additional labels (optional)</small>
+            </label>
+          </div>
+          <select id="cdkAnnotationSelect">
+            <option value="none" selected>None</option>
+            <option value="colmap">Color Map</option>
+            <option value="cip">CIP Stereo Labels</option>
+            <option value="atomvalue">Atom Values</option>
+            <option value="atommapping">Atom Mapping</option>
+            <option value="bondnumber">Bond Numbers</option>
+          </select>
         </div>
       </div>
 

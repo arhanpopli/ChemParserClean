@@ -47,10 +47,12 @@ const aiMolecularControlToggle = document.getElementById('aiMolecularControlTogg
 
 // CDK Depict options
 const cdkDepictOptions = document.getElementById('cdkDepictOptions');
+const cdkShowCarbonsToggle = document.getElementById('cdkShowCarbonsToggle');
+const cdkShowMethylsToggle = document.getElementById('cdkShowMethylsToggle');
 const cdkColorSchemeSelect = document.getElementById('cdkColorSchemeSelect');
 const cdkHydrogenDisplaySelect = document.getElementById('cdkHydrogenDisplaySelect');
+const cdkAtomNumbersToggle = document.getElementById('cdkAtomNumbersToggle');
 const cdkAnnotationSelect = document.getElementById('cdkAnnotationSelect');
-const cdkAbbreviateToggle = document.getElementById('cdkAbbreviateToggle');
 const cdkZoomSlider = document.getElementById('cdkZoomSlider');
 const cdkZoomValue = document.getElementById('cdkZoomValue');
 
@@ -142,10 +144,12 @@ chrome.storage.sync.get({
   pubchemRemoveBg: false,
   pubchemSharpenImages: true,
   // CDK Depict options
-  cdkColorScheme: 'cow',  // Color on White
+  cdkShowCarbons: false,
+  cdkShowMethyls: false,
+  cdkColorScheme: 'coc',  // Clear/Transparent
   cdkHydrogenDisplay: 'minimal',
+  cdkAtomNumbers: false,
   cdkAnnotation: 'none',
-  cdkAbbreviate: true,
   cdkZoom: 1.5,
   // 3D Viewer options
   enable3DViewer: false,
@@ -234,10 +238,12 @@ chrome.storage.sync.get({
   if (aiMolecularControlToggle) aiMolecularControlToggle.checked = settings.enableAIMolecularControl;
 
   // Load CDK Depict options
-  if (cdkColorSchemeSelect) cdkColorSchemeSelect.value = settings.cdkColorScheme || 'cow';
+  if (cdkShowCarbonsToggle) cdkShowCarbonsToggle.checked = settings.cdkShowCarbons || false;
+  if (cdkShowMethylsToggle) cdkShowMethylsToggle.checked = settings.cdkShowMethyls || false;
+  if (cdkColorSchemeSelect) cdkColorSchemeSelect.value = settings.cdkColorScheme || 'coc';
   if (cdkHydrogenDisplaySelect) cdkHydrogenDisplaySelect.value = settings.cdkHydrogenDisplay || 'minimal';
+  if (cdkAtomNumbersToggle) cdkAtomNumbersToggle.checked = settings.cdkAtomNumbers || false;
   if (cdkAnnotationSelect) cdkAnnotationSelect.value = settings.cdkAnnotation || 'none';
-  if (cdkAbbreviateToggle) cdkAbbreviateToggle.checked = settings.cdkAbbreviate !== false;
   if (cdkZoomSlider) {
     cdkZoomSlider.value = settings.cdkZoom || 1.5;
     if (cdkZoomValue) cdkZoomValue.textContent = (settings.cdkZoom || 1.5) + 'x';
@@ -626,6 +632,22 @@ if (aiMolecularControlToggle) {
 }
 
 // CDK Depict options event listeners
+if (cdkShowCarbonsToggle) {
+  cdkShowCarbonsToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ cdkShowCarbons: e.target.checked }, () => {
+      showStatus('Show carbons ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (cdkShowMethylsToggle) {
+  cdkShowMethylsToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ cdkShowMethyls: e.target.checked }, () => {
+      showStatus('Show methyls ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
 if (cdkColorSchemeSelect) {
   cdkColorSchemeSelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ cdkColorScheme: e.target.value }, () => {
@@ -642,18 +664,18 @@ if (cdkHydrogenDisplaySelect) {
   });
 }
 
-if (cdkAnnotationSelect) {
-  cdkAnnotationSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ cdkAnnotation: e.target.value }, () => {
-      showStatus('Annotation set to ' + e.target.value + '. Reload page to apply.', 'success');
+if (cdkAtomNumbersToggle) {
+  cdkAtomNumbersToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ cdkAtomNumbers: e.target.checked }, () => {
+      showStatus('Atom numbers ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
     });
   });
 }
 
-if (cdkAbbreviateToggle) {
-  cdkAbbreviateToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ cdkAbbreviate: e.target.checked }, () => {
-      showStatus('Abbreviations ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+if (cdkAnnotationSelect) {
+  cdkAnnotationSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ cdkAnnotation: e.target.value }, () => {
+      showStatus('Annotation set to ' + e.target.value + '. Reload page to apply.', 'success');
     });
   });
 }

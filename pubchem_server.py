@@ -1168,11 +1168,14 @@ def create_error_png(message):
 
 
 # ============================================================
-# CDK DEPICT PROXY (to bypass CORS issues)
+# CDK DEPICT PROXY - DEPRECATED (NOT NEEDED - using direct <img> tags)
 # ============================================================
+# DEPRECATED: Keeping this code for reference, but CDK Depict works
+# directly via <img src="https://simolecule.com/..."> without proxy
+# No CORS issues with image tags!
 
-@app.route('/cdk/depict', methods=['GET'])
-def cdk_depict_proxy():
+@app.route('/cdk/depict.DEPRECATED', methods=['GET'])
+def cdk_depict_proxy_DEPRECATED():
     """
     Proxy endpoint for CDK Depict API to bypass CORS issues
     Example: /cdk/depict?smi=CCO&hdisp=explicit&annotate=atomnumber&abbr=off&zoom=1.5&scheme=cow

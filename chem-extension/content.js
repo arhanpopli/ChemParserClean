@@ -2779,16 +2779,29 @@ function setupLazyLoading() {
       }
 
       // Build CDK Depict URL - use DIRECT link (images bypass CORS!)
-      const colorScheme = settings.cdkColorScheme || 'cow';
+      const colorScheme = settings.cdkColorScheme || 'coc';  // Default to transparent
       const hdisp = settings.cdkHydrogenDisplay || 'minimal';
-      const annotate = settings.cdkAnnotation || 'none';
-      const abbr = settings.cdkAbbreviate !== false ? 'on' : 'off';
       const zoom = settings.cdkZoom || 1.5;
+
+      // Determine annotation based on settings
+      let annotate = 'none';
+      if (settings.cdkAtomNumbers) {
+        annotate = 'atomnumber';
+      } else if (settings.cdkAnnotation && settings.cdkAnnotation !== 'none') {
+        annotate = settings.cdkAnnotation;
+      }
+
+      // Determine abbreviation mode based on show carbons/methyls
+      let abbr = 'on';  // Default: abbreviate groups
+      if (settings.cdkShowCarbons || settings.cdkShowMethyls) {
+        abbr = 'off';  // Disable abbreviations to show all carbons
+      }
 
       // Direct CDK Depict API URL - no proxy needed for <img> tags!
       const cdkUrl = `https://www.simolecule.com/cdkdepict/depict/${colorScheme}/svg?smi=${encodeURIComponent(smiles)}&hdisp=${hdisp}&annotate=${annotate}&abbr=${abbr}&zoom=${zoom}`;
 
       console.log('%c🌐 CDK Depict (direct URL):', 'color: #2196F3;', cdkUrl);
+      console.log(`   Settings: carbons=${settings.cdkShowCarbons}, methyls=${settings.cdkShowMethyls}, H=${hdisp}, annotate=${annotate}, abbr=${abbr}`);
 
       // Create img element with direct CDK URL (no fetch needed - images bypass CORS!)
       const svgImg = document.createElement('img');

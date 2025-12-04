@@ -982,7 +982,7 @@ function createSizeControls(container, svgImg, moleculeData, settings) {
 }
 
 function adjustImageSize(container, svgImg, moleculeData, delta, settings) {
-  // Get current scale (fallback to 1.0 if not set - should already be set by wrapImageWithSizeControls)
+  // Get current scale (fallback to 1.0 if not set)
   let currentScale = parseFloat(svgImg.dataset.scale) || 1.0;
 
   // Adjust scale by delta (convert pixel delta to scale delta)
@@ -992,63 +992,26 @@ function adjustImageSize(container, svgImg, moleculeData, delta, settings) {
   // Constrain scale between 0.5x and 5x
   newScale = Math.max(0.5, Math.min(5, newScale));
 
-  // Get the SVG's intrinsic width with robust fallbacks for large molecules
-  let intrinsicWidth = svgImg.naturalWidth || svgImg.width;
-
-  // If still no width (can happen with complex SVGs like phosphatidylcholine, insulin)
-  if (!intrinsicWidth || intrinsicWidth === 0) {
-    console.warn('%c⚠️ naturalWidth not available in adjustImageSize, extracting from SVG', 'color: orange;');
-
-    try {
-      if (svgImg.src && svgImg.src.startsWith('data:image/svg+xml')) {
-        let svgContent;
-        if (svgImg.src.includes('base64,')) {
-          svgContent = atob(svgImg.src.split('base64,')[1]);
-        } else {
-          svgContent = decodeURIComponent(svgImg.src.split(',')[1]);
-        }
-
-        const widthMatch = svgContent.match(/width\s*=\s*["']?(\d+(?:\.\d+)?)/i);
-        if (widthMatch) {
-          intrinsicWidth = parseFloat(widthMatch[1]);
-        } else {
-          const viewBoxMatch = svgContent.match(/viewBox\s*=\s*["']?[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)/i);
-          if (viewBoxMatch) {
-            intrinsicWidth = parseFloat(viewBoxMatch[1]);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Could not extract SVG width:', e);
-    }
-  }
-
-  // Final fallback
-  if (!intrinsicWidth || intrinsicWidth === 0) {
-    intrinsicWidth = 400;
-    console.warn('%c⚠️ Using default width in adjustImageSize:', 'color: orange;', intrinsicWidth);
-  }
-
-  console.log(`Intrinsic width: ${intrinsicWidth}px`);
-
-  // Calculate new width based on scale
-  const newWidth = Math.round(intrinsicWidth * newScale);
-
-  // Only set width, let height: auto maintain aspect ratio
-  svgImg.style.width = `${newWidth}px`;
-  svgImg.style.height = 'auto';
-  svgImg.style.maxWidth = 'none';
-  svgImg.style.maxHeight = 'none';
-
   // Store scale in dataset for future adjustments
   svgImg.dataset.scale = newScale.toString();
+
+  // Apply scale using CSS transform (preserves intrinsic dimensions)
+  // This keeps the box wrapping perfectly around the SVG content
+  svgImg.style.width = 'fit-content';
+  svgImg.style.height = 'auto';
+
+  // Get existing transform (may have flip/rotation applied) and update scale
+  const existingTransform = svgImg.style.transform || '';
+  const withoutScale = existingTransform.replace(/scale\([^)]+\)\s*/g, '');
+  svgImg.style.transform = `${withoutScale} scale(${newScale})`.trim();
+  svgImg.style.transformOrigin = 'top left';
 
   // Save scale preference
   const pageUrl = window.location.href;
   const size = { scale: newScale };
   saveImageSize(moleculeData, pageUrl, size, settings);
 
-  console.log(`Adjusted scale: ${newScale.toFixed(2)}x (width: ${newWidth}px, height: auto, was ${currentScale.toFixed(2)}x)`);
+  console.log(`Adjusted scale: ${newScale.toFixed(2)}x (was ${currentScale.toFixed(2)}x)`);
 }
 
 async function wrapImageWithSizeControls(svgImg, originalImg, moleculeData, settings) {
@@ -1147,11 +1110,8 @@ async function wrapImageWithSizeControls(svgImg, originalImg, moleculeData, sett
     const scale = savedSize.scale || defaultScale;
     svgImg.dataset.scale = scale.toString();
 
-    // Force a default width if we couldn't detect one, to ensure visibility
-    // Skip if image has fixedSize flag (used for protein/mineral images)
-    if (!svgImg.dataset.fixedSize && (!svgImg.style.width || svgImg.style.width === '0px' || svgImg.style.width === 'auto')) {
-      svgImg.style.width = '300px'; // Safe default
-    }
+    // NOTE: Removed 300px default width override - we now use fit-content
+    // to let images wrap perfectly to their intrinsic SVG dimensions
 
     // Wait for image to load to get natural dimensions
     // Skip scaling for fixed-size images (protein/mineral images)
@@ -1188,66 +1148,65 @@ async function wrapImageWithSizeControls(svgImg, originalImg, moleculeData, sett
 }
 
 function applyScaleToImage(svgImg, scale) {
-  // Try to get intrinsic width, with multiple fallbacks for large/complex molecules
+  // Instead of calculating a fixed pixel width, use CSS transform: scale()
+  // This preserves the SVG's intrinsic dimensions (fit-content) while applying scaling
+
+  // Get intrinsic dimensions for logging
   let intrinsicWidth = svgImg.naturalWidth || svgImg.width;
+  let intrinsicHeight = svgImg.naturalHeight || svgImg.height;
 
-  // If still no width (can happen with complex SVGs like phosphatidylcholine, insulin)
-  if (!intrinsicWidth || intrinsicWidth === 0) {
-    console.warn('%c⚠️ naturalWidth not available, trying to extract from SVG', 'color: orange;');
-
+  // Try to extract from SVG if not available
+  if ((!intrinsicWidth || intrinsicWidth === 0) && svgImg.src && svgImg.src.startsWith('data:image/svg+xml')) {
     try {
-      // Try to extract width from SVG src if it's a data URL
-      if (svgImg.src && svgImg.src.startsWith('data:image/svg+xml')) {
-        let svgContent;
+      let svgContent;
+      if (svgImg.src.includes('base64,')) {
+        svgContent = atob(svgImg.src.split('base64,')[1]);
+      } else {
+        svgContent = decodeURIComponent(svgImg.src.split(',')[1]);
+      }
 
-        // Handle both base64 and plain text data URLs
-        if (svgImg.src.includes('base64,')) {
-          svgContent = atob(svgImg.src.split('base64,')[1]);
-        } else {
-          svgContent = decodeURIComponent(svgImg.src.split(',')[1]);
-        }
+      const widthMatch = svgContent.match(/width\s*=\s*["']?(\d+(?:\.\d+)?)/i);
+      const heightMatch = svgContent.match(/height\s*=\s*["']?(\d+(?:\.\d+)?)/i);
 
-        // Try to extract width attribute from SVG tag
-        const widthMatch = svgContent.match(/width\s*=\s*["']?(\d+(?:\.\d+)?)/i);
-        if (widthMatch) {
-          intrinsicWidth = parseFloat(widthMatch[1]);
-          console.log('%c📏 Extracted width from SVG content:', 'color: #9c88ff;', intrinsicWidth);
-        } else {
-          // Try viewBox as fallback
-          const viewBoxMatch = svgContent.match(/viewBox\s*=\s*["']?[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)/i);
-          if (viewBoxMatch) {
-            intrinsicWidth = parseFloat(viewBoxMatch[1]);
-            console.log('%c📏 Extracted width from viewBox:', 'color: #9c88ff;', intrinsicWidth);
-          }
+      if (widthMatch) intrinsicWidth = parseFloat(widthMatch[1]);
+      if (heightMatch) intrinsicHeight = parseFloat(heightMatch[1]);
+
+      // Try viewBox as fallback
+      if (!intrinsicWidth || !intrinsicHeight) {
+        const viewBoxMatch = svgContent.match(/viewBox\s*=\s*["']?[\d.]+\s+[\d.]+\s+([\d.]+)\s+([\d.]+)/i);
+        if (viewBoxMatch) {
+          intrinsicWidth = intrinsicWidth || parseFloat(viewBoxMatch[1]);
+          intrinsicHeight = intrinsicHeight || parseFloat(viewBoxMatch[2]);
         }
       }
     } catch (e) {
-      console.warn('Could not extract SVG width from data URL:', e);
+      console.warn('Could not extract SVG dimensions from data URL:', e);
     }
   }
-
-  // Final fallback: use default width based on molecule complexity
-  if (!intrinsicWidth || intrinsicWidth === 0) {
-    // For large molecules, use a larger default
-    intrinsicWidth = 400;
-    console.warn('%c⚠️ Using default width for large molecule:', 'color: orange;', intrinsicWidth);
-  }
-
-  const newWidth = Math.round(intrinsicWidth * scale);
 
   // Hard limits to prevent molecules from getting too large
   const MAX_DISPLAY_WIDTH = 600;  // Maximum width in pixels
   const MAX_DISPLAY_HEIGHT = 500; // Maximum height in pixels
 
-  // Only set width, let height: auto maintain aspect ratio
-  svgImg.style.width = `${newWidth}px`;
+  // Set the image to use its intrinsic dimensions with fit-content
+  // This makes the box wrap perfectly around the SVG content
+  svgImg.style.width = 'fit-content';
   svgImg.style.height = 'auto';
-
-  // Apply hard maximum size limits to prevent page overflow
   svgImg.style.maxWidth = `${MAX_DISPLAY_WIDTH}px`;
   svgImg.style.maxHeight = `${MAX_DISPLAY_HEIGHT}px`;
 
-  console.log(`Applied scale ${scale}x: intrinsic width ${intrinsicWidth}px → ${newWidth}px (height: auto, max: ${MAX_DISPLAY_WIDTH}x${MAX_DISPLAY_HEIGHT})`);
+  // Apply scale using CSS transform (preserves intrinsic dimensions)
+  // Only apply if scale is non-default
+  if (scale && scale !== 1.0) {
+    // Get existing transform (may have flip/rotation applied)
+    const existingTransform = svgImg.style.transform || '';
+    // Remove any existing scale() and add new one
+    const withoutScale = existingTransform.replace(/scale\([^)]+\)\s*/g, '');
+    svgImg.style.transform = `${withoutScale} scale(${scale})`.trim();
+    svgImg.style.transformOrigin = 'top left';
+  }
+
+  console.log(`Applied scale ${scale}x: intrinsic ${intrinsicWidth || '?'}x${intrinsicHeight || '?'}px, using fit-content (max: ${MAX_DISPLAY_WIDTH}x${MAX_DISPLAY_HEIGHT})`);
 }
 
 // Create debug interface EARLY so it's always available
@@ -6192,9 +6151,10 @@ log.info('ℹ️  Run window.chemRendererDebug.scanPage() to manually trigger a 
 // CONTEXT MENU HANDLER
 // ============================================
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // Handler for "Render as Molecule" (treats text as chemical name/nomenclature)
   if (request.type === 'INSPECT_MOLECULE') {
     const text = request.text;
-    console.log('%c🧪 Rendering selection as molecule:', 'color: #2196F3; font-weight: bold;', text);
+    console.log('%c🧪 Rendering selection as molecule (nomenclature):', 'color: #2196F3; font-weight: bold;', text);
 
     // Get the current selection to find where to insert the image
     const selection = window.getSelection();
@@ -6208,7 +6168,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     img.alt = text;
     img.title = text;
 
-    // Create molecule data
+    // Create molecule data - treats text as nomenclature
     const moleculeData = {
       nomenclature: text,
       type: 'nomenclature',
@@ -6242,6 +6202,65 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Load the molecule with a slight delay to ensure DOM update is complete
     setTimeout(() => {
       console.log('%c🔄 Triggering loadMoleculeViewerImage for selection...', 'color: #2196F3;');
+      if (window.loadMoleculeViewerImage) {
+        window.loadMoleculeViewerImage(img);
+      } else {
+        console.error('❌ loadMoleculeViewerImage not found on window object');
+      }
+    }, 50);
+  }
+
+  // Handler for "Render as SMILES" (treats text directly as SMILES string)
+  if (request.type === 'RENDER_SMILES') {
+    const text = request.text;
+    console.log('%c🧪 Rendering selection as SMILES:', 'color: #4CAF50; font-weight: bold;', text);
+
+    // Get the current selection to find where to insert the image
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+
+    // Create image element (same structure as standard renderer)
+    const img = document.createElement('img');
+    img.className = 'chemfig-diagram chemfig-molecule-viewer';
+    img.alt = text;
+    img.title = `SMILES: ${text}`;
+
+    // Create molecule data - treats text directly as SMILES (no PubChem lookup)
+    const moleculeData = {
+      smiles: text,
+      type: 'smiles',
+      options: {
+        width: 400,
+        height: 300,
+        isMoleculeViewer: true
+      }
+    };
+
+    // Set dataset
+    img.dataset.moleculeViewer = btoa(JSON.stringify(moleculeData));
+    img.dataset.loaded = 'false';
+
+    // Style it to look good inline
+    img.style.cssText = `
+      display: inline-block;
+      vertical-align: middle;
+      margin: 0 4px;
+      min-width: 50px;
+      min-height: 50px;
+    `;
+
+    // Replace selected text with the image
+    range.deleteContents();
+    range.insertNode(img);
+
+    // Clear selection
+    selection.removeAllRanges();
+
+    // Load the molecule with a slight delay to ensure DOM update is complete
+    setTimeout(() => {
+      console.log('%c🔄 Triggering loadMoleculeViewerImage for SMILES...', 'color: #4CAF50;');
       if (window.loadMoleculeViewerImage) {
         window.loadMoleculeViewerImage(img);
       } else {

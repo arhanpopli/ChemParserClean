@@ -2,7 +2,7 @@
 Mol2ChemFig Server - Flask wrapper for mol2chemfig Docker backend
 Provides persistent SVG/PDF links and Chrome extension integration
 
-Port: 1000 (Docker backend uses 8000)
+Port: 1000 (Docker backend uses 7000)
 """
 
 from flask import Flask, request, jsonify, send_file
@@ -31,7 +31,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'chemfig-server-secret-key-change-
 CORS(app, supports_credentials=True)
 
 # Configuration
-MOL2CHEMFIG_BACKEND = "http://localhost:8000"  # Docker backend
+MOL2CHEMFIG_BACKEND = "http://localhost:7000"  # Docker backend (port 7000 to avoid conflict with MolView on 8000)
 STORAGE_DIR = Path("cache") / "mol2chemfig"
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 

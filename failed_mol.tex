@@ -1,0 +1,22 @@
+\documentclass[border=2pt]{standalone}
+\usepackage[utf8]{inputenc}
+\usepackage{mol2chemfig}
+\usepackage{chemfig}
+\setatomsep{2em}
+\renewcommand*\printatom[1]{\ensuremath{\mathsf{#1}}}
+\begin{document}
+\chemfig{
+                    \mcfabove{C}{H}% 1
+             -[:180]\mcfabove{C}{H}% 2
+                       (
+    -[:300,,,,draw=none]\mcfcringle{1.3}% (o)
+                       )
+         -[:240,,,2]HC% 3
+          -[:300,,2]\mcfbelow{C}{H}% 4
+                   -\mcfbelow{C}{H}% 5
+          -[:60,,,1]CH% 6
+                       (
+              -[:120,,1]\phantom{C}% -> 1
+                       )
+}
+\end{document}

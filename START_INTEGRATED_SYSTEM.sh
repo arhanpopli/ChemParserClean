@@ -16,8 +16,8 @@ if ! docker ps | grep -q "m2cf_backend"; then
 fi
 
 # Check if backend is responsive
-echo "✓ Verifying mol2chemfig backend (localhost:8000)..."
-if ! curl -s http://localhost:8000/m2cf/submit > /dev/null 2>&1; then
+echo "✓ Verifying mol2chemfig backend (localhost:7000)..."
+if ! curl -s http://localhost:7000/m2cf/submit > /dev/null 2>&1; then
     echo "⚠ Backend not responding yet, waiting..."
     sleep 3
 fi
@@ -52,7 +52,7 @@ echo "  - 🧬 Mol2ChemFig Tab: LaTeX-quality ChemFig rendering"
 echo ""
 echo "  Backend Services:"
 echo "  - MoleculeViewer: http://localhost:5000 ✓"
-echo "  - Mol2ChemFig Docker: http://localhost:8000 ✓"
+echo "  - Mol2ChemFig Docker: http://localhost:7000 ✓"
 echo ""
 echo "=========================================================="
 echo ""

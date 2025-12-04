@@ -209,11 +209,19 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
-// Create context menu item
+// Create context menu items
 chrome.runtime.onInstalled.addListener(() => {
+  // Option 1: Render as Molecule (treats text as chemical name/nomenclature)
   chrome.contextMenus.create({
     id: "inspect-molecule",
     title: "Render as Molecule: '%s'",
+    contexts: ["selection"]
+  });
+
+  // Option 2: Render as SMILES (treats text directly as SMILES string)
+  chrome.contextMenus.create({
+    id: "render-smiles",
+    title: "Render as SMILES: '%s'",
     contexts: ["selection"]
   });
 });
@@ -222,11 +230,22 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "inspect-molecule") {
     const selectedText = info.selectionText;
-    console.log('[Background] Inspecting molecule:', selectedText);
+    console.log('[Background] Inspecting molecule (nomenclature):', selectedText);
 
     // Send message to content script to handle the inspection
     chrome.tabs.sendMessage(tab.id, {
       type: 'INSPECT_MOLECULE',
+      text: selectedText
+    });
+  }
+
+  if (info.menuItemId === "render-smiles") {
+    const selectedText = info.selectionText;
+    console.log('[Background] Rendering as SMILES:', selectedText);
+
+    // Send message to content script to handle SMILES rendering
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'RENDER_SMILES',
       text: selectedText
     });
   }

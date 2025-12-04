@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CDK Depict Renderer Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #2196F3;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .molecule {
+      display: inline-block;
+      margin: 10px;
+      padding: 10px;
+      background: #fafafa;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    code {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+    .note {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 12px;
+      margin: 10px 0;
+    }
+    .success {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 12px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌐 CDK Depict Renderer Test</h1>
+
+  <div class="success">
+    <strong>✅ CDK Depict Integration Complete!</strong><br>
+    This free online API requires no server hosting and supports all the advanced rendering options you wanted.
+  </div>
+
+  <div class="note">
+    <strong>📝 Instructions:</strong>
+    <ol>
+      <li>Open the Chrome extension popup</li>
+      <li>Select <strong>"CDK Depict"</strong> as the rendering engine</li>
+      <li>Adjust options: color scheme, hydrogen display, annotations, etc.</li>
+      <li>Reload this page to see the rendered molecules</li>
+    </ol>
+  </div>
+
+  <div class="test-section">
+    <h2>Basic Molecules</h2>
+    <div class="molecule">
+      <p><strong>Ethanol:</strong> <code>chem:ethanol:</code></p>
+      <p>chem:ethanol:</p>
+    </div>
+
+    <div class="molecule">
+      <p><strong>Caffeine:</strong> <code>chem:caffeine:</code></p>
+      <p>chem:caffeine:</p>
+    </div>
+
+    <div class="molecule">
+      <p><strong>Aspirin:</strong> <code>chem:aspirin:</code></p>
+      <p>chem:aspirin:</p>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Hydrogen Display Options</h2>
+    <div class="molecule">
+      <p><strong>Benzene (to test hydrogen display):</strong> <code>chem:benzene:</code></p>
+      <p>chem:benzene:</p>
+    </div>
+
+    <div class="molecule">
+      <p><strong>Methane (all hydrogens):</strong> <code>chem:methane:</code></p>
+      <p>chem:methane:</p>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Complex Molecules</h2>
+    <div class="molecule">
+      <p><strong>Glucose:</strong> <code>chem:glucose:</code></p>
+      <p>chem:glucose:</p>
+    </div>
+
+    <div class="molecule">
+      <p><strong>Penicillin:</strong> <code>chem:penicillin:</code></p>
+      <p>chem:penicillin:</p>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>SMILES Direct Input</h2>
+    <div class="molecule">
+      <p><strong>Simple SMILES (CCO):</strong> <code>chem:CCO:</code></p>
+      <p>chem:CCO:</p>
+    </div>
+
+    <div class="molecule">
+      <p><strong>Cyclohexane (C1CCCCC1):</strong> <code>chem:C1CCCCC1:</code></p>
+      <p>chem:C1CCCCC1:</p>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>Available CDK Depict Options</h2>
+    <ul>
+      <li><strong>Color Schemes:</strong> Color on White, Color on Black, Black on White, Neon on Black, etc.</li>
+      <li><strong>Hydrogen Display:</strong> Minimal, Smart, Chiral Only, Explicit (show all)</li>
+      <li><strong>Annotations:</strong> Atom Numbers, Bond Numbers, CIP Stereo Labels, etc.</li>
+      <li><strong>Abbreviate Groups:</strong> Show common groups (Me, Ph, etc.) abbreviated</li>
+      <li><strong>Zoom Level:</strong> 1.0x to 3.0x</li>
+    </ul>
+  </div>
+
+  <div class="note">
+    <strong>💡 Tips:</strong>
+    <ul>
+      <li>Try setting hydrogen display to "Explicit" to see all hydrogens</li>
+      <li>Enable "Atom Numbers" annotation to see atom indices</li>
+      <li>Try different color schemes for dark/light backgrounds</li>
+      <li>Adjust zoom level for better visibility</li>
+    </ul>
+  </div>
+</body>
+</html>

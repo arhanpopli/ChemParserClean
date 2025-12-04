@@ -1168,6 +1168,72 @@ def create_error_png(message):
 
 
 # ============================================================
+# CDK DEPICT PROXY (to bypass CORS issues)
+# ============================================================
+
+@app.route('/cdk/depict', methods=['GET'])
+def cdk_depict_proxy():
+    """
+    Proxy endpoint for CDK Depict API to bypass CORS issues
+    Example: /cdk/depict?smi=CCO&hdisp=explicit&annotate=atomnumber&abbr=off&zoom=1.5&scheme=cow
+    """
+    try:
+        # Get parameters from request
+        smiles = request.args.get('smi', '')
+        hdisp = request.args.get('hdisp', 'minimal')
+        annotate = request.args.get('annotate', 'none')
+        abbr = request.args.get('abbr', 'on')
+        zoom = request.args.get('zoom', '1.5')
+        scheme = request.args.get('scheme', 'cow')  # color scheme (cow, cob, bow, etc.)
+
+        if not smiles:
+            return jsonify({'error': 'SMILES required (smi parameter)'}), 400
+
+        # Build CDK Depict URL
+        cdk_url = f'https://www.simolecule.com/cdkdepict/depict/{scheme}/svg'
+        params = {
+            'smi': smiles,
+            'hdisp': hdisp,
+            'annotate': annotate,
+            'abbr': abbr,
+            'zoom': zoom
+        }
+
+        print(f'🌐 [CDK Proxy] Fetching from CDK Depict: {smiles}')
+        print(f'   Options: hdisp={hdisp}, annotate={annotate}, abbr={abbr}, zoom={zoom}, scheme={scheme}')
+
+        # Fetch from CDK Depict
+        response = requests.get(cdk_url, params=params, timeout=10)
+
+        if response.status_code == 200:
+            svg_content = response.text
+            print(f'✅ [CDK Proxy] Success! SVG length: {len(svg_content)} bytes')
+
+            # Return SVG with proper CORS headers
+            return Response(
+                svg_content,
+                mimetype='image/svg+xml',
+                headers={
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'public, max-age=86400'  # Cache for 24 hours
+                }
+            )
+        else:
+            print(f'❌ [CDK Proxy] CDK Depict returned status {response.status_code}')
+            return jsonify({
+                'error': f'CDK Depict API error: {response.status_code}',
+                'details': response.text[:200]
+            }), response.status_code
+
+    except requests.Timeout:
+        print('❌ [CDK Proxy] Request timeout')
+        return jsonify({'error': 'CDK Depict API timeout'}), 504
+    except Exception as e:
+        print(f'❌ [CDK Proxy] Error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================
 # START SERVER
 # ============================================================
 

@@ -996,11 +996,7 @@ function adjustImageSize(container, svgImg, moleculeData, delta, settings) {
   svgImg.dataset.scale = newScale.toString();
 
   // Apply scale using CSS transform (preserves intrinsic dimensions)
-  // This keeps the box wrapping perfectly around the SVG content
-  svgImg.style.width = 'fit-content';
-  svgImg.style.height = 'auto';
-
-  // Get existing transform (may have flip/rotation applied) and update scale
+  // Don't set width/height - let SVG's intrinsic dimensions control the size
   const existingTransform = svgImg.style.transform || '';
   const withoutScale = existingTransform.replace(/scale\([^)]+\)\s*/g, '');
   svgImg.style.transform = `${withoutScale} scale(${newScale})`.trim();
@@ -1188,10 +1184,8 @@ function applyScaleToImage(svgImg, scale) {
   const MAX_DISPLAY_WIDTH = 600;  // Maximum width in pixels
   const MAX_DISPLAY_HEIGHT = 500; // Maximum height in pixels
 
-  // Set the image to use its intrinsic dimensions with fit-content
-  // This makes the box wrap perfectly around the SVG content
-  svgImg.style.width = 'fit-content';
-  svgImg.style.height = 'auto';
+  // Don't set width/height - let SVG's intrinsic dimensions control the size
+  // Only set max constraints to prevent overflow
   svgImg.style.maxWidth = `${MAX_DISPLAY_WIDTH}px`;
   svgImg.style.maxHeight = `${MAX_DISPLAY_HEIGHT}px`;
 
@@ -1206,7 +1200,7 @@ function applyScaleToImage(svgImg, scale) {
     svgImg.style.transformOrigin = 'top left';
   }
 
-  console.log(`Applied scale ${scale}x: intrinsic ${intrinsicWidth || '?'}x${intrinsicHeight || '?'}px, using fit-content (max: ${MAX_DISPLAY_WIDTH}x${MAX_DISPLAY_HEIGHT})`);
+  console.log(`Applied scale ${scale}x: intrinsic ${intrinsicWidth || '?'}x${intrinsicHeight || '?'}px (max: ${MAX_DISPLAY_WIDTH}x${MAX_DISPLAY_HEIGHT})`);
 }
 
 // Create debug interface EARLY so it's always available
@@ -1544,6 +1538,9 @@ chrome.storage.sync.get(null, (result) => {
   } else if (settings.rendererEngine === 'client-side') {
     engineName = '💻 Client-Side (SmilesDrawer)';
     enginePort = 'N/A';
+  } else if (settings.rendererEngine === 'cdk-depict') {
+    engineName = '🌐 CDK Depict (Free API)';
+    enginePort = 'External';
   } else {
     engineName = '🧪 MoleculeViewer';
     enginePort = '5000';
@@ -1586,6 +1583,8 @@ chrome.storage.onChanged.addListener((changes) => {
       engineName = '🌐 PubChem';
     } else if (settings.rendererEngine === 'client-side') {
       engineName = '💻 Client-Side (SmilesDrawer)';
+    } else if (settings.rendererEngine === 'cdk-depict') {
+      engineName = '🌐 CDK Depict (Free API)';
     } else {
       engineName = '🧪 MoleculeViewer';
     }
@@ -2727,6 +2726,106 @@ function setupLazyLoading() {
     }
   }
 
+  // ========== CDK DEPICT RENDERING ==========
+  async function renderCDKDepict(moleculeData, img) {
+    activeLoads++;
+    log.debug(`🌐 Rendering with CDK Depict API (#${activeLoads})`);
+
+    try {
+      // Decode molecule data if not passed directly
+      if (!moleculeData && img.dataset.moleculeViewer) {
+        moleculeData = JSON.parse(atob(img.dataset.moleculeViewer));
+      }
+
+      // Check for 3D request - redirect to 3D viewer
+      if (moleculeData.is3D || moleculeData.show3D || (moleculeData.options && moleculeData.options.is3D) || (moleculeData.flags && moleculeData.flags.is3D)) {
+        let targetForViewer = img;
+        if (!img || img.tagName !== 'IMG') {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'chem-3d-placeholder';
+          placeholder.style.cssText = 'display: inline-block; width: 300px; height: 200px;';
+          placeholder._moleculeData = moleculeData;
+          if (img && img.parentNode) {
+            img.parentNode.replaceChild(placeholder, img);
+          }
+          targetForViewer = placeholder;
+        }
+        await show3DViewerInline(moleculeData, targetForViewer);
+        activeLoads--;
+        return;
+      }
+
+      let smiles = moleculeData.smiles;
+      const compoundName = moleculeData.nomenclature || moleculeData.name || 'molecule';
+
+      // If no SMILES, try to get it from the search API
+      if (!smiles && moleculeData.nomenclature) {
+        const cleanName = moleculeData.nomenclature.trim();
+
+        try {
+          const searchUrl = `${MOLVIEW_SEARCH_API}/search?q=${encodeURIComponent(cleanName)}&format=compact`;
+          const searchResult = await backgroundFetchJSON(searchUrl);
+
+          if (searchResult && !searchResult.error && searchResult.canonical_smiles) {
+            smiles = searchResult.isomeric_smiles || searchResult.canonical_smiles;
+          }
+        } catch (error) {
+          console.warn('CDK Depict: Failed to get SMILES from search API:', error);
+        }
+      }
+
+      if (!smiles) {
+        throw new Error('No SMILES available for CDK Depict rendering');
+      }
+
+      // Build CDK Depict URL - use DIRECT link (images bypass CORS!)
+      const colorScheme = settings.cdkColorScheme || 'cow';
+      const hdisp = settings.cdkHydrogenDisplay || 'minimal';
+      const annotate = settings.cdkAnnotation || 'none';
+      const abbr = settings.cdkAbbreviate !== false ? 'on' : 'off';
+      const zoom = settings.cdkZoom || 1.5;
+
+      // Direct CDK Depict API URL - no proxy needed for <img> tags!
+      const cdkUrl = `https://www.simolecule.com/cdkdepict/depict/${colorScheme}/svg?smi=${encodeURIComponent(smiles)}&hdisp=${hdisp}&annotate=${annotate}&abbr=${abbr}&zoom=${zoom}`;
+
+      console.log('%c🌐 CDK Depict (direct URL):', 'color: #2196F3;', cdkUrl);
+
+      // Create img element with direct CDK URL (no fetch needed - images bypass CORS!)
+      const svgImg = document.createElement('img');
+      svgImg.src = cdkUrl;  // Direct link - browser will fetch it
+      svgImg.alt = compoundName;
+      svgImg.className = 'chemfig-diagram';
+
+      svgImg.style.cssText = `
+        display: inline-block;
+        max-width: 600px;
+        max-height: 500px;
+        margin: 0 12px 8px 0;
+        vertical-align: middle;
+        cursor: pointer;
+      `;
+
+      // Mark as loaded
+      img.dataset.loaded = 'true';
+
+      // Replace original img element with size controls
+      chrome.storage.sync.get({
+        saveSizePerImage: false,
+        saveSizeBySMILES: true
+      }, async (sizeSettings) => {
+        await wrapImageWithSizeControls(svgImg, img, moleculeData, sizeSettings);
+      });
+
+      activeLoads--;
+      return;
+
+    } catch (error) {
+      console.error('%c❌ CDK Depict rendering error:', 'color: red; font-weight: bold;', error);
+      img.alt = `Error: ${error.message}`;
+      activeLoads--;
+    }
+  }
+
   // ========== SERVER-SIDE RENDERING (existing code) ==========
   async function renderMoleculeServerSide(moleculeData, img) {
     try {
@@ -2997,6 +3096,14 @@ function setupLazyLoading() {
         return;
       }
 
+      // Check if we should use CDK Depict rendering (for compounds only)
+      if (settings.rendererEngine === 'cdk-depict') {
+        // console.log('%c🌐 Compound: Using CDK Depict renderer with SMILES from Search API', 'background: #2196F3; color: white; font-weight: bold; padding: 4px;');
+        activeLoads--; // Decrement because renderCDKDepict increments it again
+        await renderCDKDepict(moleculeData, img);
+        return;
+      }
+
       // ========================================
       // STEP 4: Server-side rendering for compounds (MoleculeViewer, mol2chemfig, PubChem)
       // ========================================
@@ -3045,22 +3152,19 @@ function setupLazyLoading() {
 
       let apiUrl;
       if (isSMILES) {
-        // Build options query string for MoleculeViewer (simplified - only essential params)
+        // Build options query string for MoleculeViewer
+        // NOTE: Don't specify width/height - let SVG auto-size to molecule content
         const optionsParams = new URLSearchParams({
           smiles: moleculeData.smiles,
-          width: '300',
-          height: '200',
           json: 'true'
         });
 
         apiUrl = `${MOLECULE_VIEWER_API}/img/smiles?${optionsParams.toString()}&t=${Date.now()}`;
       } else if (isNomenclature) {
         // Fallback: server-side nomenclature conversion (if SMILES Bridge failed)
-        // Build options query string for MoleculeViewer (simplified - only essential params)
+        // NOTE: Don't specify width/height - let SVG auto-size to molecule content
         const optionsParams = new URLSearchParams({
           nomenclature: moleculeData.nomenclature,
-          width: '300',
-          height: '200',
           json: 'true'
         });
 
@@ -3118,12 +3222,12 @@ function setupLazyLoading() {
             filter += 'invert(1) ';
           }
 
+          // Don't set width/height - let SVG's intrinsic dimensions control the size
+          // The SVG element has width/height or viewBox that determines its natural size
           svgImg.style.cssText = `
             display: inline-block;
             max-width: 600px;
             max-height: 500px;
-            width: fit-content;
-            height: auto;
             margin: 0 12px 8px 0;
             vertical-align: middle;
             cursor: pointer;

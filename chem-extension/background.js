@@ -163,17 +163,26 @@ async function handleTextRequest(url, options = {}) {
       statusText: response.statusText,
       ok: response.ok,
       type: response.type,
-      url: response.url
+      url: response.url,
+      headers: Object.fromEntries([...response.headers.entries()])
     });
 
     if (!response.ok) {
       const errorBody = await response.text().catch(() => '(could not read error body)');
       console.error('[Background] HTTP Error response body:', errorBody);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorBody.substring(0, 200)}`);
     }
 
     const text = await response.text();
-    console.log('[Background] Text response received, length:', text.length, 'preview:', text.substring(0, 100));
+    console.log('[Background] Text response received, length:', text.length, 'preview:', text.substring(0, 150));
+
+    // Validate that we got SVG content
+    if (text.includes('<?xml') || text.includes('<svg')) {
+      console.log('[Background] ✅ Valid SVG detected');
+    } else {
+      console.warn('[Background] ⚠️ Response may not be valid SVG');
+    }
+
     return text;
   } catch (error) {
     console.error('[Background] Text fetch error:', {

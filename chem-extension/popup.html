@@ -567,6 +567,15 @@
                 <small>Offline rendering (SmilesDrawer)</small>
               </div>
             </label>
+
+            <input type="radio" name="renderingEngine" value="cdk-depict" id="engine5">
+            <label for="engine5" class="radio-option">
+              <div class="radio-indicator"></div>
+              <div>
+                <strong>CDK Depict</strong>
+                <small>Free online API (no server needed!)</small>
+              </div>
+            </label>
           </div>
 
           <div class="info-box"
@@ -920,6 +929,87 @@
             </label>
             <input type="checkbox" id="pubchemSharpenToggle" checked>
             <label class="toggle" for="pubchemSharpenToggle"></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- CDK Depict Options -->
+      <div id="cdkDepictOptions" class="section" style="display: none;">
+        <div class="section-title">
+          <span>CDK Depict Options</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
+        </div>
+        <div class="section-content">
+          <div class="info-box" style="background: rgba(76, 175, 80, 0.1); border-left: 3px solid #4CAF50; margin-bottom: 12px;">
+            <strong>🌐 Free Online Service</strong><br>
+            <small>No server hosting required! Uses Chemistry Development Kit (CDK) API.</small>
+          </div>
+
+          <div class="option">
+            <label class="option-label">
+              <strong>Color Scheme</strong>
+              <small>Choose background and atom colors</small>
+            </label>
+          </div>
+          <select id="cdkColorSchemeSelect">
+            <option value="cow" selected>Color on White</option>
+            <option value="cob">Color on Black</option>
+            <option value="coc">Color on Clear (transparent)</option>
+            <option value="bow">Black on White</option>
+            <option value="wob">White on Black</option>
+            <option value="nob">Neon on Black</option>
+          </select>
+
+          <div class="option">
+            <label class="option-label">
+              <strong>Hydrogen Display</strong>
+              <small>Control how hydrogens are shown</small>
+            </label>
+          </div>
+          <select id="cdkHydrogenDisplaySelect">
+            <option value="minimal" selected>Minimal Hydrogens</option>
+            <option value="smart">Smart Hydrogens</option>
+            <option value="chiral">Chiral Hydrogens Only</option>
+            <option value="explicit">Explicit Hydrogens (show all)</option>
+          </select>
+
+          <div class="option">
+            <label class="option-label">
+              <strong>Annotation Type</strong>
+              <small>Add labels to atoms</small>
+            </label>
+          </div>
+          <select id="cdkAnnotationSelect">
+            <option value="none" selected>No Annotation</option>
+            <option value="atomnumber">Atom Numbers</option>
+            <option value="bondnumber">Bond Numbers</option>
+            <option value="atommapping">Atom Mapping</option>
+            <option value="colmap">Color Map</option>
+            <option value="atomvalue">Atom Value</option>
+            <option value="cip">CIP Stereo Labels</option>
+          </select>
+
+          <div class="option">
+            <label class="option-label" for="cdkAbbreviateToggle">
+              <strong>Abbreviate Groups</strong>
+              <small>Show common groups (like Me, Ph) abbreviated</small>
+            </label>
+            <input type="checkbox" id="cdkAbbreviateToggle" checked>
+            <label class="toggle" for="cdkAbbreviateToggle"></label>
+          </div>
+
+          <div class="option">
+            <label class="option-label">
+              <strong>Zoom Level</strong>
+              <small>Scale the structure (1.0 - 3.0)</small>
+            </label>
+          </div>
+          <input type="range" id="cdkZoomSlider" min="1.0" max="3.0" step="0.1" value="1.5"
+            style="width: 100%; margin-top: 8px;">
+          <div style="text-align: center; font-size: 12px; color: #666; margin-top: 4px;">
+            <span id="cdkZoomValue">1.5x</span>
           </div>
         </div>
       </div>

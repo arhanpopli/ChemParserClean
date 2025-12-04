@@ -390,8 +390,10 @@ def smiles_to_svg(smiles, width=600, height=500, options=None):
         else:
             mol_to_draw = mol
         
-        # Configure drawer
-        drawer = MolDraw2DSVG(width, height)
+        # Configure drawer with flexicanvas mode (width=-1, height=-1)
+        # This auto-sizes the SVG canvas to fit the molecule content exactly
+        # Making the box wrap perfectly around each molecule's structure
+        drawer = MolDraw2DSVG(-1, -1)
         
         # Ensure transparent background
         opts = drawer.drawOptions()

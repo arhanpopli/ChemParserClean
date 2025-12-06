@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SvgDrawer vs Drawer Test - Calcite</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a2e; color: #eee; }
+        h1 { color: #00d4ff; }
+        .container { display: flex; gap: 30px; flex-wrap: wrap; }
+        .card { background: #16213e; padding: 20px; border-radius: 10px; }
+        .card h3 { color: #ffd93d; margin-top: 0; }
+        canvas, svg { background: white; border-radius: 5px; display: block; }
+        .smiles { font-family: monospace; background: #0f0f23; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .log { font-size: 12px; color: #4ecdc4; margin-top: 10px; min-height: 60px; }
+    </style>
+</head>
+<body>
+    <h1>🔬 SvgDrawer vs Drawer Comparison - Calcite</h1>
+    <p>Testing if both renderers can handle ionic SMILES: <code>[Ca+2].C(=O)([O-])[O-]</code></p>
+    
+    <div class="container">
+        <!-- Canvas Drawer -->
+        <div class="card">
+            <h3>1️⃣ SmilesDrawer.Drawer (Canvas) - What mineral_test.html uses</h3>
+            <div class="smiles">[Ca+2].C(=O)([O-])[O-]</div>
+            <canvas id="canvas-calcite" width="300" height="250"></canvas>
+            <div class="log" id="log-canvas"></div>
+        </div>
+        
+        <!-- SVG Drawer -->
+        <div class="card">
+            <h3>2️⃣ SmilesDrawer.SvgDrawer (SVG) - What the extension uses</h3>
+            <div class="smiles">[Ca+2].C(=O)([O-])[O-]</div>
+            <svg id="svg-calcite" width="300" height="250"></svg>
+            <div class="log" id="log-svg"></div>
+        </div>
+        
+        <!-- Extension-style SVG -->
+        <div class="card">
+            <h3>3️⃣ Extension-style (temp div method)</h3>
+            <div class="smiles">[Ca+2].C(=O)([O-])[O-]</div>
+            <div id="ext-container"></div>
+            <div class="log" id="log-ext"></div>
+        </div>
+    </div>
+
+    <script src="smiles-drawer.min.js"></script>
+    <script>
+        const smiles = '[Ca+2].C(=O)([O-])[O-]';
+        
+        function log(id, msg, type = 'info') {
+            const el = document.getElementById(id);
+            const color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#95d5b2' : '#4ecdc4';
+            el.innerHTML += `<div style="color:${color}">${msg}</div>`;
+            console.log(`[${id}] ${msg}`);
+        }
+        
+        // Options similar to extension
+        const options = {
+            width: 300,
+            height: 250,
+            bondThickness: 1.5,
+            bondLength: 25,
+            shortBondLength: 0.85,
+            bondSpacing: 6,
+            atomVisualization: 'default',
+            isomeric: true,
+            debug: false,
+            terminalCarbons: true,
+            compactDrawing: false,
+            explicitHydrogens: false,
+            overlapSensitivity: 0.42,
+            fontSizeLarge: 10,
+            fontSizeSmall: 8,
+            padding: 5.0,
+            themes: {
+                light: {
+                    C: '#222222', O: '#e74c3c', N: '#3498db', Ca: '#1abc9c',
+                    BACKGROUND: 'transparent'
+                }
+            }
+        };
+        
+        // Test 1: Canvas Drawer
+        try {
+            log('log-canvas', 'Testing SmilesDrawer.Drawer...');
+            const drawer = new SmilesDrawer.Drawer(options);
+            
+            SmilesDrawer.parse(smiles, function(tree) {
+                log('log-canvas', '✓ Parse successful!', 'success');
+                log('log-canvas', `Vertices: ${tree.graph.vertices.length}, Edges: ${tree.graph.edges.length}`);
+                drawer.draw(tree, 'canvas-calcite', 'light', false);
+                log('log-canvas', '✓ Canvas draw complete!', 'success');
+            }, function(err) {
+                log('log-canvas', '✗ Parse error: ' + err, 'error');
+            });
+        } catch(e) {
+            log('log-canvas', '✗ Exception: ' + e.message, 'error');
+        }
+        
+        // Test 2: SVG Drawer (direct)
+        try {
+            log('log-svg', 'Testing SmilesDrawer.SvgDrawer...');
+            const svgDrawer = new SmilesDrawer.SvgDrawer(options);
+            
+            SmilesDrawer.parse(smiles, function(tree) {
+                log('log-svg', '✓ Parse successful!', 'success');
+                log('log-svg', `Vertices: ${tree.graph.vertices.length}, Edges: ${tree.graph.edges.length}`);
+                svgDrawer.draw(tree, 'svg-calcite', 'light');
+                log('log-svg', '✓ SVG draw complete!', 'success');
+            }, function(err) {
+                log('log-svg', '✗ Parse error: ' + err, 'error');
+            });
+        } catch(e) {
+            log('log-svg', '✗ Exception: ' + e.message, 'error');
+        }
+        
+        // Test 3: Extension-style (temp div method)
+        try {
+            log('log-ext', 'Testing extension-style rendering...');
+            
+            SmilesDrawer.parse(smiles, function(tree) {
+                log('log-ext', '✓ Parse successful!', 'success');
+                
+                // Extension method: create temp SVG, draw, then move
+                const tempId = 'temp-' + Date.now();
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = `<svg id="${tempId}" width="300" height="250"></svg>`;
+                document.body.appendChild(tempDiv);
+                
+                const drawer = new SmilesDrawer.SvgDrawer(options);
+                drawer.draw(tree, tempId, 'light');
+                
+                // Get rendered SVG
+                const svg = document.getElementById(tempId);
+                if (svg) {
+                    // Clone and move to container
+                    const container = document.getElementById('ext-container');
+                    const clone = svg.cloneNode(true);
+                    clone.id = 'ext-svg';
+                    clone.style.background = 'white';
+                    clone.style.borderRadius = '5px';
+                    container.appendChild(clone);
+                    tempDiv.remove();
+                    log('log-ext', '✓ Extension-style complete!', 'success');
+                }
+            }, function(err) {
+                log('log-ext', '✗ Parse error: ' + err, 'error');
+            });
+        } catch(e) {
+            log('log-ext', '✗ Exception: ' + e.message, 'error');
+        }
+    </script>
+</body>
+</html>

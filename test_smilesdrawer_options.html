@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SmilesDrawer Options Test</title>
+    <script src="smilesDrawer/dist/smiles-drawer.js"></script>
+    <style>
+        .molecule-container {
+            display: inline-block;
+            margin: 10px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+        }
+        h3 { margin: 5px 0; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>SmilesDrawer Options Test</h1>
+    <p>Testing: benzene (c1ccccc1)</p>
+
+    <div class="molecule-container">
+        <h3>Default (no options)</h3>
+        <svg id="mol1" width="200" height="200"></svg>
+    </div>
+
+    <div class="molecule-container">
+        <h3>showCarbons: true</h3>
+        <svg id="mol2" width="200" height="200"></svg>
+    </div>
+
+    <div class="molecule-container">
+        <h3>showAromaticRings: false</h3>
+        <svg id="mol3" width="200" height="200"></svg>
+    </div>
+
+    <div class="molecule-container">
+        <h3>showHydrogens: true</h3>
+        <svg id="mol4" width="200" height="200"></svg>
+    </div>
+
+    <div class="molecule-container">
+        <h3>atomNumbering: true</h3>
+        <svg id="mol5" width="200" height="200"></svg>
+    </div>
+
+    <div class="molecule-container">
+        <h3>ALL options ON</h3>
+        <svg id="mol6" width="200" height="200"></svg>
+    </div>
+
+    <script>
+        const smiles = 'c1ccccc1';  // benzene
+
+        // Test 1: Default
+        const drawer1 = new SmilesDrawer.SvgDrawer({});
+        SmilesDrawer.parse(smiles, (tree) => {
+            drawer1.draw(tree, 'mol1', 'light');
+        });
+
+        // Test 2: showCarbons
+        const drawer2 = new SmilesDrawer.SvgDrawer({ showCarbons: true, compactDrawing: false });
+        SmilesDrawer.parse(smiles, (tree) => {
+            drawer2.draw(tree, 'mol2', 'light');
+        });
+
+        // Test 3: showAromaticRings false
+        const drawer3 = new SmilesDrawer.SvgDrawer({ showAromaticRings: false });
+        SmilesDrawer.parse(smiles, (tree) => {
+            drawer3.draw(tree, 'mol3', 'light');
+        });
+
+        // Test 4: showHydrogens
+        const drawer4 = new SmilesDrawer.SvgDrawer({ showHydrogens: true, explicitHydrogens: true });
+        SmilesDrawer.parse(smiles, (tree) => {
+            drawer4.draw(tree, 'mol4', 'light');
+        });
+
+        // Test 5: atomNumbering
+        const drawer5 = new SmilesDrawer.SvgDrawer({ atomNumbering: true });
+        SmilesDrawer.parse(smiles, (tree) => {
+            drawer5.draw(tree, 'mol5', 'light');
+        });
+
+        // Test 6: ALL options
+        const drawer6 = new SmilesDrawer.SvgDrawer({
+            showCarbons: true,
+            compactDrawing: false,
+            showAromaticRings: true,
+            showHydrogens: true,
+            explicitHydrogens: true,
+            atomNumbering: true
+        });
+        SmilesDrawer.parse(smiles, (tree) => {
+            drawer6.draw(tree, 'mol6', 'light');
+        });
+
+        console.log('SmilesDrawer version test - check if options work');
+    </script>
+</body>
+</html>

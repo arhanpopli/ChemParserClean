@@ -3,40 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Molecule Viewer</title>
-    <script src="3Dmol-min.js"></script>
+    <title>PubChem 3D Viewer</title>
     <style>
         * {
-            margin: 0 !important;
-            padding: 0 !important;
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
-        html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: var(--bg-color, #1a1a2e);
+        body {
+            background: #1a1a2e;
             overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            width: 100%;
-            height: 100%;
         }
-        #viewer {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            margin: 0 !important;
-            padding: 0 !important;
-            border: none !important;
-            outline: none !important;
-        }
-        /* Remove white line from canvas element inside viewer */
-        #viewer canvas {
-            border: none !important;
-            outline: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
+        #viewer-frame {
+            width: 100vw;
+            height: 100vh;
+            border: none;
             display: block;
         }
         #loading {
@@ -47,6 +29,7 @@
             color: white;
             font-size: 18px;
             text-align: center;
+            z-index: 1000;
         }
         .spinner {
             border: 4px solid rgba(255, 255, 255, 0.3);
@@ -70,21 +53,21 @@
             color: #ff6b6b;
             text-align: center;
             padding: 20px;
+            z-index: 1000;
         }
     </style>
 </head>
 <body>
-    <div id="viewer"></div>
     <div id="loading">
         <div class="spinner"></div>
-        <div>Loading molecule...</div>
+        <div>Loading PubChem 3D Viewer...</div>
     </div>
     <div id="error">
         <h2>❌ Error</h2>
         <p id="errorMessage"></p>
     </div>
+    <iframe id="viewer-frame"></iframe>
 
-    <script src="integrated-search.js"></script>
-    <script src="3dmol-viewer.js"></script>
+    <script src="pubchem-3d-wrapper.js"></script>
 </body>
 </html>

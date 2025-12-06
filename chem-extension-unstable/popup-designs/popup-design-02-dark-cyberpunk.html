@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Chemistry Renderer - Dark Cyberpunk</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    @keyframes neonPulse {
+      0%, 100% { text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff; }
+      50% { text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff, 0 0 60px #00ffff; }
+    }
+
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+
+    @keyframes glitch {
+      0%, 100% { transform: translate(0); }
+      33% { transform: translate(-2px, 2px); }
+      66% { transform: translate(2px, -2px); }
+    }
+
+    body {
+      width: 420px;
+      font-family: 'Courier New', 'Consolas', monospace;
+      font-size: 13px;
+      color: #00ffff;
+      background: #0a0a0a;
+      overflow: hidden;
+    }
+
+    .container {
+      background: #0f0f23;
+      display: flex;
+      flex-direction: column;
+      min-height: 650px;
+      max-height: 650px;
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 40px rgba(0, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #00ffff, transparent);
+      animation: scanline 4s linear infinite;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .header {
+      background: linear-gradient(180deg, #0f0f23 0%, #1a1a3e 100%);
+      color: #00ffff;
+      padding: 20px;
+      text-align: center;
+      border-bottom: 2px solid #00ffff;
+      box-shadow: 0 4px 20px rgba(0, 255, 255, 0.3);
+      position: relative;
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      animation: neonPulse 2s infinite;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .header p {
+      font-size: 11px;
+      color: #ff00ff;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: #0a0a1f;
+    }
+
+    .content::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .content::-webkit-scrollbar-track {
+      background: #0a0a1f;
+      border-left: 1px solid #00ffff;
+    }
+
+    .content::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #00ffff, #ff00ff);
+      border-radius: 0;
+    }
+
+    .section {
+      margin-bottom: 16px;
+      background: rgba(15, 15, 35, 0.8);
+      padding: 16px;
+      border: 1px solid #00ffff;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.05);
+      position: relative;
+    }
+
+    .section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+      background: linear-gradient(180deg, #00ffff, #ff00ff);
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: bold;
+      color: #ff00ff;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #ff00ff;
+      letter-spacing: 2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .option {
+      padding: 10px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+    }
+
+    .option:last-child {
+      border-bottom: none;
+    }
+
+    .option label {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .option strong {
+      display: block;
+      font-weight: bold;
+      color: #00ffff;
+      margin-bottom: 4px;
+      font-size: 12px;
+      text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+    }
+
+    .option small {
+      display: block;
+      color: #888;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    input[type="checkbox"], input[type="radio"] {
+      display: none;
+    }
+
+    .toggle {
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+      background: #1a1a3e;
+      border: 1px solid #00ffff;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      flex-shrink: 0;
+      margin-left: 12px;
+      box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.2);
+    }
+
+    .toggle::before {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: #00ffff;
+      top: 1px;
+      left: 1px;
+      transition: left 0.3s ease;
+      box-shadow: 0 0 10px #00ffff;
+    }
+
+    input:checked + .toggle {
+      background: #1a1a3e;
+      border-color: #ff00ff;
+      box-shadow: inset 0 0 10px rgba(255, 0, 255, 0.2), 0 0 10px rgba(255, 0, 255, 0.3);
+    }
+
+    input:checked + .toggle::before {
+      left: 27px;
+      background: #ff00ff;
+      box-shadow: 0 0 10px #ff00ff;
+    }
+
+    select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #00ffff;
+      background: #1a1a3e;
+      color: #00ffff;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      margin-top: 8px;
+      box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.1);
+    }
+
+    select:focus, textarea:focus {
+      outline: none;
+      border-color: #ff00ff;
+      box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+    }
+
+    .info-box {
+      background: rgba(0, 255, 255, 0.05);
+      border-left: 3px solid #00ffff;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 11px;
+      color: #00ffff;
+      line-height: 1.6;
+      box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.1);
+    }
+
+    .info-box.warning {
+      background: rgba(255, 0, 255, 0.05);
+      border-left-color: #ff00ff;
+      color: #ff00ff;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(90deg, #00ffff, #ff00ff);
+      color: #0a0a1f;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-top: 10px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      box-shadow: 0 0 30px rgba(255, 0, 255, 0.5);
+      animation: glitch 0.3s;
+    }
+
+    .footer {
+      background: #0f0f23;
+      border-top: 2px solid #00ffff;
+      padding: 12px 16px;
+      text-align: center;
+      font-size: 10px;
+      color: #00ffff;
+      letter-spacing: 1px;
+      box-shadow: 0 -4px 20px rgba(0, 255, 255, 0.2);
+    }
+
+    .footer a {
+      color: #ff00ff;
+      text-decoration: none;
+      font-weight: bold;
+      text-shadow: 0 0 5px rgba(255, 0, 255, 0.5);
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .radio-option {
+      padding: 12px;
+      background: rgba(26, 26, 62, 0.5);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .radio-option:hover {
+      border-color: #00ffff;
+      background: rgba(26, 26, 62, 0.8);
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    }
+
+    input[type="radio"]:checked + .radio-option {
+      border-color: #ff00ff;
+      background: rgba(26, 26, 62, 1);
+      box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
+    }
+
+    .radio-indicator {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #00ffff;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    input[type="radio"]:checked + .radio-option .radio-indicator {
+      border-color: #ff00ff;
+      box-shadow: 0 0 10px #ff00ff;
+    }
+
+    input[type="radio"]:checked + .radio-option .radio-indicator::after {
+      content: '';
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #ff00ff;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px #ff00ff;
+    }
+
+    .status {
+      display: none;
+      padding: 10px;
+      border: 1px solid #00ffff;
+      font-size: 11px;
+      margin: 10px 0;
+      font-weight: bold;
+      background: rgba(0, 255, 255, 0.1);
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    }
+
+    .status.show {
+      display: block;
+      color: #00ffff;
+      animation: neonPulse 1s;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚗️ CHEM::RENDER</h1>
+      <p>Dark Cyberpunk Interface</p>
+    </div>
+
+    <div class="content">
+      <!-- Main Controls -->
+      <div class="section">
+        <div class="section-title">▶ SYSTEM CONTROLS</div>
+
+        <div class="option">
+          <label for="enabledToggle">
+            <strong>EXTENSION STATUS</strong>
+            <small>Enable/disable formula rendering</small>
+          </label>
+          <input type="checkbox" id="enabledToggle" checked>
+          <label class="toggle" for="enabledToggle"></label>
+        </div>
+
+        <div class="option">
+          <label for="mhchemToggle">
+            <strong>MHCHEM FORMULAS</strong>
+            <small>\ce{H2O}, \ce{CO2}</small>
+          </label>
+          <input type="checkbox" id="mhchemToggle" checked>
+          <label class="toggle" for="mhchemToggle"></label>
+        </div>
+
+        <div class="option">
+          <label for="chemfigToggle">
+            <strong>CHEMFIG STRUCTURES</strong>
+            <small>\chemfig{...}</small>
+          </label>
+          <input type="checkbox" id="chemfigToggle" checked>
+          <label class="toggle" for="chemfigToggle"></label>
+        </div>
+      </div>
+
+      <!-- Renderer Selection -->
+      <div class="section">
+        <div class="section-title">▶ RENDERING ENGINE</div>
+
+        <div class="radio-group">
+          <input type="radio" name="renderingEngine" value="moleculeviewer" id="engine1" checked>
+          <label for="engine1" class="radio-option">
+            <div class="radio-indicator"></div>
+            <div>
+              <strong style="color: #00ffff;">MOLECULEVIEWER</strong>
+              <small>SMILES & nomenclature (port 5000)</small>
+            </div>
+          </label>
+
+          <input type="radio" name="renderingEngine" value="mol2chemfig" id="engine2">
+          <label for="engine2" class="radio-option">
+            <div class="radio-indicator"></div>
+            <div>
+              <strong style="color: #00ffff;">MOL2CHEMFIG</strong>
+              <small>Chemfig & LaTeX (port 8000)</small>
+            </div>
+          </label>
+
+          <input type="radio" name="renderingEngine" value="pubchem" id="engine3">
+          <label for="engine3" class="radio-option">
+            <div class="radio-indicator"></div>
+            <div>
+              <strong style="color: #00ffff;">PUBCHEM API</strong>
+              <small>Direct API with 3D models (port 5002)</small>
+            </div>
+          </label>
+        </div>
+
+        <div class="info-box">
+          <strong>[STATUS]</strong> Using local rendering - All chemistry structures render locally
+        </div>
+      </div>
+
+      <!-- mol2chemfig Options -->
+      <div id="mol2chemfigOptions" class="section" style="display: none;">
+        <div class="section-title">▶ MOL2CHEMFIG CONFIG</div>
+
+        <div class="option">
+          <label for="m2cfShowCarbonsToggle">
+            <strong>SHOW CARBONS</strong>
+            <small>Display C labels (-c flag)</small>
+          </label>
+          <input type="checkbox" id="m2cfShowCarbonsToggle">
+          <label class="toggle" for="m2cfShowCarbonsToggle"></label>
+        </div>
+
+        <div class="option">
+          <label for="m2cfAromaticCirclesToggle">
+            <strong>AROMATIC CIRCLES</strong>
+            <small>Draw circles in rings (-o flag)</small>
+          </label>
+          <input type="checkbox" id="m2cfAromaticCirclesToggle">
+          <label class="toggle" for="m2cfAromaticCirclesToggle"></label>
+        </div>
+
+        <div class="option">
+          <label for="use3DSmilesToggle">
+            <strong>3D STEREOCHEMISTRY</strong>
+            <small>Use OPSIN for 3D SMILES</small>
+          </label>
+          <input type="checkbox" id="use3DSmilesToggle">
+          <label class="toggle" for="use3DSmilesToggle"></label>
+        </div>
+      </div>
+
+      <!-- Image Size Controls -->
+      <div class="section">
+        <div class="section-title">▶ IMAGE SIZE CTRL</div>
+
+        <div class="option">
+          <label for="saveSizePerImageToggle">
+            <strong>SAVE SIZE PER PAGE</strong>
+            <small>Remember image size for each page</small>
+          </label>
+          <input type="checkbox" id="saveSizePerImageToggle">
+          <label class="toggle" for="saveSizePerImageToggle"></label>
+        </div>
+
+        <div class="option">
+          <label for="saveSizeBySMILESToggle">
+            <strong>SAVE SIZE BY SMILES</strong>
+            <small>Same size for all molecules with same SMILES</small>
+          </label>
+          <input type="checkbox" id="saveSizeBySMILESToggle">
+          <label class="toggle" for="saveSizeBySMILESToggle"></label>
+        </div>
+      </div>
+
+      <!-- Performance -->
+      <div class="section">
+        <div class="section-title">▶ PERFORMANCE</div>
+        <div class="option">
+          <label for="perfModeToggle">
+            <strong>LAZY-LOADING MODE</strong>
+            <small>Only render visible formulas</small>
+          </label>
+          <input type="checkbox" id="perfModeToggle" checked>
+          <label class="toggle" for="perfModeToggle"></label>
+        </div>
+      </div>
+
+      <!-- Developer Mode -->
+      <div class="section">
+        <div class="section-title">▶ DEVELOPER MODE</div>
+        <div class="option">
+          <label for="devModeToggle">
+            <strong>SHOW RAW TEXT</strong>
+            <small>Display chemfig text instead of images</small>
+          </label>
+          <input type="checkbox" id="devModeToggle">
+          <label class="toggle" for="devModeToggle"></label>
+        </div>
+      </div>
+
+      <div class="status" id="status"></div>
+
+    </div>
+
+    <div class="footer">
+      CHEM::RENDER v4.0 CYBERPUNK • <a href="#">[HELP]</a>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

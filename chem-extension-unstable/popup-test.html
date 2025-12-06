@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Test Popup</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 400px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      color: #1a1a1a;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 0;
+    }
+
+    .container {
+      background: white;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      min-height: 400px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .header p {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .section {
+      margin-bottom: 20px;
+      background: #f8f9fb;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #e8eaed;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 5px 0;
+      width: 100%;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #764ba2;
+    }
+
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+
+    label {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+      cursor: pointer;
+    }
+
+    label strong {
+      display: block;
+      margin-left: 30px;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚗️ Chemistry Renderer</h1>
+      <p>Formula rendering test</p>
+    </div>
+
+    <div class="content">
+      <div class="section">
+        <div class="section-title">✅ CSS IS LOADING!</div>
+        <p>If you see this with colors and styling, CSS is working.</p>
+        <button onclick="alert('Button works!')">Click Me</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">🧪 Test Elements</div>
+        <label>
+          <input type="checkbox"> This is a styled checkbox
+        </label>
+        <label>
+          <input type="checkbox" checked> This is checked
+        </label>
+      </div>
+
+      <div class="section">
+        <div class="section-title">📝 If You See This...</div>
+        <p>✅ Purple gradient header present</p>
+        <p>✅ White content area present</p>
+        <p>✅ Styled sections with borders</p>
+        <p>✅ Colored buttons</p>
+        <p>✅ CSS is loading correctly</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -149,9 +149,54 @@ if (cid) {
 async function resolveAndLoad(name) {
     console.log(`🔍 Resolving molecule: ${name}`);
 
-    // STEP 1: Query Search API (port 8001) for intelligent molecule detection
-    const SEARCH_API = 'http://localhost:8001';
+    // STEP 1: Use Integrated Search (no server needed!)
+    if (window.IntegratedSearch) {
+        try {
+            console.log(`🔍 [IntegratedSearch] Querying for: "${name}"`);
+            const data = await window.IntegratedSearch.search(name, { format: 'full' });
 
+            if (!data.error) {
+                console.log('📦 IntegratedSearch response:', data);
+                const category = data.primary_type?.toLowerCase();
+
+                // CASE 1: Compound → Use CID or SMILES
+                if (category === 'compound') {
+                    console.log(`✅ Found compound: ${data.name}`);
+
+                    if (data.cid) {
+                        loadMolecule(data.cid);
+                        return;
+                    } else if (data.canonical_smiles) {
+                        const cid = await getCIDFromSMILES(data.canonical_smiles);
+                        if (cid) {
+                            loadMolecule(cid);
+                            return;
+                        }
+                    }
+                }
+
+                // CASE 2: Mineral → Use COD ID with MolView
+                else if (category === 'mineral' && data.codid) {
+                    console.log(`💎 Found mineral: ${data.name} (COD ID: ${data.codid})`);
+                    fallbackToMolView(data.codid, 'codid');
+                    return;
+                }
+
+                // CASE 3: Biomolecule/Protein → Use PDB ID with MolView
+                else if ((category === 'biomolecule' || category === 'protein') && data.pdbid) {
+                    console.log(`🧬 Found biomolecule: ${data.name} (PDB ID: ${data.pdbid})`);
+                    const molviewUrl = `${MOLVIEW_API}/embed/v2/?pdbid=${data.pdbid}`;
+                    embedMolView(molviewUrl, data.name);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn(`⚠️ IntegratedSearch failed: ${e.message}`);
+        }
+    }
+
+    // STEP 2: Fallback to external Search API (port 8001)
+    const SEARCH_API = 'http://localhost:8001';
     try {
         console.log(`🌐 Querying Search API: ${SEARCH_API}/search?q=${encodeURIComponent(name)}`);
         const response = await fetch(`${SEARCH_API}/search?q=${encodeURIComponent(name)}`);
@@ -210,7 +255,7 @@ async function resolveAndLoad(name) {
         console.warn(`⚠️ Local MolView API failed: ${e.message}`);
     }
 
-    // STEP 2: Fallback to PubChem for small molecules
+    // STEP 3: Fallback to PubChem for small molecules
     console.log('🔄 Falling back to PubChem lookup...');
     try {
         const response = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(name)}/cids/JSON`);
@@ -227,7 +272,7 @@ async function resolveAndLoad(name) {
         console.warn(`⚠️ PubChem lookup failed: ${e.message}`);
     }
 
-    // STEP 3: Final fallback to online MolView embed
+    // STEP 4: Final fallback to online MolView embed
     console.warn(`⚠️ Could not resolve "${name}" locally. Using online MolView.`);
     fallbackToMolView(name, false);
 }

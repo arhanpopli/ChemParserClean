@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chemistry Formula Renderer - Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            color: #555;
+            margin-top: 30px;
+        }
+        
+        .test-section {
+            background: white;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        
+        .formula {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .before {
+            flex: 1;
+            border-right: 2px solid #ddd;
+            padding-right: 15px;
+            color: #999;
+        }
+        
+        .arrow {
+            color: #007bff;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+        
+        .after {
+            flex: 1;
+            padding-left: 15px;
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+        }
+        
+        .console-link {
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        code {
+            background: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Chemistry Formula Renderer - Test Page</h1>
+    
+    <div class="instructions">
+        <h3>📋 How to Test:</h3>
+        <ol>
+            <li>Open this page in Chrome</li>
+            <li>Make sure the Chemistry Renderer extension is loaded</li>
+            <li>Check if formulas below convert from left side → right side</li>
+            <li>Open DevTools (F12) → Console tab</li>
+            <li>Run: <code>window.chemRendererDebug.getLogs()</code> to see all logs</li>
+            <li>Run: <code>window.chemRendererDebug.scanPage()</code> to manually re-scan</li>
+        </ol>
+    </div>
+
+    <h2>✅ Test Cases</h2>
+
+    <div class="test-section">
+        <h3>Basic Molecules (mhchem format)</h3>
+        
+        <div class="formula">
+            <span class="before">Input: \ce{H2O}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: H₂O (subscript 2)</span>
+        </div>
+        <p>Water molecule: \ce{H2O}</p>
+
+        <div class="formula">
+            <span class="before">Input: \ce{CO2}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: CO₂ (subscript 2)</span>
+        </div>
+        <p>Carbon dioxide: \ce{CO2}</p>
+
+        <div class="formula">
+            <span class="before">Input: \ce{C6H12O6}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: C₆H₁₂O₆ (all subscripts)</span>
+        </div>
+        <p>Glucose: \ce{C6H12O6}</p>
+
+        <div class="formula">
+            <span class="before">Input: \ce{NaCl}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: NaCl (no change)</span>
+        </div>
+        <p>Sodium chloride: \ce{NaCl}</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Charged Species (Ions)</h3>
+
+        <div class="formula">
+            <span class="before">Input: \ce{Na+}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: Na⁺ (superscript +)</span>
+        </div>
+        <p>Sodium ion: \ce{Na+}</p>
+
+        <div class="formula">
+            <span class="before">Input: \ce{Cl-}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: Cl⁻ (superscript -)</span>
+        </div>
+        <p>Chloride ion: \ce{Cl-}</p>
+
+        <div class="formula">
+            <span class="before">Input: \ce{H+}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: H⁺ (superscript +)</span>
+        </div>
+        <p>Hydrogen ion: \ce{H+}</p>
+
+        <div class="formula">
+            <span class="before">Input: \ce{OH-}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: OH⁻ (superscript -)</span>
+        </div>
+        <p>Hydroxide ion: \ce{OH-}</p>
+
+        <div class="formula">
+            <span class="before">Input: \ce{Ca2+}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: Ca²⁺ (subscript 2, superscript +)</span>
+        </div>
+        <p>Calcium ion: \ce{Ca2+}</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Chemical Reactions (Arrows)</h3>
+
+        <div class="formula">
+            <span class="before">Input: \ce{2H2 + O2 -> 2H2O}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: 2H₂ + O₂ → 2H₂O (arrows & subscripts)</span>
+        </div>
+        <p>Combustion: \ce{2H2 + O2 -> 2H2O}</p>
+
+        <div class="formula">
+            <span class="before">Input: \ce{H2 + Cl2 -> 2HCl}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: H₂ + Cl₂ → 2HCl</span>
+        </div>
+        <p>Hydrogen chloride formation: \ce{H2 + Cl2 -> 2HCl}</p>
+
+        <div class="formula">
+            <span class="before">Input: \ce{N2 + 3H2 <=> 2NH3}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: N₂ + 3H₂ ⇌ 2NH₃ (equilibrium arrow)</span>
+        </div>
+        <p>Equilibrium reaction: \ce{N2 + 3H2 <=> 2NH3}</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Complex Formulas (Subscripts + Charges)</h3>
+
+        <div class="formula">
+            <span class="before">Input: \ce{Na+ + Cl- -> NaCl}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: Na⁺ + Cl⁻ → NaCl</span>
+        </div>
+        <p>Ionic bonding: \ce{Na+ + Cl- -> NaCl}</p>
+
+        <div class="formula">
+            <span class="before">Input: \ce{H2SO4}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: H₂SO₄ (subscripts)</span>
+        </div>
+        <p>Sulfuric acid: \ce{H2SO4}</p>
+
+        <div class="formula">
+            <span class="before">Input: \ce{Cu2+ + 2e- -> Cu}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: Cu²⁺ + 2e⁻ → Cu</span>
+        </div>
+        <p>Electrochemistry: \ce{Cu2+ + 2e- -> Cu}</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Organic Chemistry (chemfig format)</h3>
+
+        <div class="formula">
+            <span class="before">Input: \chemfig{C=C}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: 🧬[C=C] (organic structure indicator)</span>
+        </div>
+        <p>Ethene: \chemfig{C=C}</p>
+
+        <div class="formula">
+            <span class="before">Input: chemfig{C-C}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: 🧬[C-C] (no backslash)</span>
+        </div>
+        <p>Ethane (no backslash): chemfig{C-C}</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Alternative Format (ce without backslash)</h3>
+
+        <div class="formula">
+            <span class="before">Input: ce{H2O}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: H₂O (without backslash)</span>
+        </div>
+        <p>Water (no backslash): ce{H2O}</p>
+
+        <div class="formula">
+            <span class="before">Input: ce{Na+ + Cl-}</span>
+            <span class="arrow">→</span>
+            <span class="after">Expected: Na⁺ + Cl⁻</span>
+        </div>
+        <p>Sodium chloride formation (no backslash): ce{Na+ + Cl-}</p>
+    </div>
+
+    <div class="console-link">
+        <strong>🔍 Debugging:</strong><br>
+        Open DevTools (F12) and run these commands:
+        <ul>
+            <li><code>window.chemRendererDebug.getLogs()</code> - View all extension logs</li>
+            <li><code>window.chemRendererDebug.testFormulas()</code> - Test formula detection</li>
+            <li><code>window.chemRendererDebug.scanPage()</code> - Manually re-scan page</li>
+            <li><code>window.chemRendererDebug.getSettings()</code> - View extension settings</li>
+        </ul>
+    </div>
+
+    <hr>
+    
+    <h2>📊 What to Look For</h2>
+    <ul>
+        <li>✅ H2O should display as H₂O (with subscript 2)</li>
+        <li>✅ Na+ should display as Na⁺ (with superscript +)</li>
+        <li>✅ -> should display as → (arrow)</li>
+        <li>✅ <=> should display as ⇌ (equilibrium arrow)</li>
+        <li>✅ No JavaScript errors in console</li>
+        <li>✅ No CSP errors (Content Security Policy)</li>
+        <li>✅ Logs show "[ChemRenderer] [DEBUG] Converting: ..."</li>
+    </ul>
+
+    <h2>🐛 Troubleshooting</h2>
+    <ul>
+        <li>If formulas don't change: Open console and run <code>window.chemRendererDebug.getLogs()</code></li>
+        <li>If you see CSP errors: This means the site's CSP policy blocks extensions</li>
+        <li>If you see "MathJax not loaded": The extension is using Unicode fallback (still works!)</li>
+        <li>If formulas look wrong: Check that you're viewing this in Chrome with extension loaded</li>
+    </ul>
+
+</body>
+</html>

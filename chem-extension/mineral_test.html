@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mineral Rendering Test - Calcite & Quartz</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        h1 {
+            text-align: center;
+            color: #00d4ff;
+        }
+        h2 {
+            color: #ff6b6b;
+            border-bottom: 2px solid #ff6b6b;
+            padding-bottom: 10px;
+        }
+        h3 {
+            color: #4ecdc4;
+            margin-top: 30px;
+        }
+        .mineral-section {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .render-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .render-card {
+            background: #0f0f23;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #333;
+        }
+        .render-card h4 {
+            color: #ffd93d;
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+        .render-card .source {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #888;
+            background: #1a1a2e;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            word-break: break-all;
+            max-height: 60px;
+            overflow-y: auto;
+        }
+        .render-card canvas, .render-card svg {
+            background: white;
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto;
+        }
+        .render-card img {
+            background: white;
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto;
+            max-width: 100%;
+        }
+        .render-card .status {
+            margin-top: 10px;
+            font-size: 12px;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .status.success { background: #1b4332; color: #95d5b2; }
+        .status.error { background: #3d0000; color: #ff6b6b; }
+        .status.loading { background: #1a1a2e; color: #ffd93d; }
+        .note {
+            background: #2d2d44;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #00d4ff;
+        }
+        .iframe-container {
+            background: white;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .iframe-container iframe {
+            width: 100%;
+            height: 300px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔬 Mineral Rendering Test</h1>
+    
+    <div class="note">
+        <strong>Instructions:</strong> This page tests different SMILES representations and rendering sources for calcite and quartz.
+        Look at each rendering and identify which one matches what you saw before. The number in the title (e.g., #1, #2) 
+        will help you tell me which representation worked.
+    </div>
+
+    <!-- CALCITE SECTION -->
+    <div class="mineral-section">
+        <h2>💎 CALCITE (Calcium Carbonate - CaCO₃)</h2>
+        
+        <h3>SmilesDrawer Renderings</h3>
+        <div class="render-grid">
+            <!-- Calcite #1: Ionic form (what PubChem returns) -->
+            <div class="render-card">
+                <h4>#1: Ionic SMILES (PubChem default)</h4>
+                <div class="source">[Ca+2].C(=O)([O-])[O-]</div>
+                <canvas id="calcite-1" width="300" height="250"></canvas>
+                <div class="status loading" id="status-calcite-1">Loading...</div>
+            </div>
+            
+            <!-- Calcite #2: Covalent form -->
+            <div class="render-card">
+                <h4>#2: Covalent SMILES (bonds shown)</h4>
+                <div class="source">[Ca]OC(=O)O</div>
+                <canvas id="calcite-2" width="300" height="250"></canvas>
+                <div class="status loading" id="status-calcite-2">Loading...</div>
+            </div>
+            
+            <!-- Calcite #3: Alternative covalent -->
+            <div class="render-card">
+                <h4>#3: Alternative Covalent</h4>
+                <div class="source">O=C(O[Ca])O</div>
+                <canvas id="calcite-3" width="300" height="250"></canvas>
+                <div class="status loading" id="status-calcite-3">Loading...</div>
+            </div>
+            
+            <!-- Calcite #4: Chelate-style -->
+            <div class="render-card">
+                <h4>#4: Chelate-style (bidentate)</h4>
+                <div class="source">[Ca]1OC(=O)O1</div>
+                <canvas id="calcite-4" width="300" height="250"></canvas>
+                <div class="status loading" id="status-calcite-4">Loading...</div>
+            </div>
+            
+            <!-- Calcite #5: Explicit charges maintained -->
+            <div class="render-card">
+                <h4>#5: With explicit charges</h4>
+                <div class="source">[Ca+2]OC(=O)[O-]</div>
+                <canvas id="calcite-5" width="300" height="250"></canvas>
+                <div class="status loading" id="status-calcite-5">Loading...</div>
+            </div>
+            
+            <!-- Calcite #6: Simple carbonate ion only -->
+            <div class="render-card">
+                <h4>#6: Carbonate ion only (no Ca)</h4>
+                <div class="source">C(=O)([O-])[O-]</div>
+                <canvas id="calcite-6" width="300" height="250"></canvas>
+                <div class="status loading" id="status-calcite-6">Loading...</div>
+            </div>
+            
+            <!-- Calcite #7: Neutral carbonic acid -->
+            <div class="render-card">
+                <h4>#7: Neutral carbonic acid (H2CO3)</h4>
+                <div class="source">OC(=O)O</div>
+                <canvas id="calcite-7" width="300" height="250"></canvas>
+                <div class="status loading" id="status-calcite-7">Loading...</div>
+            </div>
+        </div>
+        
+        <h3>PubChem 2D Image</h3>
+        <div class="render-grid">
+            <div class="render-card">
+                <h4>#8: PubChem 2D Image (CID 10112)</h4>
+                <div class="source">https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/10112/PNG</div>
+                <img id="calcite-pubchem" src="https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/10112/PNG?image_size=300x300" 
+                     alt="Calcite PubChem" width="300" height="250" style="object-fit: contain;">
+                <div class="status success">PubChem Image</div>
+            </div>
+        </div>
+        
+        <h3>MolView 3D Embed (Crystal Structure)</h3>
+        <div class="render-grid">
+            <div class="render-card">
+                <h4>#9: MolView 3D (COD ID: 1010928)</h4>
+                <div class="source">http://localhost:8000/embed/v2/?codid=1010928</div>
+                <div class="iframe-container">
+                    <iframe src="http://localhost:8000/embed/v2/?codid=1010928" title="Calcite 3D"></iframe>
+                </div>
+                <div class="status success">MolView 3D Crystal Structure</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QUARTZ SECTION -->
+    <div class="mineral-section">
+        <h2>💎 QUARTZ (Silicon Dioxide - SiO₂)</h2>
+        
+        <h3>SmilesDrawer Renderings</h3>
+        <div class="render-grid">
+            <!-- Quartz #1: Simple linear -->
+            <div class="render-card">
+                <h4>#1: Simple Linear (O=Si=O)</h4>
+                <div class="source">O=[Si]=O</div>
+                <canvas id="quartz-1" width="300" height="250"></canvas>
+                <div class="status loading" id="status-quartz-1">Loading...</div>
+            </div>
+            
+            <!-- Quartz #2: Cyclic 3-ring -->
+            <div class="render-card">
+                <h4>#2: Cyclic 3-membered ring</h4>
+                <div class="source">[Si]1([O])[O][Si]([O])([O])[O][Si]([O])([O])[O]1</div>
+                <canvas id="quartz-2" width="300" height="250"></canvas>
+                <div class="status loading" id="status-quartz-2">Loading...</div>
+            </div>
+            
+            <!-- Quartz #3: Simpler ring -->
+            <div class="render-card">
+                <h4>#3: Simple Si-O ring</h4>
+                <div class="source">[Si]1O[Si]O[Si]O1</div>
+                <canvas id="quartz-3" width="300" height="250"></canvas>
+                <div class="status loading" id="status-quartz-3">Loading...</div>
+            </div>
+            
+            <!-- Quartz #4: 6-membered ring -->
+            <div class="render-card">
+                <h4>#4: 6-membered Si-O ring</h4>
+                <div class="source">[Si]1O[Si]O[Si]O[Si]O[Si]O[Si]O1</div>
+                <canvas id="quartz-4" width="300" height="250"></canvas>
+                <div class="status loading" id="status-quartz-4">Loading...</div>
+            </div>
+            
+            <!-- Quartz #5: Orthosilicate -->
+            <div class="render-card">
+                <h4>#5: Orthosilicate ion</h4>
+                <div class="source">[O-][Si]([O-])([O-])[O-]</div>
+                <canvas id="quartz-5" width="300" height="250"></canvas>
+                <div class="status loading" id="status-quartz-5">Loading...</div>
+            </div>
+            
+            <!-- Quartz #6: Silicic acid -->
+            <div class="render-card">
+                <h4>#6: Silicic acid (Si(OH)4)</h4>
+                <div class="source">[Si](O)(O)(O)O</div>
+                <canvas id="quartz-6" width="300" height="250"></canvas>
+                <div class="status loading" id="status-quartz-6">Loading...</div>
+            </div>
+            
+            <!-- Quartz #7: Disiloxane -->
+            <div class="render-card">
+                <h4>#7: Disiloxane</h4>
+                <div class="source">[SiH3]O[SiH3]</div>
+                <canvas id="quartz-7" width="300" height="250"></canvas>
+                <div class="status loading" id="status-quartz-7">Loading...</div>
+            </div>
+            
+            <!-- Quartz #8: Complex silicate chain -->
+            <div class="render-card">
+                <h4>#8: Silicate chain fragment</h4>
+                <div class="source">O[Si](O)(O)O[Si](O)(O)O</div>
+                <canvas id="quartz-8" width="300" height="250"></canvas>
+                <div class="status loading" id="status-quartz-8">Loading...</div>
+            </div>
+        </div>
+        
+        <h3>PubChem 2D Image</h3>
+        <div class="render-grid">
+            <div class="render-card">
+                <h4>#9: PubChem 2D (Silicon dioxide)</h4>
+                <div class="source">https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/24261/PNG</div>
+                <img id="quartz-pubchem" src="https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/24261/PNG?image_size=300x300" 
+                     alt="Quartz PubChem" width="300" height="250" style="object-fit: contain;">
+                <div class="status success">PubChem Image</div>
+            </div>
+        </div>
+        
+        <h3>MolView 3D Embed (Crystal Structure)</h3>
+        <div class="render-grid">
+            <div class="render-card">
+                <h4>#10: MolView 3D (COD ID for Quartz)</h4>
+                <div class="source">http://localhost:8000/embed/v2/?codid=1011097</div>
+                <div class="iframe-container">
+                    <iframe src="http://localhost:8000/embed/v2/?codid=1011097" title="Quartz 3D"></iframe>
+                </div>
+                <div class="status success">MolView 3D Crystal Structure</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="note">
+        <strong>Tell me which number(s) look correct!</strong><br>
+        For example: "Calcite #2 is correct" or "Quartz #3 shows the ring I saw"
+    </div>
+
+    <!-- Load SmilesDrawer -->
+    <script src="smiles-drawer.min.js"></script>
+    <script>
+        // SmilesDrawer options
+        const options = {
+            width: 300,
+            height: 250,
+            bondThickness: 1.5,
+            bondLength: 25,
+            shortBondLength: 0.8,
+            bondSpacing: 4,
+            atomVisualization: 'default',
+            isomeric: true,
+            debug: false,
+            terminalCarbons: true,
+            explicitHydrogens: false,
+            overlapSensitivity: 0.42,
+            overlapResolutionIterations: 1,
+            compactDrawing: false,
+            fontSizeLarge: 11,
+            fontSizeSmall: 6,
+            padding: 20,
+            themes: {
+                light: {
+                    C: '#222',
+                    O: '#e74c3c',
+                    N: '#3498db',
+                    S: '#f1c40f',
+                    P: '#e67e22',
+                    F: '#27ae60',
+                    Cl: '#27ae60',
+                    Br: '#c0392b',
+                    I: '#8e44ad',
+                    Si: '#95a5a6',
+                    Ca: '#1abc9c',
+                    Mg: '#16a085',
+                    Fe: '#d35400',
+                    BACKGROUND: '#ffffff'
+                }
+            }
+        };
+
+        // Create drawer instance
+        const drawer = new SmilesDrawer.Drawer(options);
+
+        // Calcite SMILES variations
+        const calciteSmiles = [
+            { id: 'calcite-1', smiles: '[Ca+2].C(=O)([O-])[O-]' },
+            { id: 'calcite-2', smiles: '[Ca]OC(=O)O' },
+            { id: 'calcite-3', smiles: 'O=C(O[Ca])O' },
+            { id: 'calcite-4', smiles: '[Ca]1OC(=O)O1' },
+            { id: 'calcite-5', smiles: '[Ca+2]OC(=O)[O-]' },
+            { id: 'calcite-6', smiles: 'C(=O)([O-])[O-]' },
+            { id: 'calcite-7', smiles: 'OC(=O)O' },
+        ];
+
+        // Quartz SMILES variations
+        const quartzSmiles = [
+            { id: 'quartz-1', smiles: 'O=[Si]=O' },
+            { id: 'quartz-2', smiles: '[Si]1([O])[O][Si]([O])([O])[O][Si]([O])([O])[O]1' },
+            { id: 'quartz-3', smiles: '[Si]1O[Si]O[Si]O1' },
+            { id: 'quartz-4', smiles: '[Si]1O[Si]O[Si]O[Si]O[Si]O[Si]O1' },
+            { id: 'quartz-5', smiles: '[O-][Si]([O-])([O-])[O-]' },
+            { id: 'quartz-6', smiles: '[Si](O)(O)(O)O' },
+            { id: 'quartz-7', smiles: '[SiH3]O[SiH3]' },
+            { id: 'quartz-8', smiles: 'O[Si](O)(O)O[Si](O)(O)O' },
+        ];
+
+        // Render all
+        function renderAll() {
+            [...calciteSmiles, ...quartzSmiles].forEach(item => {
+                const canvas = document.getElementById(item.id);
+                const statusEl = document.getElementById('status-' + item.id);
+                
+                if (!canvas) {
+                    console.error('Canvas not found:', item.id);
+                    return;
+                }
+                
+                try {
+                    SmilesDrawer.parse(item.smiles, function(tree) {
+                        drawer.draw(tree, item.id, 'light', false);
+                        if (statusEl) {
+                            statusEl.className = 'status success';
+                            statusEl.textContent = '✓ Rendered successfully';
+                        }
+                    }, function(err) {
+                        console.error('Parse error for', item.id, ':', err);
+                        if (statusEl) {
+                            statusEl.className = 'status error';
+                            statusEl.textContent = '✗ Parse error: ' + err;
+                        }
+                    });
+                } catch (e) {
+                    console.error('Render error for', item.id, ':', e);
+                    if (statusEl) {
+                        statusEl.className = 'status error';
+                        statusEl.textContent = '✗ Error: ' + e.message;
+                    }
+                }
+            });
+        }
+
+        // Wait for SmilesDrawer to load
+        if (typeof SmilesDrawer !== 'undefined') {
+            renderAll();
+        } else {
+            console.error('SmilesDrawer not loaded! Make sure smiles-drawer.min.js is in the same folder.');
+            document.body.innerHTML = '<h1 style="color:red">Error: SmilesDrawer not loaded!</h1><p>Make sure smiles-drawer.min.js is in the chem-extension folder.</p>';
+        }
+    </script>
+</body>
+</html>

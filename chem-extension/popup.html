@@ -516,8 +516,8 @@
         </div>
         <div class="section-content">
           <div class="radio-group">
-            <input type="radio" name="renderingEngine" value="client-side" id="engine4" checked>
-            <label for="engine4" class="radio-option">
+            <input type="radio" name="renderingEngine" value="client-side" id="engine1" checked>
+            <label for="engine1" class="radio-option">
               <div class="radio-indicator"></div>
               <div>
                 <strong>SmilesDrawer (Recommended)</strong>
@@ -525,14 +525,12 @@
               </div>
             </label>
 
-
-
-            <input type="radio" name="renderingEngine" value="pubchem" id="engine3">
-            <label for="engine3" class="radio-option">
+            <input type="radio" name="renderingEngine" value="cdk-depict" id="engine2">
+            <label for="engine2" class="radio-option">
               <div class="radio-indicator"></div>
               <div>
-                <strong>PubChem</strong>
-                <small>Official PubChem images (requires internet)</small>
+                <strong>CDK Depict</strong>
+                <small>External API with advanced options (requires internet)</small>
               </div>
             </label>
           </div>
@@ -744,68 +742,6 @@
                 </p>
               </div>
             </details>
-          </div>
-        </div>
-      </div>
-
-      <!-- PubChem Options -->
-      <div id="pubchemOptions" class="section" style="display: none;">
-        <div class="section-title">
-          <span>PubChem Options</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6,9 12,15 18,9"></polyline>
-          </svg>
-        </div>
-        <div class="section-content">
-          <div class="option">
-            <label class="option-label">
-              <strong>Default Image Type</strong>
-              <small>Choose between 2D flat or 3D perspective image</small>
-            </label>
-          </div>
-          <select id="pubchemRecordTypeSelect">
-            <option value="2d">2D Structure (flat)</option>
-            <option value="3d">3D Conformer (perspective)</option>
-          </select>
-
-          <div class="option">
-            <label class="option-label">
-              <strong>Image Size</strong>
-              <small>Default image dimensions</small>
-            </label>
-          </div>
-          <select id="pubchemImageSizeSelect">
-            <option value="small">Small (100x100)</option>
-            <option value="medium">Medium (200x200)</option>
-            <option value="large" selected>Large (300x300)</option>
-            <option value="xlarge">Extra Large (500x500)</option>
-          </select>
-
-          <div class="option">
-            <label class="option-label" for="pubchemDirectFetchToggle">
-              <strong>Direct Image Fetch</strong>
-              <small>Fetch images directly from PubChem (no bridge server)</small>
-            </label>
-            <input type="checkbox" id="pubchemDirectFetchToggle" checked>
-            <label class="toggle" for="pubchemDirectFetchToggle"></label>
-          </div>
-
-          <div class="option">
-            <label class="option-label" for="pubchemRemoveBgToggle">
-              <strong>Remove White Background</strong>
-              <small>Make white backgrounds transparent</small>
-            </label>
-            <input type="checkbox" id="pubchemRemoveBgToggle">
-            <label class="toggle" for="pubchemRemoveBgToggle"></label>
-          </div>
-
-          <div class="option">
-            <label class="option-label" for="pubchemSharpenToggle">
-              <strong>Sharpen Images</strong>
-              <small>Reduce pixelation after background removal</small>
-            </label>
-            <input type="checkbox" id="pubchemSharpenToggle" checked>
-            <label class="toggle" for="pubchemSharpenToggle"></label>
           </div>
         </div>
       </div>

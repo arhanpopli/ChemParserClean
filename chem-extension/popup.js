@@ -29,16 +29,6 @@ const sdBondThicknessValue = document.getElementById('sdBondThicknessValue');
 const sdGradientColorsToggle = document.getElementById('sdGradientColorsToggle');
 const sdScaleByWeightToggle = document.getElementById('sdScaleByWeightToggle');
 
-// PubChem options
-const pubchemOptions = document.getElementById('pubchemOptions');
-const pubchemImageSizeSelect = document.getElementById('pubchemImageSizeSelect');
-const pubchem3DToggle = document.getElementById('pubchem3DToggle');
-const pubchemRecordTypeSelect = document.getElementById('pubchemRecordTypeSelect');
-const pubchemDirectFetchToggle = document.getElementById('pubchemDirectFetchToggle');
-const pubchemRemoveBgToggle = document.getElementById('pubchemRemoveBgToggle');
-const pubchemSharpenToggle = document.getElementById('pubchemSharpenToggle');
-const aiMolecularControlToggle = document.getElementById('aiMolecularControlToggle');
-
 // CDK Depict options
 const cdkDepictOptions = document.getElementById('cdkDepictOptions');
 const cdkShowCarbonsToggle = document.getElementById('cdkShowCarbonsToggle');
@@ -121,13 +111,6 @@ chrome.storage.sync.get({
   // Image size controls
   saveSizePerImage: false,
   saveSizeBySMILES: true,  // FIX: Enable by default - global size saving across all pages
-  // PubChem options
-  pubchemImageSize: 'large',
-  pubchem3DEnabled: true,
-  pubchemRecordType: '2d',
-  pubchemDirectFetch: true,  // Default to direct fetch from PubChem (no local server needed)
-  pubchemRemoveBg: false,
-  pubchemSharpenImages: true,
   // CDK Depict options
   cdkShowCarbons: false,
   cdkShowMethyls: false,
@@ -199,15 +182,6 @@ chrome.storage.sync.get({
   }
   if (sdGradientColorsToggle) sdGradientColorsToggle.checked = settings.sdGradientColors || false;
   if (sdScaleByWeightToggle) sdScaleByWeightToggle.checked = settings.sdScaleByWeight || false;
-
-  // Load PubChem options
-  if (pubchemImageSizeSelect) pubchemImageSizeSelect.value = settings.pubchemImageSize;
-  if (pubchem3DToggle) pubchem3DToggle.checked = settings.pubchem3DEnabled;
-  if (pubchemRecordTypeSelect) pubchemRecordTypeSelect.value = settings.pubchemRecordType;
-  if (pubchemDirectFetchToggle) pubchemDirectFetchToggle.checked = settings.pubchemDirectFetch;
-  if (pubchemRemoveBgToggle) pubchemRemoveBgToggle.checked = settings.pubchemRemoveBg;
-  if (pubchemSharpenToggle) pubchemSharpenToggle.checked = settings.pubchemSharpenImages !== false;
-  if (aiMolecularControlToggle) aiMolecularControlToggle.checked = settings.enableAIMolecularControl;
 
   // Load CDK Depict options
   if (cdkShowCarbonsToggle) cdkShowCarbonsToggle.checked = settings.cdkShowCarbons || false;
@@ -450,67 +424,6 @@ if (sdScaleByWeightToggle) {
   sdScaleByWeightToggle.addEventListener('change', (e) => {
     chrome.storage.sync.set({ sdScaleByWeight: e.target.checked }, () => {
       showStatus('Scale by weight ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-// PubChem options event listeners
-if (pubchemImageSizeSelect) {
-  pubchemImageSizeSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ pubchemImageSize: e.target.value }, () => {
-      showStatus('Image size set to ' + e.target.value + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (pubchem3DToggle) {
-  pubchem3DToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ pubchem3DEnabled: e.target.checked }, () => {
-      showStatus('3D models ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (pubchemRecordTypeSelect) {
-  pubchemRecordTypeSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ pubchemRecordType: e.target.value }, () => {
-      showStatus('Record type set to ' + e.target.value + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-// PubChem Direct Fetch toggle
-if (pubchemDirectFetchToggle) {
-  pubchemDirectFetchToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ pubchemDirectFetch: e.target.checked }, () => {
-      showStatus('Direct fetch from PubChem ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-// PubChem Remove Background toggle
-if (pubchemRemoveBgToggle) {
-  pubchemRemoveBgToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ pubchemRemoveBg: e.target.checked }, () => {
-      showStatus('Background removal ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-// PubChem Sharpen Images toggle
-if (pubchemSharpenToggle) {
-  pubchemSharpenToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ pubchemSharpenImages: e.target.checked }, () => {
-      showStatus('Image sharpening ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-// AI Molecular Control event listener
-if (aiMolecularControlToggle) {
-  aiMolecularControlToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ enableAIMolecularControl: e.target.checked }, () => {
-      showStatus('AI molecular control ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
     });
   });
 }
@@ -861,21 +774,15 @@ const molviewProteinOptions = document.getElementById('molviewProteinOptions');
 const mineralOptions = document.getElementById('mineralOptions');
 
 function updateEngineInfo(engine) {
-  if (engine === 'client-side') {
-    if (engineInfo) engineInfo.textContent = '💻 SmilesDrawer - Fast Client-Side Rendering (No Server!)';
-    if (smilesDrawerOptions) smilesDrawerOptions.style.display = 'block';
-    if (pubchemOptions) pubchemOptions.style.display = 'none';
-    if (cdkDepictOptions) cdkDepictOptions.style.display = 'none';
-  } else if (engine === 'pubchem') {
-    if (engineInfo) engineInfo.textContent = '🌐 PubChem - Official Chemical Images';
+  if (engine === 'cdk-depict') {
+    if (engineInfo) engineInfo.textContent = '🌐 CDK Depict - External API';
     if (smilesDrawerOptions) smilesDrawerOptions.style.display = 'none';
-    if (pubchemOptions) pubchemOptions.style.display = 'block';
-    if (cdkDepictOptions) cdkDepictOptions.style.display = 'none';
-  } else if (engine === 'cdk-depict') {
-    if (engineInfo) engineInfo.textContent = '🌐 CDK Depict - Free Online API';
-    if (smilesDrawerOptions) smilesDrawerOptions.style.display = 'none';
-    if (pubchemOptions) pubchemOptions.style.display = 'none';
     if (cdkDepictOptions) cdkDepictOptions.style.display = 'block';
+  } else {
+    // Default: SmilesDrawer (client-side)
+    if (engineInfo) engineInfo.textContent = '💻 SmilesDrawer - Client-Side (No Server!)';
+    if (smilesDrawerOptions) smilesDrawerOptions.style.display = 'block';
+    if (cdkDepictOptions) cdkDepictOptions.style.display = 'none';
   }
 
   // Always show 3D Viewer Settings, Protein Options, and Mineral Options (independent of compound renderer)

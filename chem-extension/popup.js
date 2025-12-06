@@ -1,6 +1,6 @@
 /**
- * Popup script for Chemistry Formula Renderer v3.0
- * Enhanced with layout mode toggle
+ * Popup script for ChemTex v6.0
+ * SmilesDrawer client-side rendering
  */
 
 // DOM elements - with null checks
@@ -12,28 +12,22 @@ const devModeToggle = document.getElementById('devModeToggle');
 const statusDiv = document.getElementById('status');
 const engineInfo = document.getElementById('engineInfo');
 
-// MoleculeViewer options
-const moleculeViewerOptions = document.getElementById('moleculeViewerOptions');
-const mvUse3DSmilesToggle = document.getElementById('mvUse3DSmilesToggle');
-const flipHorizontalToggle = document.getElementById('flipHorizontalToggle');
-const flipVerticalToggle = document.getElementById('flipVerticalToggle');
-const mvAutoInvertToggle = document.getElementById('mvAutoInvertToggle');
-const mvInvertModeSelect = document.getElementById('mvInvertModeSelect');
-const mvRotateSlider = document.getElementById('mvRotateSlider');
-const mvRotateValue = document.getElementById('mvRotateValue');
-
-// mol2chemfig options
-const mol2chemfigOptions = document.getElementById('mol2chemfigOptions');
-const m2cfShowCarbonsToggle = document.getElementById('m2cfShowCarbonsToggle');
-const m2cfAromaticCirclesToggle = document.getElementById('m2cfAromaticCirclesToggle');
-const m2cfShowMethylsToggle = document.getElementById('m2cfShowMethylsToggle');
-const m2cfFancyBondsToggle = document.getElementById('m2cfFancyBondsToggle');
-const m2cfAtomNumbersToggle = document.getElementById('m2cfAtomNumbersToggle');
-const m2cfCompactToggle = document.getElementById('m2cfCompactToggle');
-const m2cfFlipHorizontalToggle = document.getElementById('m2cfFlipHorizontalToggle');
-const m2cfFlipVerticalToggle = document.getElementById('m2cfFlipVerticalToggle');
-const m2cfHydrogensSelect = document.getElementById('m2cfHydrogensSelect');
-const use3DSmilesToggle = document.getElementById('use3DSmilesToggle');
+// SmilesDrawer options
+const smilesDrawerOptions = document.getElementById('smilesDrawerOptions');
+const sdShowCarbonsToggle = document.getElementById('sdShowCarbonsToggle');
+const sdAromaticRingsToggle = document.getElementById('sdAromaticRingsToggle');
+const sdShowMethylsToggle = document.getElementById('sdShowMethylsToggle');
+const sdAtomNumbersToggle = document.getElementById('sdAtomNumbersToggle');
+const sdShowHydrogensToggle = document.getElementById('sdShowHydrogensToggle');
+const sdFlipHorizontalToggle = document.getElementById('sdFlipHorizontalToggle');
+const sdFlipVerticalToggle = document.getElementById('sdFlipVerticalToggle');
+const sdThemeSelect = document.getElementById('sdThemeSelect');
+const sdRotateSlider = document.getElementById('sdRotateSlider');
+const sdRotateValue = document.getElementById('sdRotateValue');
+const sdBondThicknessSlider = document.getElementById('sdBondThicknessSlider');
+const sdBondThicknessValue = document.getElementById('sdBondThicknessValue');
+const sdGradientColorsToggle = document.getElementById('sdGradientColorsToggle');
+const sdScaleByWeightToggle = document.getElementById('sdScaleByWeightToggle');
 
 // PubChem options
 const pubchemOptions = document.getElementById('pubchemOptions');
@@ -94,7 +88,10 @@ const viewer3DSphereRadiusSelect = document.getElementById('viewer3DSphereRadius
 const viewer3DAutoRotateToggle = document.getElementById('viewer3DAutoRotateToggle');
 
 // MolView-Only Mode toggle
-const molviewOnlyModeToggle = document.getElementById('molviewOnlyModeToggle');
+const molSearchModeToggle = document.getElementById('molSearchModeToggle');
+
+// Disable Formula Fallback toggle
+const disableFormulaFallbackToggle = document.getElementById('disableFormulaFallbackToggle');
 
 // Safe selector function
 function safeGetElement(id) {
@@ -109,30 +106,18 @@ chrome.storage.sync.get({
   renderMhchem: true,
   renderChemfig: true,
   performanceMode: true,
-  rendererEngine: 'moleculeviewer',  // Default to MoleculeViewer
+  rendererEngine: 'client-side',  // Default to SmilesDrawer client-side
   devMode: false,
-  // MoleculeViewer options
-  mvUse3DSmiles: false,  // Use OPSIN 3D for stereochemistry
-  flipHorizontal: false,
-  flipVertical: false,
-  mvAutoInvert: false,  // Auto-apply invert in dark mode for MoleculeViewer - disabled by default to prevent double inversion
-  mvInvertMode: 'full',  // 'full' or 'bw' (black & white only)
-  mvRotate: 0,  // Rotation angle for MoleculeViewer
-  // mol2chemfig options
-  m2cfShowCarbons: false,
-  m2cfAromaticCircles: false,
-  m2cfShowMethyls: false,
-  m2cfFancyBonds: false,
-  m2cfAtomNumbers: false,
-  m2cfCompact: false,
-  m2cfFlipHorizontal: false,
-  m2cfFlipVertical: false,
-  m2cfHydrogensMode: 'keep',
-  use3DSmiles: false,
-  m2cfAddH2: false,
-  m2cfAutoInvert: true,  // Auto-apply invert in dark mode for mol2chemfig
-  m2cfInvertMode: 'full',  // 'full' or 'bw' (black & white only)
-  m2cfRotate: 0,
+  // SmilesDrawer options
+  sdShowCarbons: false,
+  sdAromaticRings: true,  // Show aromatic circles by default
+  sdShowMethyls: false,
+  sdAtomNumbers: false,
+  sdShowHydrogens: false,
+  sdFlipHorizontal: false,
+  sdFlipVertical: false,
+  sdTheme: 'light',
+  sdRotate: 0,
   // Image size controls
   saveSizePerImage: false,
   saveSizeBySMILES: true,  // FIX: Enable by default - global size saving across all pages
@@ -187,7 +172,7 @@ chrome.storage.sync.get({
   // AI Molecular Control
   enableAIMolecularControl: false,
   // MolView-Only Mode
-  molviewOnlyMode: false
+  molSearchMode: false
 }, (settings) => {
   enabledToggle.checked = settings.enabled;
   mhchemToggle.checked = settings.renderMhchem;
@@ -195,38 +180,25 @@ chrome.storage.sync.get({
   perfModeToggle.checked = settings.performanceMode;
   devModeToggle.checked = settings.devMode;
 
-  // Load MoleculeViewer options
-  if (mvUse3DSmilesToggle) mvUse3DSmilesToggle.checked = settings.mvUse3DSmiles;
-  if (flipHorizontalToggle) flipHorizontalToggle.checked = settings.flipHorizontal;
-  if (flipVerticalToggle) flipVerticalToggle.checked = settings.flipVertical;
-  if (mvAutoInvertToggle) mvAutoInvertToggle.checked = settings.mvAutoInvert !== false;
-  if (mvInvertModeSelect) mvInvertModeSelect.value = settings.mvInvertMode || 'full';
-  if (mvRotateSlider) {
-    mvRotateSlider.value = settings.mvRotate;
-    if (mvRotateValue) mvRotateValue.textContent = settings.mvRotate + '°';
+  // Load SmilesDrawer options
+  if (sdShowCarbonsToggle) sdShowCarbonsToggle.checked = settings.sdShowCarbons;
+  if (sdAromaticRingsToggle) sdAromaticRingsToggle.checked = settings.sdAromaticRings;
+  if (sdShowMethylsToggle) sdShowMethylsToggle.checked = settings.sdShowMethyls;
+  if (sdAtomNumbersToggle) sdAtomNumbersToggle.checked = settings.sdAtomNumbers;
+  if (sdShowHydrogensToggle) sdShowHydrogensToggle.checked = settings.sdShowHydrogens;
+  if (sdFlipHorizontalToggle) sdFlipHorizontalToggle.checked = settings.sdFlipHorizontal;
+  if (sdFlipVerticalToggle) sdFlipVerticalToggle.checked = settings.sdFlipVertical;
+  if (sdThemeSelect) sdThemeSelect.value = settings.sdTheme || 'light';
+  if (sdRotateSlider) {
+    sdRotateSlider.value = settings.sdRotate || 0;
+    if (sdRotateValue) sdRotateValue.textContent = (settings.sdRotate || 0) + '°';
   }
-
-  // Load mol2chemfig options
-  if (m2cfShowCarbonsToggle) m2cfShowCarbonsToggle.checked = settings.m2cfShowCarbons;
-  if (m2cfAromaticCirclesToggle) m2cfAromaticCirclesToggle.checked = settings.m2cfAromaticCircles;
-  if (m2cfShowMethylsToggle) m2cfShowMethylsToggle.checked = settings.m2cfShowMethyls;
-  if (m2cfFancyBondsToggle) m2cfFancyBondsToggle.checked = settings.m2cfFancyBonds;
-  if (m2cfAtomNumbersToggle) m2cfAtomNumbersToggle.checked = settings.m2cfAtomNumbers;
-  if (m2cfCompactToggle) m2cfCompactToggle.checked = settings.m2cfCompact;
-  if (m2cfFlipHorizontalToggle) m2cfFlipHorizontalToggle.checked = settings.m2cfFlipHorizontal;
-  if (m2cfFlipVerticalToggle) m2cfFlipVerticalToggle.checked = settings.m2cfFlipVertical;
-  if (m2cfHydrogensSelect) m2cfHydrogensSelect.value = settings.m2cfHydrogensMode;
-  if (use3DSmilesToggle) use3DSmilesToggle.checked = settings.use3DSmiles;
-
-  // New controls
-  if (m2cfAddH2Toggle) m2cfAddH2Toggle.checked = settings.m2cfAddH2;
-  if (m2cfFlipToggle) m2cfFlipToggle.checked = settings.m2cfFlipHorizontal; // Reuse existing setting
-  if (m2cfAutoInvertToggle) m2cfAutoInvertToggle.checked = settings.m2cfAutoInvert !== false;
-  if (m2cfInvertModeSelect) m2cfInvertModeSelect.value = settings.m2cfInvertMode || 'full';
-  if (m2cfRotateSlider) {
-    m2cfRotateSlider.value = settings.m2cfRotate;
-    if (m2cfRotateValue) m2cfRotateValue.textContent = settings.m2cfRotate + '°';
+  if (sdBondThicknessSlider) {
+    sdBondThicknessSlider.value = settings.sdBondThickness || 1.0;
+    if (sdBondThicknessValue) sdBondThicknessValue.textContent = (settings.sdBondThickness || 1.0).toFixed(1);
   }
+  if (sdGradientColorsToggle) sdGradientColorsToggle.checked = settings.sdGradientColors || false;
+  if (sdScaleByWeightToggle) sdScaleByWeightToggle.checked = settings.sdScaleByWeight || false;
 
   // Load PubChem options
   if (pubchemImageSizeSelect) pubchemImageSizeSelect.value = settings.pubchemImageSize;
@@ -286,7 +258,10 @@ chrome.storage.sync.get({
   }
 
   // Load MolView-Only Mode option
-  if (molviewOnlyModeToggle) molviewOnlyModeToggle.checked = settings.molviewOnlyMode;
+  if (molSearchModeToggle) molSearchModeToggle.checked = settings.molSearchMode;
+
+  // Load Disable Formula Fallback option
+  if (disableFormulaFallbackToggle) disableFormulaFallbackToggle.checked = settings.disableFormulaFallback;
 
   // Load per-style settings for the current style
   const currentStyle = settings.viewer3DStyle || 'stick:sphere';
@@ -306,13 +281,9 @@ chrome.storage.sync.get({
     radio.checked = (radio.value === settings.rendererEngine);
   });
 
-  // Show MoleculeViewer, mol2chemfig, PubChem, or CDK Depict options based on selected engine
-  if (moleculeViewerOptions) {
-    moleculeViewerOptions.style.display = (settings.rendererEngine === 'moleculeviewer') ? 'block' : 'none';
-  }
-  if (mol2chemfigOptions) {
-    // Show mol2chemfig options for both mol2chemfig AND client-side engines (rendering settings apply to both)
-    mol2chemfigOptions.style.display = (settings.rendererEngine === 'mol2chemfig' || settings.rendererEngine === 'client-side') ? 'block' : 'none';
+  // Show SmilesDrawer, PubChem, or CDK Depict options based on selected engine
+  if (smilesDrawerOptions) {
+    smilesDrawerOptions.style.display = (settings.rendererEngine === 'client-side') ? 'block' : 'none';
   }
   if (pubchemOptions) {
     pubchemOptions.style.display = (settings.rendererEngine === 'pubchem') ? 'block' : 'none';
@@ -324,19 +295,16 @@ chrome.storage.sync.get({
   if (viewer3DSettings) {
     viewer3DSettings.style.display = 'block';
   }
-  // Show MolView Protein Options only for PubChem engine
+  // Show MolView Protein Options for ALL engines (Search API detects proteins regardless of renderer)
   const molviewProteinOptionsInit = document.getElementById('molviewProteinOptions');
   if (molviewProteinOptionsInit) {
-    molviewProteinOptionsInit.style.display = (settings.rendererEngine === 'pubchem') ? 'block' : 'none';
+    molviewProteinOptionsInit.style.display = 'block';
   }
-
-  // Update client-side note visibility on initialization
-  // Use setTimeout to ensure function is defined (it's declared later in the file)
-  setTimeout(() => {
-    if (typeof updateClientSideNote === 'function') {
-      updateClientSideNote(settings.rendererEngine === 'client-side');
-    }
-  }, 0);
+  // Show Mineral Options for ALL engines
+  const mineralOptionsInit = document.getElementById('mineralOptions');
+  if (mineralOptionsInit) {
+    mineralOptionsInit.style.display = 'block';
+  }
 });
 
 mhchemToggle.addEventListener('change', (e) => {
@@ -381,191 +349,107 @@ if (saveSizeBySMILESToggle) {
   });
 }
 
-// MoleculeViewer rendering options
-if (mvUse3DSmilesToggle) {
-  mvUse3DSmilesToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ mvUse3DSmiles: e.target.checked }, () => {
-      showStatus('3D Stereochemistry (OPSIN) ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (flipHorizontalToggle) {
-  flipHorizontalToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ flipHorizontal: e.target.checked }, () => {
-      showStatus('Horizontal flip ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (flipVerticalToggle) {
-  flipVerticalToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ flipVertical: e.target.checked }, () => {
-      showStatus('Vertical flip ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (mvAutoInvertToggle) {
-  mvAutoInvertToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ mvAutoInvert: e.target.checked }, () => {
-      showStatus('Auto invert in dark mode ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (mvInvertModeSelect) {
-  mvInvertModeSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ mvInvertMode: e.target.value }, () => {
-      const modeName = e.target.value === 'full' ? 'Full Invert' : 'Black & White Only';
-      showStatus('Invert mode set to ' + modeName + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (mvRotateSlider) {
-  mvRotateSlider.addEventListener('input', (e) => {
-    mvRotateValue.textContent = e.target.value + '°';
-  });
-
-  mvRotateSlider.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ mvRotate: parseInt(e.target.value) }, () => {
-      showStatus('Rotation set to ' + e.target.value + '°. Reload page to apply.', 'success');
-    });
-  });
-}
-
-// mol2chemfig rendering options
-if (m2cfShowCarbonsToggle) {
-  m2cfShowCarbonsToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfShowCarbons: e.target.checked }, () => {
+// SmilesDrawer rendering options
+if (sdShowCarbonsToggle) {
+  sdShowCarbonsToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdShowCarbons: e.target.checked }, () => {
       showStatus('Show carbons ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
     });
   });
 }
 
-if (m2cfAromaticCirclesToggle) {
-  m2cfAromaticCirclesToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfAromaticCircles: e.target.checked }, () => {
-      showStatus('Aromatic circles ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+if (sdAromaticRingsToggle) {
+  sdAromaticRingsToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdAromaticRings: e.target.checked }, () => {
+      showStatus('Aromatic ring circles ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
     });
   });
 }
 
-if (m2cfShowMethylsToggle) {
-  m2cfShowMethylsToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfShowMethyls: e.target.checked }, () => {
+if (sdShowMethylsToggle) {
+  sdShowMethylsToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdShowMethyls: e.target.checked }, () => {
       showStatus('Show methyls ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
     });
   });
 }
 
-if (m2cfFancyBondsToggle) {
-  m2cfFancyBondsToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfFancyBonds: e.target.checked }, () => {
-      showStatus('Fancy bonds ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (m2cfAtomNumbersToggle) {
-  m2cfAtomNumbersToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfAtomNumbers: e.target.checked }, () => {
+if (sdAtomNumbersToggle) {
+  sdAtomNumbersToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdAtomNumbers: e.target.checked }, () => {
       showStatus('Atom numbers ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
     });
   });
 }
 
-if (m2cfCompactToggle) {
-  m2cfCompactToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfCompact: e.target.checked }, () => {
-      showStatus('Compact mode ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+if (sdShowHydrogensToggle) {
+  sdShowHydrogensToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdShowHydrogens: e.target.checked }, () => {
+      showStatus('Show hydrogens ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
     });
   });
 }
 
-if (m2cfFlipHorizontalToggle) {
-  m2cfFlipHorizontalToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfFlipHorizontal: e.target.checked }, () => {
+if (sdFlipHorizontalToggle) {
+  sdFlipHorizontalToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdFlipHorizontal: e.target.checked }, () => {
       showStatus('Horizontal flip ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
     });
   });
 }
 
-if (m2cfFlipVerticalToggle) {
-  m2cfFlipVerticalToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfFlipVertical: e.target.checked }, () => {
+if (sdFlipVerticalToggle) {
+  sdFlipVerticalToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdFlipVertical: e.target.checked }, () => {
       showStatus('Vertical flip ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
     });
   });
 }
 
-// New mol2chemfig controls
-const m2cfAddH2Toggle = document.getElementById('m2cfAddH2Toggle');
-const m2cfFlipToggle = document.getElementById('m2cfFlipToggle');
-const m2cfAutoInvertToggle = document.getElementById('m2cfAutoInvertToggle');
-const m2cfInvertModeSelect = document.getElementById('m2cfInvertModeSelect');
-const m2cfRotateSlider = document.getElementById('m2cfRotateSlider');
-const m2cfRotateValue = document.getElementById('m2cfRotateValue');
-
-if (m2cfHydrogensSelect) {
-  m2cfHydrogensSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfHydrogensMode: e.target.value }, () => {
-      showStatus('Hydrogens set to ' + e.target.value + '. Reload page to apply.', 'success');
+if (sdThemeSelect) {
+  sdThemeSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdTheme: e.target.value }, () => {
+      showStatus('Theme set to ' + e.target.value + '. Reload page to apply.', 'success');
     });
   });
 }
 
-if (use3DSmilesToggle) {
-  use3DSmilesToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ use3DSmiles: e.target.checked }, () => {
-      showStatus('3D SMILES (OPSIN) ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-// New Event Listeners
-if (m2cfAddH2Toggle) {
-  m2cfAddH2Toggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfAddH2: e.target.checked }, () => {
-      showStatus('Add Hydrogens ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (m2cfFlipToggle) {
-  m2cfFlipToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfFlipHorizontal: e.target.checked }, () => {
-      showStatus('Horizontal Flip ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (m2cfAutoInvertToggle) {
-  m2cfAutoInvertToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfAutoInvert: e.target.checked }, () => {
-      showStatus('Auto invert in dark mode ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (m2cfInvertModeSelect) {
-  m2cfInvertModeSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfInvertMode: e.target.value }, () => {
-      const modeName = e.target.value === 'full' ? 'Full Invert' : 'Black & White Only';
-      showStatus('Invert mode set to ' + modeName + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (m2cfRotateSlider) {
-  m2cfRotateSlider.addEventListener('input', (e) => {
-    m2cfRotateValue.textContent = e.target.value + '°';
+if (sdRotateSlider) {
+  sdRotateSlider.addEventListener('input', (e) => {
+    sdRotateValue.textContent = e.target.value + '°';
   });
 
-  m2cfRotateSlider.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ m2cfRotate: parseInt(e.target.value) }, () => {
+  sdRotateSlider.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdRotate: parseInt(e.target.value) }, () => {
       showStatus('Rotation set to ' + e.target.value + '°. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (sdBondThicknessSlider) {
+  sdBondThicknessSlider.addEventListener('input', (e) => {
+    sdBondThicknessValue.textContent = parseFloat(e.target.value).toFixed(1);
+  });
+
+  sdBondThicknessSlider.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdBondThickness: parseFloat(e.target.value) }, () => {
+      showStatus('Bond thickness set to ' + e.target.value + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (sdGradientColorsToggle) {
+  sdGradientColorsToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdGradientColors: e.target.checked }, () => {
+      showStatus('Gradient colors ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+    });
+  });
+}
+
+if (sdScaleByWeightToggle) {
+  sdScaleByWeightToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ sdScaleByWeight: e.target.checked }, () => {
+      showStatus('Scale by weight ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
     });
   });
 }
@@ -695,10 +579,19 @@ if (cdkZoomSlider) {
 }
 
 // MolView-Only Mode event listener
-if (molviewOnlyModeToggle) {
-  molviewOnlyModeToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ molviewOnlyMode: e.target.checked }, () => {
+if (molSearchModeToggle) {
+  molSearchModeToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ molSearchMode: e.target.checked }, () => {
       showStatus('MolView-Only Mode ' + (e.target.checked ? 'enabled' : 'disabled') + '. All data will fetch from localhost:8000. Reload page to apply.', 'success');
+    });
+  });
+}
+
+// Disable Formula Fallback event listener
+if (disableFormulaFallbackToggle) {
+  disableFormulaFallbackToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ disableFormulaFallback: e.target.checked }, () => {
+      showStatus('Formula Fallback ' + (e.target.checked ? 'disabled' : 'enabled') + '. Reload page to apply.', 'success');
     });
   });
 }
@@ -968,94 +861,27 @@ const molviewProteinOptions = document.getElementById('molviewProteinOptions');
 const mineralOptions = document.getElementById('mineralOptions');
 
 function updateEngineInfo(engine) {
-  if (engine === 'moleculeviewer') {
-    if (engineInfo) engineInfo.textContent = '🧪 MoleculeViewer Server (localhost:5000)';
-    if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'block';
-    if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
+  if (engine === 'client-side') {
+    if (engineInfo) engineInfo.textContent = '💻 SmilesDrawer - Fast Client-Side Rendering (No Server!)';
+    if (smilesDrawerOptions) smilesDrawerOptions.style.display = 'block';
     if (pubchemOptions) pubchemOptions.style.display = 'none';
     if (cdkDepictOptions) cdkDepictOptions.style.display = 'none';
-    updateClientSideNote(false);
-  } else if (engine === 'mol2chemfig') {
-    if (engineInfo) engineInfo.textContent = '📐 mol2chemfig Server (localhost:8000)';
-    if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
-    if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'block';
-    if (pubchemOptions) pubchemOptions.style.display = 'none';
-    if (cdkDepictOptions) cdkDepictOptions.style.display = 'none';
-    updateClientSideNote(false);
   } else if (engine === 'pubchem') {
-    if (engineInfo) engineInfo.textContent = '🌐 PubChem Server (localhost:5002)';
-    if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
-    if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
+    if (engineInfo) engineInfo.textContent = '🌐 PubChem - Official Chemical Images';
+    if (smilesDrawerOptions) smilesDrawerOptions.style.display = 'none';
     if (pubchemOptions) pubchemOptions.style.display = 'block';
     if (cdkDepictOptions) cdkDepictOptions.style.display = 'none';
-    updateClientSideNote(false);
-  } else if (engine === 'client-side') {
-    if (engineInfo) engineInfo.textContent = '💻 Client-Side (SmilesDrawer SVG) - No Server Required!';
-    if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
-    if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'block'; // Show mol2chemfig options for rendering settings
-    if (pubchemOptions) pubchemOptions.style.display = 'none';
-    if (cdkDepictOptions) cdkDepictOptions.style.display = 'none';
-    updateClientSideNote(true); // Show client-side limitations note
   } else if (engine === 'cdk-depict') {
-    if (engineInfo) engineInfo.textContent = '🌐 CDK Depict - Free Online API (No Server Needed!)';
-    if (moleculeViewerOptions) moleculeViewerOptions.style.display = 'none';
-    if (mol2chemfigOptions) mol2chemfigOptions.style.display = 'none';
+    if (engineInfo) engineInfo.textContent = '🌐 CDK Depict - Free Online API';
+    if (smilesDrawerOptions) smilesDrawerOptions.style.display = 'none';
     if (pubchemOptions) pubchemOptions.style.display = 'none';
     if (cdkDepictOptions) cdkDepictOptions.style.display = 'block';
-    updateClientSideNote(false);
   }
 
   // Always show 3D Viewer Settings, Protein Options, and Mineral Options (independent of compound renderer)
   if (viewer3DSettings) viewer3DSettings.style.display = 'block';
   if (molviewProteinOptions) molviewProteinOptions.style.display = 'block';
   if (mineralOptions) mineralOptions.style.display = 'block';
-}
-
-/**
- * Update the client-side note visibility and badge styling
- */
-function updateClientSideNote(isClientSide) {
-  const clientSideNote = document.getElementById('clientSideNote');
-  const clientSideRendererSection = document.getElementById('clientSideRendererSection');
-  const m2cfOnlyBadges = document.querySelectorAll('.m2cf-only-badge');
-
-  if (clientSideNote) {
-    clientSideNote.style.display = isClientSide ? 'block' : 'none';
-  }
-
-  // Show renderer selection only in client-side mode
-  if (clientSideRendererSection) {
-    clientSideRendererSection.style.display = isClientSide ? 'block' : 'none';
-  }
-
-  // Gray out m2cf-only options when in client-side mode
-  m2cfOnlyBadges.forEach(badge => {
-    const option = badge.closest('.option');
-    if (option) {
-      if (isClientSide) {
-        option.style.opacity = '0.5';
-      } else {
-        option.style.opacity = '1';
-        badge.style.display = 'none'; // Hide badges in mol2chemfig mode
-      }
-    }
-  });
-}
-
-// Client-side renderer selection handler
-const clientSideRendererSelect = document.getElementById('clientSideRendererSelect');
-if (clientSideRendererSelect) {
-  // Load current setting
-  chrome.storage.sync.get(['clientSideRenderer'], (result) => {
-    clientSideRendererSelect.value = result.clientSideRenderer || 'smilesdrawer';
-  });
-
-  // Save on change
-  clientSideRendererSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ clientSideRenderer: e.target.value }, () => {
-      showStatus(`Client-side renderer: ${e.target.value === 'kekule' ? 'Kekule.js' : 'SmilesDrawer'}. Reload page to apply.`, 'success');
-    });
-  });
 }
 
 /**
@@ -1296,3 +1122,52 @@ chrome.storage.sync.get({
   });
 })();
 
+// MetaMask Donate Button Handler
+const metamaskDonateBtn = document.getElementById('metamaskDonate');
+if (metamaskDonateBtn) {
+  metamaskDonateBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    // Your Ethereum wallet address for donations
+    const donationAddress = '0xYOUR_WALLET_ADDRESS_HERE'; // Replace with your actual wallet
+
+    // Check if MetaMask is installed
+    if (typeof window.ethereum !== 'undefined') {
+      try {
+        // Request account access
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const fromAddress = accounts[0];
+
+        // Send transaction (0.001 ETH default donation)
+        const txHash = await window.ethereum.request({
+          method: 'eth_sendTransaction',
+          params: [{
+            from: fromAddress,
+            to: donationAddress,
+            value: '0x38D7EA4C68000' // 0.001 ETH in hex
+          }]
+        });
+
+        alert('Thank you for your donation! 🎉\nTransaction: ' + txHash);
+      } catch (error) {
+        if (error.code === 4001) {
+          // User rejected
+          console.log('User cancelled donation');
+        } else {
+          alert('Donation failed: ' + error.message);
+        }
+      }
+    } else {
+      // No MetaMask - show address to copy
+      const copyAddress = confirm(
+        'MetaMask not detected!\n\n' +
+        'Would you like to copy the donation address?\n\n' +
+        donationAddress
+      );
+      if (copyAddress) {
+        navigator.clipboard.writeText(donationAddress);
+        alert('Address copied to clipboard! 📋');
+      }
+    }
+  });
+}

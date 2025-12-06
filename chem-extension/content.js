@@ -2873,11 +2873,31 @@ function setupLazyLoading() {
   }
 
   // Query the Universal Search API to get compound type, corrected name, and metadata
+  // NOW USES IntegratedSearch (no server needed!)
   async function querySearchAPI(moleculeData) {
     try {
       const searchTerm = moleculeData.nomenclature || moleculeData.smiles || '';
-      console.log(`%c🔍 Querying Search API for: "${searchTerm}"`, 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;');
+      console.log(`%c🔍 Querying IntegratedSearch for: "${searchTerm}"`, 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
 
+      // Use IntegratedSearch module (no server needed!)
+      if (window.IntegratedSearch) {
+        const data = await window.IntegratedSearch.search(searchTerm, { format: 'full' });
+        console.log('%c✅ IntegratedSearch response:', 'color: #9C27B0; font-weight: bold;', data);
+
+        if (!data.error) {
+          // Parse the response and return structured data
+          return {
+            compoundType: data.primary_type || 'compound',
+            correctedName: data.name || searchTerm,
+            // Prefer isomeric SMILES for stereochemical accuracy
+            smiles: data.isomeric_smiles || data.canonical_smiles || moleculeData.smiles,
+            searchResult: data // Full response for embed_url, image_url, etc.
+          };
+        }
+      }
+
+      // Fallback to server API if IntegratedSearch not available or failed
+      console.log('%c⚠️ IntegratedSearch not available, trying server API fallback...', 'color: #FF9800;');
       const response = await fetch(`${MOLVIEW_SEARCH_API}/search?searchTerm=${encodeURIComponent(searchTerm)}`);
 
       if (!response.ok) {

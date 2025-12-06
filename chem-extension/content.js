@@ -2299,13 +2299,12 @@ function setupLazyLoading() {
   }
 
   // Helper function to render molecule client-side using SmilesDrawer (SVG)
-  // Uses iframe approach similar to 3D viewer for proper isolation
-  // Uses PubChem API (via background script) for name→SMILES conversion
+  // Uses IntegratedSearch for name→SMILES conversion (no server needed!)
   async function renderClientSide(moleculeData, img) {
     activeLoads++;
-    // console.log('%c🎨 RENDERCLIENTSIDE CALLED (SmilesDrawer SVG)!', 'background: #222; color: #00FF00; font-size: 20px; padding: 10px;');
-    // console.log('Image element:', img);
-    // console.log('Dataset:', img.dataset);
+    console.log('%c🎨 RENDERCLIENTSIDE CALLED (SmilesDrawer SVG)!', 'background: #222; color: #00FF00; font-size: 16px; padding: 5px;');
+    console.log('Image element:', img);
+    console.log('Dataset:', img?.dataset);
     log.debug(`🎨 Rendering Client-Side SVG via SmilesDrawer (#${activeLoads})`);
 
     try {
@@ -2314,7 +2313,7 @@ function setupLazyLoading() {
         moleculeData = JSON.parse(atob(img.dataset.moleculeViewer));
       }
 
-      // console.log('%c📦 Molecule data:', 'color: #FF00FF; font-weight: bold;', moleculeData);
+      console.log('%c📦 Molecule data:', 'color: #FF00FF; font-weight: bold;', moleculeData);
 
       // Check for 3D request - redirect to 3D viewer
       // Pass both moleculeData and original img element (not a container)
@@ -2350,28 +2349,78 @@ function setupLazyLoading() {
         // Check if 3D stereochemistry is enabled
         const use3DSmiles = settings.m2cfUse3DSmiles === true;
 
-        // ===== PRIORITY 0: MolView Search API (PRIMARY SOURCE) =====
-        // Always try MolView Search first for autocorrection and type detection
-        // console.log('%c🌐 [Client] Priority 0: Using MolView Search API (PRIMARY)', 'background: #2196F3; color: white; font-weight: bold; padding: 4px;');
-        try {
-          const searchUrl = `${MOLVIEW_SEARCH_API}/search?q=${encodeURIComponent(cleanName)}&format=compact`;
-          const searchResult = await backgroundFetchJSON(searchUrl);
+        // ===== PRIORITY 0: IntegratedSearch (NO SERVER NEEDED!) =====
+        // Replicates search-server.js logic - properly detects biomolecules, minerals, compounds
+        console.log('%c🔍 [Client] Using IntegratedSearch module (no server needed!)', 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
 
-          if (searchResult && !searchResult.error && searchResult.canonical_smiles) {
-            smiles = use3DSmiles && searchResult.isomeric_smiles ?
-              searchResult.isomeric_smiles :
-              searchResult.canonical_smiles;
-            // console.log('%c✅ [Client] MolView Search API SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
-            // console.log('%c📊 [Client] MolView Data:', 'color: #2196F3;', {
-            //   corrected: searchResult.corrected_query,
-            //   type: searchResult.primary_type,
-            //   has_sdf: searchResult.sdf?.available
-            // });
-          } else {
-            // console.warn('%c⚠️ [Client] MolView Search API failed, falling back to PubChem', 'color: #FF8800;', searchResult?.error);
+        let searchResult = null;
+        if (window.IntegratedSearch) {
+          try {
+            searchResult = await window.IntegratedSearch.search(cleanName, { format: 'compact' });
+
+            if (searchResult && !searchResult.error) {
+              console.log('%c✅ [Client] IntegratedSearch result:', 'color: #4CAF50; font-weight: bold;', {
+                type: searchResult.primary_type,
+                name: searchResult.name,
+                pdbid: searchResult.pdbid,
+                codid: searchResult.codid,
+                smiles: searchResult.canonical_smiles ? searchResult.canonical_smiles.substring(0, 30) + '...' : 'N/A'
+              });
+
+              // ============ HANDLE BIOMOLECULE (use existing 3D viewer pipeline) ============
+              if (searchResult.primary_type === 'biomolecule' && searchResult.pdbid) {
+                console.log('%c🧬 [Client] BIOMOLECULE detected - using existing 3D viewer pipeline', 'background: #E91E63; color: white; font-weight: bold; padding: 4px;');
+
+                // Build moleculeData with embedUrl for the existing show3DViewerInline function
+                const biomoleculeData = {
+                  nomenclature: searchResult.name || cleanName,
+                  compoundType: 'biomolecule',
+                  embedUrl: `http://localhost:8000/embed/v2/?pdbid=${searchResult.pdbid}`,
+                  pdbid: searchResult.pdbid,
+                  is3D: true
+                };
+
+                // Use the existing 3D viewer pipeline which handles sizing, settings, buttons, etc.
+                await show3DViewerInline(biomoleculeData, img);
+                activeLoads--;
+                return;
+              }
+
+              // ============ GET SMILES FROM RESULT ============
+              if (searchResult.canonical_smiles) {
+                smiles = use3DSmiles && searchResult.isomeric_smiles ?
+                  searchResult.isomeric_smiles :
+                  searchResult.canonical_smiles;
+              }
+
+              // ============ HANDLE MINERAL WITHOUT SMILES (use existing 3D viewer pipeline) ============
+              if (searchResult.primary_type === 'mineral' && !smiles && searchResult.codid) {
+                console.log('%c💎 [Client] MINERAL detected - using existing 3D viewer pipeline', 'background: #00BCD4; color: white; font-weight: bold; padding: 4px;');
+
+                // Build moleculeData with embedUrl for the existing show3DViewerInline function
+                const mineralData = {
+                  nomenclature: searchResult.name || cleanName,
+                  compoundType: 'mineral',
+                  embedUrl: `http://localhost:8000/embed/v2/?codid=${searchResult.codid}`,
+                  codid: searchResult.codid,
+                  formula: searchResult.formula,
+                  is3D: true
+                };
+
+                // Use the existing 3D viewer pipeline which handles sizing, settings, buttons, etc.
+                await show3DViewerInline(mineralData, img);
+                activeLoads--;
+                return;
+              }
+
+            } else {
+              console.warn('%c⚠️ [Client] IntegratedSearch returned no result, trying PubChem fallback...', 'color: #FF9800;', searchResult?.error);
+            }
+          } catch (error) {
+            console.warn('%c⚠️ [Client] IntegratedSearch failed, trying PubChem fallback:', 'color: #FF9800;', error.message);
           }
-        } catch (error) {
-          // console.warn('%c⚠️ [Client] MolView Search API request failed, falling back to PubChem:', 'color: #FF8800;', error.message);
+        } else {
+          console.warn('%c⚠️ [Client] IntegratedSearch not available, using PubChem fallback', 'color: #FF9800;');
         }
 
         // ===== PRIORITY 1: PubChem direct API (FALLBACK) =====
@@ -2873,31 +2922,11 @@ function setupLazyLoading() {
   }
 
   // Query the Universal Search API to get compound type, corrected name, and metadata
-  // NOW USES IntegratedSearch (no server needed!)
   async function querySearchAPI(moleculeData) {
     try {
       const searchTerm = moleculeData.nomenclature || moleculeData.smiles || '';
-      console.log(`%c🔍 Querying IntegratedSearch for: "${searchTerm}"`, 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
+      console.log(`%c🔍 Querying Search API for: "${searchTerm}"`, 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;');
 
-      // Use IntegratedSearch module (no server needed!)
-      if (window.IntegratedSearch) {
-        const data = await window.IntegratedSearch.search(searchTerm, { format: 'full' });
-        console.log('%c✅ IntegratedSearch response:', 'color: #9C27B0; font-weight: bold;', data);
-
-        if (!data.error) {
-          // Parse the response and return structured data
-          return {
-            compoundType: data.primary_type || 'compound',
-            correctedName: data.name || searchTerm,
-            // Prefer isomeric SMILES for stereochemical accuracy
-            smiles: data.isomeric_smiles || data.canonical_smiles || moleculeData.smiles,
-            searchResult: data // Full response for embed_url, image_url, etc.
-          };
-        }
-      }
-
-      // Fallback to server API if IntegratedSearch not available or failed
-      console.log('%c⚠️ IntegratedSearch not available, trying server API fallback...', 'color: #FF9800;');
       const response = await fetch(`${MOLVIEW_SEARCH_API}/search?searchTerm=${encodeURIComponent(searchTerm)}`);
 
       if (!response.ok) {
@@ -4974,27 +5003,26 @@ function setupLazyLoading() {
     }
   }
 
-  // Helper function to load molecule image based on configured renderer engine
-  // ALL engines now automatically use Universal Search API (port 8001) for autocorrect
+  // Helper function to load molecule image - ALWAYS uses client-side SmilesDrawer
+  // Uses IntegratedSearch for compound lookup (no server needed!)
   function loadMoleculeImage(img) {
-    console.log('%c🔍 Universal Search API enabled - autocorrect active for ALL engines', 'background: #9C27B0; color: white; padding: 3px 6px;');
+    console.log('%c🎨 [loadMoleculeImage] ALWAYS using CLIENT-SIDE SmilesDrawer + IntegratedSearch', 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
 
-    // First check if the image has a specific renderer class (takes priority)
-    if (img.classList.contains('chemfig-pubchem')) {
-      console.log('%c🌐 Using PUBCHEM renderer (from class)', 'background: #4CAF50; color: #FFF; font-size: 14px; padding: 5px;');
-      loadPubChemImage(img);
-    } else if (img.classList.contains('chemfig-mol2chemfig')) {
-      console.log('%c📐 Using MOL2CHEMFIG renderer (from class)', 'background: #FF6B00; color: #FFF; font-size: 14px; padding: 5px;');
-      loadMol2chemfigImage(img);
-    } else if (settings.rendererEngine === 'mol2chemfig') {
-      console.log('%c📐 Using MOL2CHEMFIG renderer engine', 'background: #FF6B00; color: #FFF; font-size: 14px; padding: 5px;');
-      loadMol2chemfigImage(img);
-    } else if (settings.rendererEngine === 'pubchem') {
-      console.log('%c🌐 Using PUBCHEM renderer engine', 'background: #4CAF50; color: #FFF; font-size: 14px; padding: 5px;');
-      loadPubChemImage(img);
-    } else {
-      console.log('%c🧪 Using MOLECULEVIEWER renderer engine', 'background: #0088FF; color: #FFF; font-size: 14px; padding: 5px;');
-      loadMoleculeViewerImage(img);
+    try {
+      const moleculeData = JSON.parse(atob(img.dataset.moleculeViewer || img.dataset.mol2chemfig));
+      console.log('%c📦 Decoded molecule data:', 'color: #9C27B0;', moleculeData);
+      renderClientSide(moleculeData, img);
+    } catch (e) {
+      console.error('%c❌ [loadMoleculeImage] Failed to parse molecule data:', 'color: red;', e.message);
+      // Show error placeholder
+      img.alt = '⚠️ Failed to render molecule';
+      img.style.minWidth = '100px';
+      img.style.minHeight = '50px';
+      img.style.backgroundColor = '#ffebee';
+      img.style.border = '1px solid #ef5350';
+      img.style.borderRadius = '4px';
+      img.style.padding = '10px';
+      img.dataset.loaded = 'error';
     }
   }
 

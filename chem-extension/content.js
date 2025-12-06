@@ -1,25 +1,14 @@
 /**
- * Chemistry Formula Renderer v3.0
+ * Chemistry Formula Renderer v4.0 - Fully Client-Side
  * Works on ChatGPT and other strict CSP sites
  * Uses web_accessible_resources to serve scripts from extension
- */
-
-// ============================================
-// 🌍 RENDERING ENGINE API CONFIGURATION
-// ============================================
-// LOCAL TESTING - Use localhost to avoid HTTPS mixed content errors
-const MOLECULE_VIEWER_API = 'http://localhost:5000';
-const MOL2CHEMFIG_API = 'http://localhost:1000';  // Flask wrapper (NOT port 8000 Docker backend)
-const PUBCHEM_API = 'http://localhost:5002';
-const MOLVIEW_API = 'http://localhost:8000';  // MolView server for proteins, minerals, and complex molecules
-const MOLVIEW_SEARCH_API = 'http://localhost:8001';  // Unified search API with autocorrect (compounds, proteins, minerals)
-
-// For Heroku production (uncomment when ready to deploy):
-// const MOLECULE_VIEWER_API = 'https://YOUR-HEROKU-APP.herokuapp.com';
-// const MOL2CHEMFIG_API = 'https://YOUR-MOL2CHEMFIG-APP.herokuapp.com';
-// const PUBCHEM_API = 'https://YOUR-PUBCHEM-APP.herokuapp.com';
-// const MOLVIEW_API = 'https://YOUR-MOLVIEW-APP.herokuapp.com';
-// const MOLVIEW_SEARCH_API = 'https://YOUR-MOLVIEW-SEARCH-APP.herokuapp.com'; 
+ *
+ * NO LOCAL SERVERS NEEDED - Uses:
+ * - SmilesDrawer for 2D rendering (client-side)
+ * - IntegratedSearch for compound lookup (queries PubChem, RCSB, COD directly)
+ * - 3Dmol.js for 3D viewing (client-side)
+ * - CDK Depict as optional external API
+ */ 
 
 // ============================================
 // LOGGING UTILITIES
@@ -1470,7 +1459,7 @@ log.info('🧪 Content script loaded!');
 log.info(`Page URL: ${window.location.href}`);
 log.info(`Document readyState: ${document.readyState}`);
 
-// Settings with all defaults - FORCE MoleculeViewer only
+// Settings with all defaults - Client-side rendering (no servers needed!)
 let settings = {
   enabled: true,
   renderMhchem: true,
@@ -1480,44 +1469,35 @@ let settings = {
   layoutMode: 'horizontal',
   renderCarbonsAsSticks: false,
   sizePreset: 'auto',
-  rendererEngine: 'moleculeviewer',  // Default to MoleculeViewer (can be overridden by user)
+  rendererEngine: 'client-side',  // Default to client-side SmilesDrawer (no server needed!)
   devMode: false,
-  // MoleculeViewer rendering options
-  mvUse3DSmiles: false,  // Use OPSIN 3D for stereochemistry in MoleculeViewer
+  // Rendering options
   flipHorizontal: false,
   flipVertical: false,
-  mvAutoInvert: false,  // Auto-apply invert in dark mode for MoleculeViewer - disabled by default to prevent double inversion
-  mvInvertMode: 'full',  // 'full' or 'bw' (black & white only)
-  mvRotate: 0,  // Rotation angle for MoleculeViewer
-  // mol2chemfig rendering options
-  m2cfShowCarbons: false,
-  m2cfAromaticCircles: false,
-  m2cfShowMethyls: false,
-  m2cfFancyBonds: false,
-  m2cfAtomNumbers: false,
-  m2cfCompact: false,
-  m2cfFlipHorizontal: false,
-  m2cfFlipVertical: false,
-  m2cfHydrogensMode: 'keep',
-  use3DSmiles: false,  // Enable 3D stereochemistry via OPSIN
-  m2cfAddH2: false,
-  m2cfAutoInvert: true,  // Auto-apply invert in dark mode for mol2chemfig
-  m2cfInvertMode: 'full',  // 'full' or 'bw' (black & white only)
-  m2cfRotate: 0,
-  // PubChem specific settings
-  pubchemImageSize: 'large',
-  pubchemRecordType: '2d',
-  pubchemDirectFetch: true,  // Default to direct fetch from PubChem (no local server needed)
-  pubchemRemoveBg: false,
-  pubchemSharpenImages: true,
+  use3DSmiles: false,  // Enable 3D stereochemistry
+  // SmilesDrawer options
+  sdShowCarbons: false,
+  sdAromaticCircles: true,
+  sdShowMethyls: false,
+  sdCompactDrawing: false,
+  sdTheme: 'light',
+  // CDK Depict options (external API fallback)
+  cdkColorScheme: 'coc',
+  cdkHydrogenDisplay: 'minimal',
+  cdkZoom: 1.5,
+  cdkShowCarbons: false,
+  cdkShowMethyls: false,
+  cdkAtomNumbers: false,
+  cdkAnnotation: 'none',
+  // 3D Viewer settings
   enable3DViewer: false,
-  viewer3DSource: 'local', // 'local', 'pubchem', or 'molview'
-  // Client-side renderer options
-  clientSideRenderer: 'smilesdrawer',  // 'smilesdrawer' or 'kekule'
-  // AI Molecular Control
-  enableAIMolecularControl: false,
-  // MolView-Only Mode
-  molviewOnlyMode: false  // If enabled, fetch all data from localhost:8000 (no PubChem/OPSIN external calls)
+  viewer3DSource: 'molview',  // Uses embed.molview.org (no local server)
+  viewer3DSize: 'normal',
+  viewer3DStyle: 'stick',
+  // Protein/Mineral options
+  proteinRemoveWhiteBg: false,
+  // Client-side renderer
+  clientSideRenderer: 'smilesdrawer'  // 'smilesdrawer' or 'kekule'
 };
 
 log.info('📦 Loading settings from storage...');
@@ -1527,33 +1507,20 @@ chrome.storage.sync.get(null, (result) => {
   // Merge stored settings with defaults
   settings = { ...settings, ...result };
 
-  // ✅ DO NOT FORCE - Respect user's renderer choice
-  let engineName, enginePort;
-  if (settings.rendererEngine === 'mol2chemfig') {
-    engineName = '📐 mol2chemfig';
-    enginePort = '8000';
-  } else if (settings.rendererEngine === 'pubchem') {
-    engineName = '🌐 PubChem';
-    enginePort = '5002';
-  } else if (settings.rendererEngine === 'client-side') {
-    engineName = '💻 Client-Side (SmilesDrawer)';
-    enginePort = 'N/A';
-  } else if (settings.rendererEngine === 'cdk-depict') {
-    engineName = '🌐 CDK Depict (Free API)';
-    enginePort = 'External';
-  } else {
-    engineName = '🧪 MoleculeViewer';
-    enginePort = '5000';
+  // Force client-side rendering (migrate old settings)
+  if (settings.rendererEngine === 'moleculeviewer' || settings.rendererEngine === 'mol2chemfig' || settings.rendererEngine === 'pubchem') {
+    settings.rendererEngine = 'client-side';
+    chrome.storage.sync.set({ rendererEngine: 'client-side' });
   }
 
-  log.info(`🔍 Universal Search API: Port 8001 (autocorrect & intelligent filtering enabled for ALL engines!)`);
+  // Determine engine name for logging
+  let engineName = settings.rendererEngine === 'cdk-depict'
+    ? '🌐 CDK Depict (External API)'
+    : '💻 Client-Side (SmilesDrawer)';
 
-  if (settings.molviewOnlyMode) {
-    log.info(`%c🌐 MolView-Only Mode: ENABLED - All data from localhost:8000 (no external PubChem/OPSIN calls)`, 'background: #2196F3; color: white; font-weight: bold; padding: 2px 6px;');
-  }
-
+  log.info(`🔍 IntegratedSearch: Queries PubChem, RCSB, COD directly (no local server needed!)`);
   log.success('✅ Settings loaded', settings);
-  log.info(`Renderer Engine: ${engineName} (localhost:${enginePort})`);
+  log.info(`Renderer Engine: ${engineName}`);
   log.info(`Performance mode: ${settings.performanceMode ? 'ON ⚡' : 'OFF'}`);
   if (settings.enabled) {
     log.info('🚀 Extension enabled, initializing renderer...');
@@ -1576,19 +1543,10 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes.rendererEngine) {
     log.info('🔄 Renderer engine changed, updating...', changes.rendererEngine);
     settings.rendererEngine = changes.rendererEngine.newValue;
-    let engineName;
-    if (settings.rendererEngine === 'mol2chemfig') {
-      engineName = '📐 mol2chemfig';
-    } else if (settings.rendererEngine === 'pubchem') {
-      engineName = '🌐 PubChem';
-    } else if (settings.rendererEngine === 'client-side') {
-      engineName = '💻 Client-Side (SmilesDrawer)';
-    } else if (settings.rendererEngine === 'cdk-depict') {
-      engineName = '🌐 CDK Depict (Free API)';
-    } else {
-      engineName = '🧪 MoleculeViewer';
-    }
-    log.success(`✅ Switched to ${engineName} renderer (with Univeal Search API autocorrect)`);
+    let engineName = settings.rendererEngine === 'cdk-depict'
+      ? '🌐 CDK Depict (External API)'
+      : '💻 Client-Side (SmilesDrawer)';
+    log.success(`✅ Switched to ${engineName} renderer`);
 
     // Reload page to apply new renderer to all content
     setTimeout(() => {
@@ -3150,24 +3108,21 @@ function setupLazyLoading() {
       moleculeData.nomenclature = searchData.correctedName;
       moleculeData.searchResult = searchData.searchResult;
 
-      // Check if we should use Client-Side rendering (for compounds only)
-      if (settings.rendererEngine === 'client-side') {
-        // console.log('%c🎨 Compound: Using client-side renderer with SMILES from Search API', 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;');
-        activeLoads--; // Decrement because renderClientSide increments it again
-        await renderClientSide(moleculeData, img);
-        return;
-      }
-
-      // Check if we should use CDK Depict rendering (for compounds only)
-      if (settings.rendererEngine === 'cdk-depict') {
-        // console.log('%c🌐 Compound: Using CDK Depict renderer with SMILES from Search API', 'background: #2196F3; color: white; font-weight: bold; padding: 4px;');
-        activeLoads--; // Decrement because renderCDKDepict increments it again
-        await renderCDKDepict(moleculeData, img);
-        return;
-      }
-
       // ========================================
-      // STEP 4: Server-side rendering for compounds (MoleculeViewer, mol2chemfig, PubChem)
+      // STEP 4: Client-side rendering (no servers needed!)
+      // ========================================
+      activeLoads--; // Decrement because render functions increment it again
+
+      if (settings.rendererEngine === 'cdk-depict') {
+        // CDK Depict - external API
+        await renderCDKDepict(moleculeData, img);
+      } else {
+        // Default: SmilesDrawer (fully client-side)
+        await renderClientSide(moleculeData, img);
+      }
+      return;
+
+      // NOTE: Old server-dependent code below is unreachable and will be removed in future cleanup
       // ========================================
       // Show autocorrect notice if needed
       // DISABLED: User doesn't want to see autocorrect notifications

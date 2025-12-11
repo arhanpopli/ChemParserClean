@@ -86,94 +86,164 @@ function safeGetElement(id) {
   return el;
 }
 
-// Load current settings
-chrome.storage.sync.get({
-  enabled: true,
-  renderMhchem: true,
-  renderChemfig: true,
-  performanceMode: true,
-  rendererEngine: 'client-side',  // Default to SmilesDrawer client-side
-  devMode: false,
-  // SmilesDrawer options (sync with content.js defaults)
-  sdShowCarbons: true,       // SYNC: Show carbon labels by default
-  sdAromaticRings: true,     // Show aromatic circles by default
-  sdShowMethyls: true,       // SYNC: Show methyl labels by default
-  sdAtomNumbers: false,
-  sdShowHydrogens: false,
-  sdFlipHorizontal: false,
-  sdFlipVertical: false,
-  sdTheme: 'light',
-  sdRotate: 0,
-  // Image size controls
-  saveSizePerImage: false,
-  saveSizeBySMILES: true,  // FIX: Enable by default - global size saving across all pages
-  // Data Source toggles (IntegratedSearch)
-  searchPubChem: true,
-  searchRCSB: true,
-  searchCOD: true,
-  // 3D Viewer options
-  enable3DViewer: false,
-  default3DView: '2d',
-  viewer3DSource: '3dmol',
-  viewer3DStyle: 'stick:sphere',
-  viewer3DAutoRotate: true,
-  viewer3DSize: 'normal',
-  viewer3DSize: 'normal',
-  viewer3DBgColor: '#1a1a2e',  // Default dark blue background
-  // MolView specific options
-  molviewRepresentation: 'ballAndStick',
-  molviewEngine: 'glmol',
-  molviewCrystallography: 'none',
-  // Protein Options
-  proteinRemoveWhiteBg: false,
-  molviewBioAssembly: false,
-  molviewChainType: 'ribbon',
-  molviewChainBonds: false,
-  molviewChainColor: 'ss',
-  proteinMolviewBgColor: 'black',
-  // Mineral Options
-  mineralRepresentation: 'ballAndStick',
-  mineralMolviewBgColor: 'black',
-  mineralCrystallography: 'supercell_2x2x2',
-  // Per-style settings for stick and sphere radius
-  viewer3DStyleSettings: {
-    'stick': { stickRadius: '0.15' },
-    'line': {},
-    'cross': {},
-    'sphere': { sphereRadius: '0.7' },  // Default to larger for CPK
-    'stick:sphere': { stickRadius: '0.15', sphereRadius: '0.3' },
-    'cartoon': {}
-  },
-  // AI Molecular Control
-  enableAIMolecularControl: false,
-  // MolView-Only Mode
-  molSearchMode: false,
-  // Display options
-  showTags: false  // Show compound name tags by default
-}, (settings) => {
-  console.log('[Popup] Loading settings:', settings);
+// Helper function to save settings with verification
+function saveSettingWithVerification(settingName, value, callback) {
+  console.log(`[Popup] Saving ${settingName}:`, value);
+  const settingObj = {};
+  settingObj[settingName] = value;
 
-  enabledToggle.checked = settings.enabled;
-  mhchemToggle.checked = settings.renderMhchem;
-  chemfigToggle.checked = settings.renderChemfig;
-  perfModeToggle.checked = settings.performanceMode;
-  devModeToggle.checked = settings.devMode;
+  chrome.storage.sync.set(settingObj, () => {
+    if (chrome.runtime.lastError) {
+      console.error(`[Popup] Error saving ${settingName}:`, chrome.runtime.lastError);
+      if (callback) callback(false, chrome.runtime.lastError.message);
+      return;
+    }
+
+    // Verify the save by reading it back
+    chrome.storage.sync.get([settingName], (result) => {
+      if (chrome.runtime.lastError) {
+        console.error(`[Popup] Error verifying ${settingName}:`, chrome.runtime.lastError);
+        if (callback) callback(false, chrome.runtime.lastError.message);
+        return;
+      }
+
+      const savedValue = result[settingName];
+      console.log(`[Popup] Verified ${settingName} saved as:`, savedValue);
+
+      if (savedValue === value) {
+        console.log(`[Popup] Successfully saved and verified ${settingName}:`, value);
+        if (callback) callback(true);
+      } else {
+        console.error(`[Popup] Save verification failed for ${settingName}. Expected:`, value, 'Got:', savedValue);
+        if (callback) callback(false, 'Verification failed');
+      }
+    });
+  });
+}
+
+// Load current settings
+chrome.storage.sync.get(null, (storedSettings) => {
+  // Define defaults that will be used ONLY if a setting is undefined
+  const defaults = {
+    enabled: true,
+    renderMhchem: true,
+    renderChemfig: true,
+    performanceMode: true,
+    rendererEngine: 'client-side',
+    devMode: false,
+    sdShowCarbons: true,
+    sdAromaticRings: true,
+    sdShowMethyls: true,
+    sdAtomNumbers: false,
+    sdShowHydrogens: false,
+    sdFlipHorizontal: false,
+    sdFlipVertical: false,
+    sdTheme: 'light',
+    sdRotate: 0,
+    saveSizePerImage: false,
+    saveSizeBySMILES: true,
+    searchPubChem: true,
+    searchRCSB: true,
+    searchCOD: true,
+    enable3DViewer: false,
+    default3DView: '2d',
+    viewer3DSource: '3dmol',
+    viewer3DStyle: 'stick:sphere',
+    viewer3DAutoRotate: true,
+    viewer3DSize: 'normal',
+    viewer3DBgColor: '#1a1a2e',
+    molviewRepresentation: 'ballAndStick',
+    molviewEngine: 'glmol',
+    molviewCrystallography: 'none',
+    proteinRemoveWhiteBg: false,
+    molviewBioAssembly: false,
+    molviewChainType: 'ribbon',
+    molviewChainBonds: false,
+    molviewChainColor: 'ss',
+    proteinMolviewBgColor: 'black',
+    mineralRepresentation: 'ballAndStick',
+    mineralMolviewBgColor: 'black',
+    mineralCrystallography: 'supercell_2x2x2',
+    viewer3DStyleSettings: {
+      'stick': { stickRadius: '0.15' },
+      'line': {},
+      'cross': {},
+      'sphere': { sphereRadius: '0.7' },
+      'stick:sphere': { stickRadius: '0.15', sphereRadius: '0.3' },
+      'cartoon': {}
+    },
+    enableAIMolecularControl: false,
+    molSearchMode: false,
+    showTags: false
+  };
+
+  // Merge stored settings with defaults (stored settings take precedence)
+  const settings = {};
+  for (const key in defaults) {
+    settings[key] = storedSettings[key] !== undefined ? storedSettings[key] : defaults[key];
+  }
+
+  console.log('[Popup] ========== SETTINGS LOADING DEBUG ==========');
+  console.log('[Popup] Raw storage (storedSettings):', storedSettings);
+  console.log('[Popup] Defaults object:', defaults);
+  console.log('[Popup] Final merged settings:', settings);
+  console.log('[Popup] SmilesDrawer settings specifically:', {
+    sdShowCarbons: settings.sdShowCarbons,
+    sdAromaticRings: settings.sdAromaticRings,
+    sdShowMethyls: settings.sdShowMethyls,
+    sdAtomNumbers: settings.sdAtomNumbers,
+    sdShowHydrogens: settings.sdShowHydrogens,
+    sdFlipHorizontal: settings.sdFlipHorizontal,
+    sdFlipVertical: settings.sdFlipVertical
+  });
+  console.log('[Popup] ================================================');
+
+  if (enabledToggle) enabledToggle.checked = settings.enabled;
+  if (mhchemToggle) mhchemToggle.checked = settings.renderMhchem;
+  if (chemfigToggle) chemfigToggle.checked = settings.renderChemfig;
+  if (perfModeToggle) perfModeToggle.checked = settings.performanceMode;
+  if (devModeToggle) devModeToggle.checked = settings.devMode;
   if (showTagsToggle) showTagsToggle.checked = settings.showTags;
+
+  console.log('[Popup] ========== TOGGLE ELEMENT CHECK ==========');
+  console.log('[Popup] sdShowCarbonsToggle exists?', !!sdShowCarbonsToggle);
+  console.log('[Popup] sdAromaticRingsToggle exists?', !!sdAromaticRingsToggle);
+  console.log('[Popup] sdShowMethylsToggle exists?', !!sdShowMethylsToggle);
+  console.log('[Popup] sdAtomNumbersToggle exists?', !!sdAtomNumbersToggle);
+  console.log('[Popup] sdShowHydrogensToggle exists?', !!sdShowHydrogensToggle);
+  console.log('[Popup] sdFlipHorizontalToggle exists?', !!sdFlipHorizontalToggle);
+  console.log('[Popup] sdFlipVerticalToggle exists?', !!sdFlipVerticalToggle);
+  console.log('[Popup] ================================================');
 
   // Load SmilesDrawer options
   if (sdShowCarbonsToggle) {
     sdShowCarbonsToggle.checked = settings.sdShowCarbons;
-    console.log('[Popup] Loaded sdShowCarbons:', settings.sdShowCarbons);
+    console.log('[Popup] Set sdShowCarbonsToggle.checked to:', settings.sdShowCarbons, '| Actual value now:', sdShowCarbonsToggle.checked);
   }
   if (sdAromaticRingsToggle) {
     sdAromaticRingsToggle.checked = settings.sdAromaticRings;
-    console.log('[Popup] Loaded sdAromaticRings:', settings.sdAromaticRings);
+    console.log('[Popup] Set sdAromaticRingsToggle.checked to:', settings.sdAromaticRings, '| Actual value now:', sdAromaticRingsToggle.checked);
   }
-  if (sdShowMethylsToggle) sdShowMethylsToggle.checked = settings.sdShowMethyls;
-  if (sdAtomNumbersToggle) sdAtomNumbersToggle.checked = settings.sdAtomNumbers;
-  if (sdShowHydrogensToggle) sdShowHydrogensToggle.checked = settings.sdShowHydrogens;
-  if (sdFlipHorizontalToggle) sdFlipHorizontalToggle.checked = settings.sdFlipHorizontal;
-  if (sdFlipVerticalToggle) sdFlipVerticalToggle.checked = settings.sdFlipVertical;
+  if (sdShowMethylsToggle) {
+    sdShowMethylsToggle.checked = settings.sdShowMethyls;
+    console.log('[Popup] Set sdShowMethylsToggle.checked to:', settings.sdShowMethyls, '| Actual value now:', sdShowMethylsToggle.checked);
+  }
+  if (sdAtomNumbersToggle) {
+    sdAtomNumbersToggle.checked = settings.sdAtomNumbers;
+    console.log('[Popup] Set sdAtomNumbersToggle.checked to:', settings.sdAtomNumbers, '| Actual value now:', sdAtomNumbersToggle.checked);
+  }
+  if (sdShowHydrogensToggle) {
+    sdShowHydrogensToggle.checked = settings.sdShowHydrogens;
+    console.log('[Popup] Set sdShowHydrogensToggle.checked to:', settings.sdShowHydrogens, '| Actual value now:', sdShowHydrogensToggle.checked);
+  }
+  if (sdFlipHorizontalToggle) {
+    sdFlipHorizontalToggle.checked = settings.sdFlipHorizontal;
+    console.log('[Popup] Set sdFlipHorizontalToggle.checked to:', settings.sdFlipHorizontal, '| Actual value now:', sdFlipHorizontalToggle.checked);
+  }
+  if (sdFlipVerticalToggle) {
+    sdFlipVerticalToggle.checked = settings.sdFlipVertical;
+    console.log('[Popup] Set sdFlipVerticalToggle.checked to:', settings.sdFlipVertical, '| Actual value now:', sdFlipVerticalToggle.checked);
+  }
   if (sdThemeSelect) sdThemeSelect.value = settings.sdTheme || 'light';
   if (sdRotateSlider) {
     sdRotateSlider.value = settings.sdRotate || 0;
@@ -275,64 +345,41 @@ chrome.storage.sync.get({
   if (mineralOptionsInit) {
     mineralOptionsInit.style.display = 'block';
   }
-
-  // ONE-TIME INITIALIZATION: Save defaults to storage if they don't exist
-  // This ensures settings persist correctly
-  chrome.storage.sync.get(null, (stored) => {
-    const needsInit = stored.sdShowCarbons === undefined ||
-      stored.sdAromaticRings === undefined ||
-      stored.sdShowMethyls === undefined;
-
-    if (needsInit) {
-      console.log('[Popup] Initializing missing settings in storage');
-      const defaults = {
-        sdShowCarbons: settings.sdShowCarbons,
-        sdAromaticRings: settings.sdAromaticRings,
-        sdShowMethyls: settings.sdShowMethyls,
-        sdAtomNumbers: settings.sdAtomNumbers || false,
-        sdShowHydrogens: settings.sdShowHydrogens || false,
-        sdFlipHorizontal: settings.sdFlipHorizontal || false,
-        sdFlipVertical: settings.sdFlipVertical || false,
-        sdGradientColors: settings.sdGradientColors || false,
-        showTags: settings.showTags || false
-      };
-
-      chrome.storage.sync.set(defaults, () => {
-        if (chrome.runtime.lastError) {
-          console.error('[Popup] Error initializing settings:', chrome.runtime.lastError);
-        } else {
-          console.log('[Popup] Settings initialized:', defaults);
-        }
-      });
-    }
-  });
 });
 
-mhchemToggle.addEventListener('change', (e) => {
-  chrome.storage.sync.set({ renderMhchem: e.target.checked }, () => {
-    showStatus('mhchem rendering ' + (e.target.checked ? 'enabled' : 'disabled') + '.', 'success');
+if (mhchemToggle) {
+  mhchemToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ renderMhchem: e.target.checked }, () => {
+      showStatus('mhchem rendering ' + (e.target.checked ? 'enabled' : 'disabled') + '.', 'success');
+    });
   });
-});
+}
 
-chemfigToggle.addEventListener('change', (e) => {
-  chrome.storage.sync.set({ renderChemfig: e.target.checked }, () => {
-    showStatus('chemfig rendering ' + (e.target.checked ? 'enabled' : 'disabled') + '.', 'success');
+if (chemfigToggle) {
+  chemfigToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ renderChemfig: e.target.checked }, () => {
+      showStatus('chemfig rendering ' + (e.target.checked ? 'enabled' : 'disabled') + '.', 'success');
+    });
   });
-});
+}
 
-perfModeToggle.addEventListener('change', (e) => {
-  chrome.storage.sync.set({ performanceMode: e.target.checked }, () => {
-    broadcastSettingsChange({ performanceMode: e.target.checked });
-    showStatus('Lazy-loading ' + (e.target.checked ? 'enabled' : 'disabled'), 'success');
+if (perfModeToggle) {
+  perfModeToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ performanceMode: e.target.checked }, () => {
+      broadcastSettingsChange({ performanceMode: e.target.checked });
+      showStatus('Lazy-loading ' + (e.target.checked ? 'enabled' : 'disabled'), 'success');
+    });
   });
-});
+}
 
 // Dev mode toggle
-devModeToggle.addEventListener('change', (e) => {
-  chrome.storage.sync.set({ devMode: e.target.checked }, () => {
-    showStatus('Developer mode ' + (e.target.checked ? 'enabled' : 'disabled') + '. Show raw chemfig text ' + (e.target.checked ? 'ON' : 'OFF') + '. Reload page to apply.', 'success');
+if (devModeToggle) {
+  devModeToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ devMode: e.target.checked }, () => {
+      showStatus('Developer mode ' + (e.target.checked ? 'enabled' : 'disabled') + '. Show raw chemfig text ' + (e.target.checked ? 'ON' : 'OFF') + '. Reload page to apply.', 'success');
+    });
   });
-});
+}
 
 // Show Tags toggle - always show compound name labels
 if (showTagsToggle) {
@@ -418,9 +465,15 @@ if (sdAromaticRingsToggle) {
 if (sdShowMethylsToggle) {
   sdShowMethylsToggle.addEventListener('change', (e) => {
     const value = e.target.checked;
-    chrome.storage.sync.set({ sdShowMethyls: value }, () => {
-      broadcastSettingsChange({ sdShowMethyls: value });
-      showStatus('Show methyls ' + (value ? 'enabled' : 'disabled'), 'success');
+    saveSettingWithVerification('sdShowMethyls', value, (success, error) => {
+      if (success) {
+        broadcastSettingsChange({ sdShowMethyls: value });
+        showStatus('Show methyls ' + (value ? 'enabled' : 'disabled'), 'success');
+      } else {
+        showStatus('Error saving setting: ' + (error || 'Unknown error'), 'error');
+        // Revert the toggle to its previous state
+        sdShowMethylsToggle.checked = !value;
+      }
     });
   });
 }
@@ -428,9 +481,14 @@ if (sdShowMethylsToggle) {
 if (sdAtomNumbersToggle) {
   sdAtomNumbersToggle.addEventListener('change', (e) => {
     const value = e.target.checked;
-    chrome.storage.sync.set({ sdAtomNumbers: value }, () => {
-      broadcastSettingsChange({ sdAtomNumbers: value });
-      showStatus('Atom numbers ' + (value ? 'enabled' : 'disabled'), 'success');
+    saveSettingWithVerification('sdAtomNumbers', value, (success, error) => {
+      if (success) {
+        broadcastSettingsChange({ sdAtomNumbers: value });
+        showStatus('Atom numbers ' + (value ? 'enabled' : 'disabled'), 'success');
+      } else {
+        showStatus('Error saving setting: ' + (error || 'Unknown error'), 'error');
+        sdAtomNumbersToggle.checked = !value;
+      }
     });
   });
 }
@@ -438,9 +496,14 @@ if (sdAtomNumbersToggle) {
 if (sdShowHydrogensToggle) {
   sdShowHydrogensToggle.addEventListener('change', (e) => {
     const value = e.target.checked;
-    chrome.storage.sync.set({ sdShowHydrogens: value }, () => {
-      broadcastSettingsChange({ sdShowHydrogens: value });
-      showStatus('Show hydrogens ' + (value ? 'enabled' : 'disabled'), 'success');
+    saveSettingWithVerification('sdShowHydrogens', value, (success, error) => {
+      if (success) {
+        broadcastSettingsChange({ sdShowHydrogens: value });
+        showStatus('Show hydrogens ' + (value ? 'enabled' : 'disabled'), 'success');
+      } else {
+        showStatus('Error saving setting: ' + (error || 'Unknown error'), 'error');
+        sdShowHydrogensToggle.checked = !value;
+      }
     });
   });
 }
@@ -448,9 +511,14 @@ if (sdShowHydrogensToggle) {
 if (sdFlipHorizontalToggle) {
   sdFlipHorizontalToggle.addEventListener('change', (e) => {
     const value = e.target.checked;
-    chrome.storage.sync.set({ sdFlipHorizontal: value }, () => {
-      broadcastSettingsChange({ sdFlipHorizontal: value });
-      showStatus('Horizontal flip ' + (value ? 'enabled' : 'disabled'), 'success');
+    saveSettingWithVerification('sdFlipHorizontal', value, (success, error) => {
+      if (success) {
+        broadcastSettingsChange({ sdFlipHorizontal: value });
+        showStatus('Horizontal flip ' + (value ? 'enabled' : 'disabled'), 'success');
+      } else {
+        showStatus('Error saving setting: ' + (error || 'Unknown error'), 'error');
+        sdFlipHorizontalToggle.checked = !value;
+      }
     });
   });
 }
@@ -458,9 +526,14 @@ if (sdFlipHorizontalToggle) {
 if (sdFlipVerticalToggle) {
   sdFlipVerticalToggle.addEventListener('change', (e) => {
     const value = e.target.checked;
-    chrome.storage.sync.set({ sdFlipVertical: value }, () => {
-      broadcastSettingsChange({ sdFlipVertical: value });
-      showStatus('Vertical flip ' + (value ? 'enabled' : 'disabled'), 'success');
+    saveSettingWithVerification('sdFlipVertical', value, (success, error) => {
+      if (success) {
+        broadcastSettingsChange({ sdFlipVertical: value });
+        showStatus('Vertical flip ' + (value ? 'enabled' : 'disabled'), 'success');
+      } else {
+        showStatus('Error saving setting: ' + (error || 'Unknown error'), 'error');
+        sdFlipVerticalToggle.checked = !value;
+      }
     });
   });
 }
@@ -698,7 +771,8 @@ if (molviewRepresentationSelect) {
 if (molviewEngineSelect) {
   molviewEngineSelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ molviewEngine: e.target.value }, () => {
-      showStatus('Engine set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+      broadcastSettingsChange({ molviewEngine: e.target.value });
+      showStatus('Engine set to ' + e.target.options[e.target.selectedIndex].text, 'success');
     });
   });
 }
@@ -706,16 +780,18 @@ if (molviewEngineSelect) {
 if (molviewCrystallographySelect) {
   molviewCrystallographySelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ molviewCrystallography: e.target.value }, () => {
-      showStatus('Crystallography set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+      broadcastSettingsChange({ molviewCrystallography: e.target.value });
+      showStatus('Crystallography set to ' + e.target.options[e.target.selectedIndex].text, 'success');
     });
   });
 }
 
-// Protein Options event listeners
+// Protein Options event listeners - ALL broadcast changes for instant updates
 if (proteinRemoveWhiteBgToggle) {
   proteinRemoveWhiteBgToggle.addEventListener('change', (e) => {
     chrome.storage.sync.set({ proteinRemoveWhiteBg: e.target.checked }, () => {
-      showStatus('White background removal ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
+      broadcastSettingsChange({ proteinRemoveWhiteBg: e.target.checked });
+      showStatus('White background removal ' + (e.target.checked ? 'enabled' : 'disabled'), 'success');
     });
   });
 }
@@ -723,7 +799,8 @@ if (proteinRemoveWhiteBgToggle) {
 if (molviewBioAssemblyToggle) {
   molviewBioAssemblyToggle.addEventListener('change', (e) => {
     chrome.storage.sync.set({ molviewBioAssembly: e.target.checked }, () => {
-      showStatus('Bio Assembly ' + (e.target.checked ? 'shown' : 'hidden') + '. Reload page to apply.', 'success');
+      broadcastSettingsChange({ molviewBioAssembly: e.target.checked });
+      showStatus('Bio Assembly ' + (e.target.checked ? 'shown' : 'hidden'), 'success');
     });
   });
 }
@@ -731,7 +808,8 @@ if (molviewBioAssemblyToggle) {
 if (molviewChainTypeSelect) {
   molviewChainTypeSelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ molviewChainType: e.target.value }, () => {
-      showStatus('Chain Type set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+      broadcastSettingsChange({ molviewChainType: e.target.value });
+      showStatus('Chain Type set to ' + e.target.options[e.target.selectedIndex].text, 'success');
     });
   });
 }
@@ -739,7 +817,8 @@ if (molviewChainTypeSelect) {
 if (molviewChainBondsToggle) {
   molviewChainBondsToggle.addEventListener('change', (e) => {
     chrome.storage.sync.set({ molviewChainBonds: e.target.checked }, () => {
-      showStatus('Chain Bonds ' + (e.target.checked ? 'shown' : 'hidden') + '. Reload page to apply.', 'success');
+      broadcastSettingsChange({ molviewChainBonds: e.target.checked });
+      showStatus('Chain Bonds ' + (e.target.checked ? 'shown' : 'hidden'), 'success');
     });
   });
 }
@@ -747,7 +826,8 @@ if (molviewChainBondsToggle) {
 if (molviewChainColorSelect) {
   molviewChainColorSelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ molviewChainColor: e.target.value }, () => {
-      showStatus('Chain Color set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+      broadcastSettingsChange({ molviewChainColor: e.target.value });
+      showStatus('Chain Color set to ' + e.target.options[e.target.selectedIndex].text, 'success');
     });
   });
 }
@@ -755,7 +835,8 @@ if (molviewChainColorSelect) {
 if (proteinMolviewBgColorSelect) {
   proteinMolviewBgColorSelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ proteinMolviewBgColor: e.target.value }, () => {
-      showStatus('Protein background color set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+      broadcastSettingsChange({ proteinMolviewBgColor: e.target.value });
+      showStatus('Protein background color set to ' + e.target.options[e.target.selectedIndex].text, 'success');
     });
   });
 }
@@ -764,7 +845,8 @@ if (proteinMolviewBgColorSelect) {
 if (mineralRepresentationSelect) {
   mineralRepresentationSelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ mineralRepresentation: e.target.value }, () => {
-      showStatus('Mineral representation set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+      broadcastSettingsChange({ mineralRepresentation: e.target.value });
+      showStatus('Mineral representation set to ' + e.target.options[e.target.selectedIndex].text, 'success');
     });
   });
 }
@@ -772,7 +854,8 @@ if (mineralRepresentationSelect) {
 if (mineralMolviewBgColorSelect) {
   mineralMolviewBgColorSelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ mineralMolviewBgColor: e.target.value }, () => {
-      showStatus('Mineral background color set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+      broadcastSettingsChange({ mineralMolviewBgColor: e.target.value });
+      showStatus('Mineral background color set to ' + e.target.options[e.target.selectedIndex].text, 'success');
     });
   });
 }

@@ -14,6 +14,41 @@
     'use strict';
 
     // ============================================
+    // SESSION CACHE - Deduplicates API calls per page session
+    // ============================================
+    
+    // In-memory cache for search results (cleared on page reload)
+    const sessionCache = new Map();
+    
+    // In-memory map of pending searches (for deduplication)
+    const pendingSearches = new Map();
+
+    /**
+     * Get cached result or pending search promise
+     * @param {string} query - Search query
+     * @returns {object|null} - Cached result or null
+     */
+    function getCachedResult(query) {
+        const key = query.toLowerCase().trim();
+        if (sessionCache.has(key)) {
+            console.log(`[IntegratedSearch] 🎯 CACHE HIT: "${query}"`);
+            return sessionCache.get(key);
+        }
+        return null;
+    }
+
+    /**
+     * Store result in session cache
+     * @param {string} query - Search query
+     * @param {object} result - Search result
+     */
+    function setCachedResult(query, result) {
+        const key = query.toLowerCase().trim();
+        sessionCache.set(key, result);
+        console.log(`[IntegratedSearch] 📦 Cached result for: "${query}"`);
+    }
+
+    // ============================================
     // UTILITY FUNCTIONS
     // ============================================
 
@@ -196,7 +231,40 @@
 
         query = query.trim();
         const lowerQuery = query.toLowerCase();
+        const cacheKey = lowerQuery;
 
+        // ============ CHECK SESSION CACHE FIRST ============
+        const cachedResult = getCachedResult(query);
+        if (cachedResult) {
+            return cachedResult;
+        }
+
+        // ============ CHECK IF SEARCH IS ALREADY IN PROGRESS ============
+        if (pendingSearches.has(cacheKey)) {
+            console.log(`[IntegratedSearch] 🔄 Waiting for pending search: "${query}"`);
+            return pendingSearches.get(cacheKey);
+        }
+
+        // Create a promise for this search
+        const searchPromise = (async () => {
+            try {
+                const result = await doIntegratedSearch(query, lowerQuery, options);
+                // Cache successful results
+                if (result && !result.error) {
+                    setCachedResult(query, result);
+                }
+                return result;
+            } finally {
+                pendingSearches.delete(cacheKey);
+            }
+        })();
+
+        pendingSearches.set(cacheKey, searchPromise);
+        return searchPromise;
+    }
+
+    // Actual search implementation (called by integratedSearch)
+    async function doIntegratedSearch(query, lowerQuery, options = {}) {
         // ============ 0. DIRECT ID DETECTION (pdbid / codid / cid) ============
         const directId = (() => {
             // PDB IDs: 4 chars, starting with a digit (canonical) or prefixed

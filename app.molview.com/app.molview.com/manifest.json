@@ -1,0 +1,33 @@
+{
+  "name": "MolView",
+  "description": "Sketch chemical diagrams and view molecular models.",
+  "categories": ["education", "productivity", "utilities"],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "hsl(210 20% 95%)",
+  "background_color": "hsl(210 20% 95%)",
+  "icons": [
+    {
+      "src": "/icon_192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon_512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "/icon_mask_192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon_mask_512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ]
+}

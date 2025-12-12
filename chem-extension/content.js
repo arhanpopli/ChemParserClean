@@ -286,6 +286,11 @@ function getAffectedImageTypes(changedSettings) {
     'm2cfAddH2', 'm2cfFlipHorizontal', 'm2cfFlipVertical'
   ];
 
+  // Compound MolView 3D settings (affects 3D views of compounds)
+  const compoundMolviewSettings = [
+    'molviewRepresentation', 'compoundMolviewBgColor', 'molviewEngine', 'molviewCrystallography'
+  ];
+
   // Protein/biomolecule specific settings
   const proteinSettings = [
     'proteinRemoveWhiteBg', 'viewer3DStyle', 'viewer3DAutoRotate',
@@ -307,7 +312,7 @@ function getAffectedImageTypes(changedSettings) {
   const changedKeys = Object.keys(changedSettings);
 
   for (const key of changedKeys) {
-    if (smilesDrawerSettings.includes(key)) {
+    if (smilesDrawerSettings.includes(key) || compoundMolviewSettings.includes(key)) {
       affectedTypes.add('compound');
     }
     if (proteinSettings.includes(key)) {
@@ -335,126 +340,13 @@ function getAffectedImageTypes(changedSettings) {
 
 /**
  * Re-render all molecules with new settings (without page reload)
+ * Now delegates to lazyReRenderMolecules to always use lazy loading.
+ * Old images stay visible with a loading spinner until the new one is ready.
  */
 async function reRenderAllMolecules(newSettings) {
-  log.info('🔄 Re-rendering all molecules with new settings...');
-
-  // Determine which image types are affected by these settings changes
-  const affectedTypes = getAffectedImageTypes(newSettings);
-  log.info(`📊 Settings affect image types: ${Array.from(affectedTypes).join(', ')}`);
-
-  // Update local settings object
-  Object.assign(settings, newSettings);
-
-  // Map popup settings (sd*) to internal rendering options (m2cf*)
-  if (newSettings.sdShowCarbons !== undefined) settings.m2cfShowCarbons = newSettings.sdShowCarbons;
-  if (newSettings.sdAromaticRings !== undefined) settings.m2cfAromaticCircles = newSettings.sdAromaticRings;
-  if (newSettings.sdShowMethyls !== undefined) settings.m2cfShowMethyls = newSettings.sdShowMethyls;
-  if (newSettings.sdAtomNumbers !== undefined) settings.m2cfAtomNumbers = newSettings.sdAtomNumbers;
-  if (newSettings.sdShowHydrogens !== undefined) settings.m2cfAddH2 = newSettings.sdShowHydrogens;
-  if (newSettings.sdFlipHorizontal !== undefined) settings.m2cfFlipHorizontal = newSettings.sdFlipHorizontal;
-  if (newSettings.sdFlipVertical !== undefined) settings.m2cfFlipVertical = newSettings.sdFlipVertical;
-  if (newSettings.sdGradientColors !== undefined) settings.sdGradientColors = newSettings.sdGradientColors;
-
-  // Find all molecule viewer images on the page
-  const moleculeImages = document.querySelectorAll('img[data-molecule-viewer]');
-  let reRendered = 0;
-  let skipped = 0;
-
-  for (const img of moleculeImages) {
-    try {
-      const imageType = img.dataset.compoundType || 'compound';
-
-      // Skip if this image type is not affected by the settings change
-      if (!affectedTypes.has(imageType)) {
-        skipped++;
-        log.debug(`⏭️ Skipping ${imageType} image (not affected by settings change)`);
-        continue;
-      }
-
-      const smiles = img.dataset.smiles;
-      const nomenclature = img.dataset.nomenclature || img.dataset.compoundName;
-
-      if (!smiles) {
-        log.debug('Skipping re-render: no SMILES data', img);
-        continue;
-      }
-
-      // Check if SmilesDrawer is available
-      if (!window.SmilesDrawer) {
-        log.warn('SmilesDrawer not available for re-render');
-        continue;
-      }
-
-      // Re-render with new settings using cached SMILES
-      const theme = isDarkModeEnabled() ? 'dark' : 'light';
-      const renderOptions = {
-        showCarbons: settings.m2cfShowCarbons,
-        showMethyls: settings.m2cfShowMethyls,
-        aromaticCircles: settings.m2cfAromaticCircles,
-        showHydrogens: settings.m2cfAddH2,
-        atomNumbers: settings.m2cfAtomNumbers,
-        theme: theme,
-        width: parseInt(img.dataset.renderWidth) || 300,
-        height: parseInt(img.dataset.renderHeight) || 240
-      };
-
-      // Check image cache first
-      let svgContent = getCachedImage(smiles, renderOptions);
-
-      if (!svgContent) {
-        // Re-render with SmilesDrawer
-        const smilesDrawerOptions = {
-          width: renderOptions.width,
-          height: renderOptions.height,
-          bondThickness: 2.0,
-          bondLength: 25,
-          shortBondLength: 0.85,
-          bondSpacing: 6,
-          atomVisualization: 'default',
-          isomeric: true,
-          debug: false,
-          showCarbons: renderOptions.showCarbons,
-          terminalCarbons: renderOptions.showMethyls,
-          showHydrogens: renderOptions.showHydrogens,
-          showAromaticRings: renderOptions.aromaticCircles,
-          atomNumbering: renderOptions.atomNumbers,
-          solidBondColors: !settings.sdGradientColors,
-          compactDrawing: !renderOptions.showCarbons,
-          themes: {
-            light: { C: '#000000', O: '#FF0000', N: '#0000FF', S: '#FFD700', P: '#FFA500', F: '#00FF00', Cl: '#00FF00', Br: '#8B0000', I: '#800080', H: '#808080', background: '#FFFFFF' },
-            dark: { C: '#FFFFFF', O: '#FF6B6B', N: '#6BB5FF', S: '#FFE66D', P: '#FFB347', F: '#98FB98', Cl: '#98FB98', Br: '#FF6961', I: '#DDA0DD', H: '#AAAAAA', background: 'transparent' }
-          }
-        };
-
-        const drawer = new SmilesDrawer.SvgDrawer(smilesDrawerOptions);
-        const svgDrawer = new SmilesDrawer.SvgDrawer(smilesDrawerOptions);
-
-        try {
-          const parsedTree = SmilesDrawer.Parser.parse(smiles);
-          const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          svgDrawer.draw(parsedTree, svgElement, theme);
-          svgContent = svgElement.outerHTML;
-
-          // Cache the rendered image
-          setCachedImage(smiles, renderOptions, svgContent);
-        } catch (parseError) {
-          log.error('Failed to re-render molecule:', parseError);
-          continue;
-        }
-      }
-
-      // Update the image
-      const svgBase64 = btoa(unescape(encodeURIComponent(svgContent)));
-      img.src = `data:image/svg+xml;base64,${svgBase64}`;
-      reRendered++;
-
-    } catch (e) {
-      log.error('Error re-rendering molecule:', e);
-    }
-  }
-
-  log.success(`✅ Re-rendered ${reRendered} molecules, skipped ${skipped} unaffected images`);
+  log.info('🔄 Re-rendering all molecules with lazy loading...');
+  // Always use lazy re-rendering to keep old images visible
+  return lazyReRenderMolecules(newSettings);
 }
 
 /**
@@ -463,6 +355,11 @@ async function reRenderAllMolecules(newSettings) {
 let pendingReRenderSettings = null;
 let pendingUpdateIndicator = null;
 
+// Flag to prevent mutation observer from re-scanning during image updates
+// This is CRITICAL - without it, the observer would trigger scanAndRender()
+// which would recreate images and cause them to disappear
+let isUpdatingImages = false;
+
 /**
  * Add a small red loading indicator to an image that needs re-rendering
  */
@@ -470,20 +367,22 @@ function addLoadingIndicator(img) {
   // Don't add if already exists
   if (img.dataset.hasLoadingIndicator === 'true') return;
 
-  // Create a small red dot indicator
+  // Create a small red spinner indicator (left-middle)
   const indicator = document.createElement('div');
   indicator.className = 'chemtex-image-loading-indicator';
+  indicator.setAttribute('aria-label', 'Updating image');
   indicator.style.cssText = `
     position: absolute;
-    top: 4px;
-    left: 4px;
-    width: 10px;
-    height: 10px;
-    background: #ff4757;
+    top: 50%;
+    left: 10px;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    box-shadow: 0 0 0 2px rgba(255, 71, 87, 0.3);
+    border: 2px solid rgba(255, 71, 87, 0.25);
+    border-top-color: #ff4757;
     z-index: 10;
-    animation: pulse-dot 1.5s ease-in-out infinite;
+    animation: chemtex-spin 0.9s linear infinite;
     pointer-events: none;
   `;
 
@@ -497,14 +396,18 @@ function addLoadingIndicator(img) {
     container.appendChild(indicator);
   }
 
-  // Add pulse animation if not already added
-  if (!document.getElementById('chemtex-pulse-animation')) {
+  // Add animations if not already added
+  if (!document.getElementById('chemtex-loading-indicator-style')) {
     const style = document.createElement('style');
-    style.id = 'chemtex-pulse-animation';
+    style.id = 'chemtex-loading-indicator-style';
     style.textContent = `
-      @keyframes pulse-dot {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.3); opacity: 0.7; }
+      @keyframes chemtex-spin {
+        from { transform: translateY(-50%) rotate(0deg); }
+        to { transform: translateY(-50%) rotate(360deg); }
+      }
+      @keyframes chemtex-fade-in {
+        from { opacity: 0.65; }
+        to { opacity: 1; }
       }
     `;
     document.head.appendChild(style);
@@ -533,68 +436,29 @@ function removeLoadingIndicator(img) {
 }
 
 function showPendingIndicator(count) {
-  if (!pendingUpdateIndicator) {
-    pendingUpdateIndicator = document.createElement('div');
-    pendingUpdateIndicator.id = 'chemtex-pending-indicator';
-    pendingUpdateIndicator.style.cssText = `
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      z-index: 999999;
-      background: linear-gradient(135deg, #ff6b6b, #ee5253);
-      color: white;
-      padding: 8px 14px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      box-shadow: 0 4px 12px rgba(238, 82, 83, 0.4);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      cursor: pointer;
-      transition: all 0.2s;
-    `;
-    pendingUpdateIndicator.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M12 6v6l4 2"/>
-      </svg>
-      <span id="pending-count">${count} pending</span>
-    `;
-    pendingUpdateIndicator.onclick = () => reRenderAllMolecules(pendingReRenderSettings || settings);
-    document.body.appendChild(pendingUpdateIndicator);
-
-    // Add spin animation
-    const style = document.createElement('style');
-    style.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
-    document.head.appendChild(style);
-  } else {
-    const countEl = pendingUpdateIndicator.querySelector('#pending-count');
-    if (countEl) countEl.textContent = `${count} pending`;
-    pendingUpdateIndicator.style.display = 'flex';
-  }
+  // Intentionally disabled: the global top-left pending pill was a UX regression.
+  // We keep stale images in place and show per-image in-box indicators instead.
+  return;
 }
 
 function hidePendingIndicator() {
-  if (pendingUpdateIndicator) {
-    pendingUpdateIndicator.style.display = 'none';
-  }
+  // Intentionally disabled (see showPendingIndicator).
+  return;
 }
 
 /**
- * Lazy re-render: only re-render visible molecules, mark others as pending
+ * Re-render ALL molecules with new settings using the proven rendering pipeline.
+ * Instead of modifying img.src directly (which fails on React pages),
+ * we reset the image to trigger the original loadMoleculeImage flow.
  */
 async function lazyReRenderMolecules(newSettings) {
-  log.info('🔄 Lazy re-rendering visible molecules...');
+  console.warn('[ChemRenderer] 🔄 RE-RENDERING with new settings using loadMoleculeImage pipeline');
 
-  // Determine which image types are affected by these settings changes
-  const affectedTypes = getAffectedImageTypes(newSettings);
-  log.info(`📊 Settings affect image types: ${Array.from(affectedTypes).join(', ')}`);
+  // CRITICAL: Block mutation observer from re-scanning while we update images
+  isUpdatingImages = true;
 
   // Update local settings object
   Object.assign(settings, newSettings);
-  pendingReRenderSettings = newSettings;
 
   // Map popup settings to internal options
   if (newSettings.sdShowCarbons !== undefined) settings.m2cfShowCarbons = newSettings.sdShowCarbons;
@@ -611,101 +475,274 @@ async function lazyReRenderMolecules(newSettings) {
     applyTagVisibility(newSettings.showTags);
   }
 
-  // Find all molecule images
-  const moleculeImages = document.querySelectorAll('img[data-molecule-viewer]');
-  let visibleCount = 0;
-  let pendingCount = 0;
-  let skippedCount = 0;
+  // Find all molecule images (both standalone and those inside wrappers)
+  const moleculeImages = document.querySelectorAll('img.molecule-diagram[data-smiles], img[data-molecule-viewer][data-smiles]');
+  console.log('[ChemRenderer] 🔍 Found molecule images to re-render:', moleculeImages.length);
+
+  if (moleculeImages.length === 0) {
+    console.log('[ChemRenderer] No images found');
+    isUpdatingImages = false;
+    return;
+  }
+
+  let successCount = 0;
 
   for (const img of moleculeImages) {
-    const imageType = img.dataset.compoundType || 'compound';
+    try {
+      const smiles = img.dataset.smiles;
+      const nomenclature = img.dataset.nomenclature || img.alt || 'molecule';
+      const compoundType = img.dataset.compoundType || 'compound';
 
-    // Skip if this image type is not affected by the settings change
-    if (!affectedTypes.has(imageType)) {
-      skippedCount++;
-      log.debug(`⏭️ Skipping ${imageType} image (not affected by settings change)`);
-      continue;
-    }
+      // Skip non-compound types (proteins/minerals use different renderers)
+      if (compoundType === 'biomolecule' || compoundType === 'mineral') {
+        continue;
+      }
 
-    const rect = img.getBoundingClientRect();
-    const isVisible = rect.top < window.innerHeight && rect.bottom > 0;
+      if (!smiles) {
+        continue;
+      }
 
-    if (isVisible) {
-      // Re-render immediately
-      await reRenderSingleMolecule(img, newSettings);
-      visibleCount++;
-    } else {
-      // Mark as pending and add visual indicator
-      img.dataset.needsReRender = 'true';
-      addLoadingIndicator(img);
-      pendingCount++;
+      console.log(`[ChemRenderer] 🔄 Re-rendering: ${nomenclature} (${smiles.substring(0, 20)}...)`);
+
+      // Build molecule data with CURRENT settings
+      const moleculeData = {
+        nomenclature: nomenclature,
+        smiles: smiles,
+        type: 'smiles',
+        options: {
+          width: parseInt(img.dataset.renderWidth) || 300,
+          height: parseInt(img.dataset.renderHeight) || 240,
+          aromaticCircles: settings.m2cfAromaticCircles,
+          showCarbons: settings.m2cfShowCarbons,
+          showMethyls: settings.m2cfShowMethyls,
+          atomNumbers: settings.m2cfAtomNumbers,
+          addH2: settings.m2cfAddH2,
+          flipHorizontal: settings.m2cfFlipHorizontal,
+          flipVertical: settings.m2cfFlipVertical,
+          scale: 1,
+          rotation: parseInt(img.dataset.rotation) || 0
+        },
+        isMoleculeViewer: true,
+        flags: {
+          useDefaults: false,
+          compoundType: compoundType
+        }
+      };
+
+      // Encode the updated molecule data
+      const encodedData = btoa(JSON.stringify(moleculeData));
+
+      // Create a fresh placeholder image that will be processed by loadMoleculeImage
+      const newPlaceholder = document.createElement('img');
+      newPlaceholder.className = 'molecule-diagram molecule-viewer';
+      newPlaceholder.alt = nomenclature;
+      newPlaceholder.dataset.moleculeViewer = encodedData;
+      newPlaceholder.dataset.loaded = 'false';
+      newPlaceholder.dataset.rotation = img.dataset.rotation || '0';
+      newPlaceholder.style.cssText = 'display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;';
+
+      // Find the parent - could be a wrapper div or direct parent
+      const wrapper = img.closest('.molecule-container') || img.parentNode;
+
+      if (wrapper && wrapper.parentNode) {
+        // Replace the wrapper/image with the new placeholder
+        wrapper.parentNode.replaceChild(newPlaceholder, wrapper);
+      } else if (img.parentNode) {
+        // Just replace the image directly
+        img.parentNode.replaceChild(newPlaceholder, img);
+      } else {
+        console.error('[ChemRenderer] ❌ Image has no parent!');
+        continue;
+      }
+
+      // Use the proven rendering pipeline
+      if (window._loadMoleculeImage) {
+        window._loadMoleculeImage(newPlaceholder);
+        successCount++;
+        console.log(`[ChemRenderer] ✅ Triggered loadMoleculeImage for: ${nomenclature}`);
+      } else {
+        console.error('[ChemRenderer] ❌ _loadMoleculeImage not available!');
+      }
+
+    } catch (e) {
+      console.error('[ChemRenderer] Error re-rendering:', e);
     }
   }
 
-  if (pendingCount > 0) {
-    showPendingIndicator(pendingCount);
-    setupLazyReRenderObserver();
-  } else {
-    hidePendingIndicator();
+  console.log(`[ChemRenderer] ✅ Re-rendered ${successCount} molecules`);
+
+  // Re-observe any unloaded images that weren't affected by our update
+  // These are images that haven't been scrolled into view yet
+  const unloadedImages = document.querySelectorAll('img.molecule-diagram[data-loaded="false"], img.molecule-viewer[data-loaded="false"]');
+  if (unloadedImages.length > 0 && window._lazyLoadObserver) {
+    console.log(`[ChemRenderer] 👁️ Re-observing ${unloadedImages.length} unloaded images for lazy loading`);
+    unloadedImages.forEach(img => {
+      window._lazyLoadObserver.observe(img);
+    });
   }
 
-  log.success(`✅ Re-rendered ${visibleCount} visible molecules, ${pendingCount} pending, ${skippedCount} skipped`);
+  // CRITICAL: Allow mutation observer to work again after updates are done
+  isUpdatingImages = false;
 }
 
 /**
- * Set up intersection observer for lazy re-rendering
+ * Set up intersection observer for lazy re-rendering.
+ * When an image enters the viewport:
+ * 1. Show loading indicator (red spinner)
+ * 2. Re-render with new settings
+ * 3. Swap image only when new one is ready
+ * 4. Remove loading indicator
  */
 let lazyReRenderObserver = null;
+const imagesBeingRendered = new Set(); // Track images currently being processed
 
 function setupLazyReRenderObserver() {
-  if (lazyReRenderObserver) return; // Already set up
+  // If observer exists, don't create a new one - just make sure all images are observed
+  if (lazyReRenderObserver) {
+    // Re-observe all molecule images to catch any new ones
+    document.querySelectorAll('img[data-molecule-viewer]').forEach(img => {
+      lazyReRenderObserver.observe(img);
+    });
+    // Check for already-visible images that need re-render
+    triggerVisibleImagesReRender();
+    return;
+  }
 
   lazyReRenderObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const img = entry.target;
-        if (img.dataset.needsReRender === 'true') {
-          // Re-render and remove loading indicator
-          reRenderSingleMolecule(img, pendingReRenderSettings || settings).then(() => {
-            removeLoadingIndicator(img);
-          });
-          delete img.dataset.needsReRender;
-
-          // Update pending count
-          const pendingImages = document.querySelectorAll('img[data-needs-re-render="true"]');
-          if (pendingImages.length > 0) {
-            showPendingIndicator(pendingImages.length);
-          } else {
-            hidePendingIndicator();
-          }
-        }
+        processImageIfNeeded(img);
       }
     });
-  }, { rootMargin: '100px' });
+  }, {
+    rootMargin: '50px',  // Start loading slightly before fully visible
+    threshold: 0.1       // Trigger when at least 10% is visible
+  });
 
   // Observe all molecule images
   document.querySelectorAll('img[data-molecule-viewer]').forEach(img => {
     lazyReRenderObserver.observe(img);
   });
+
+  // After setting up observer, immediately check for visible images that need re-render
+  // (IntersectionObserver won't fire for images already in viewport)
+  triggerVisibleImagesReRender();
 }
 
 /**
- * Re-render a single molecule image
+ * Process an image if it needs re-rendering and isn't already being processed
+ */
+function processImageIfNeeded(img) {
+  const smiles = img.dataset.smiles || '(no smiles)';
+  const compoundName = img.dataset.compoundName || '(no name)';
+
+  console.log('[ChemRenderer] 🔧 processImageIfNeeded called for:', compoundName);
+
+  // Check if this image needs re-rendering
+  if (img.dataset.needsReRender !== 'true' && img.getAttribute('data-needs-re-render') !== 'true') {
+    console.log('[ChemRenderer] ⏭️ Image does not need re-render (no flag)');
+    return; // Doesn't need re-render
+  }
+
+  // Prevent double-processing
+  if (imagesBeingRendered.has(img)) {
+    console.log('[ChemRenderer] ⏭️ Image already being processed');
+    log.debug(`⏭️ Image already being processed: ${compoundName}`);
+    return; // Already being processed
+  }
+
+  console.log('[ChemRenderer] ✅ Image will be processed:', compoundName);
+  log.info(`🔄 Processing image for lazy re-render: ${compoundName} (SMILES: ${smiles.substring(0, 30)}...)`);
+  imagesBeingRendered.add(img);
+
+  // NOW show the loading indicator (user is looking at this image)
+  console.log('[ChemRenderer] 🔴 Adding loading indicator...');
+  addLoadingIndicator(img);
+
+  // Re-render with new settings (old image stays visible until new one is ready)
+  console.log('[ChemRenderer] 🔄 Starting reRenderSingleMolecule...');
+  reRenderSingleMolecule(img, pendingReRenderSettings || settings)
+    .then(() => {
+      // Success - clear the pending flag
+      console.log('[ChemRenderer] ✅ Re-render SUCCESS for:', compoundName);
+      delete img.dataset.needsReRender;
+      img.removeAttribute('data-needs-re-render');
+      log.debug('✅ Successfully re-rendered molecule');
+    })
+    .catch((err) => {
+      console.log('[ChemRenderer] ❌ Re-render FAILED for:', compoundName, err);
+      log.error('Failed to re-render molecule:', err);
+      // Clear the flag anyway to prevent infinite retries
+      delete img.dataset.needsReRender;
+      img.removeAttribute('data-needs-re-render');
+    })
+    .finally(() => {
+      // Always remove loading indicator and clear from set
+      console.log('[ChemRenderer] 🔵 Removing loading indicator...');
+      removeLoadingIndicator(img);
+      imagesBeingRendered.delete(img);
+    });
+}
+
+/**
+ * Check for images that are already visible and trigger their re-render
+ * This handles the case where images are in viewport when settings change
+ */
+function triggerVisibleImagesReRender() {
+  console.log('[ChemRenderer] 👀 triggerVisibleImagesReRender called');
+  const moleculeImages = document.querySelectorAll('img[data-molecule-viewer][data-needs-re-render="true"]');
+  console.log('[ChemRenderer] 🔍 Found images needing re-render:', moleculeImages.length);
+
+  let visibleCount = 0;
+  moleculeImages.forEach(img => {
+    const rect = img.getBoundingClientRect();
+    const isVisible = rect.top < window.innerHeight && rect.bottom > 0 && rect.width > 0 && rect.height > 0;
+
+    console.log('[ChemRenderer] 🖼️ Image check:', {
+      name: img.dataset.compoundName || img.dataset.smiles?.substring(0, 20),
+      isVisible,
+      rect: { top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height }
+    });
+
+    if (isVisible) {
+      visibleCount++;
+      // This image is visible and needs re-render - process it now
+      console.log('[ChemRenderer] ▶️ Processing visible image...');
+      processImageIfNeeded(img);
+    }
+  });
+
+  console.log('[ChemRenderer] 📊 Processed', visibleCount, 'visible images');
+}
+
+/**
+ * Re-render a single molecule image.
+ * Note: Loading indicator is handled by the caller (observer).
+ * Old image stays visible until new one is ready.
  */
 async function reRenderSingleMolecule(img, newSettings) {
   try {
     const smiles = img.dataset.smiles;
     const compoundType = img.dataset.compoundType || 'compound';
 
-    if (!smiles) return;
+    if (!smiles) {
+      log.debug('Skipping re-render: no SMILES data on image');
+      return; // No error, just nothing to do - image keeps old content
+    }
 
     // Only apply SmilesDrawer settings to compounds (not proteins/minerals)
     if (compoundType === 'biomolecule' || compoundType === 'mineral') {
-      // For proteins/minerals, only apply their specific settings
+      // For proteins/minerals, they use different rendering (MolView/3Dmol)
+      // Just keep the existing image - no SmilesDrawer re-render needed
+      log.debug(`Skipping re-render for ${compoundType} (uses different renderer)`);
       return;
     }
 
-    if (!window.SmilesDrawer) return;
+    if (!window.SmilesDrawer) {
+      log.warn('SmilesDrawer not available for re-render');
+      throw new Error('SmilesDrawer not available');
+    }
 
     const theme = isDarkModeEnabled() ? 'dark' : 'light';
     const renderOptions = {
@@ -756,15 +793,42 @@ async function reRenderSingleMolecule(img, newSettings) {
         setCachedImage(smiles, renderOptions, svgContent);
       } catch (parseError) {
         log.error('Failed to re-render molecule:', parseError);
-        return;
+        throw parseError; // Re-throw so caller knows it failed
       }
     }
 
     const svgBase64 = btoa(unescape(encodeURIComponent(svgContent)));
-    img.src = `data:image/svg+xml;base64,${svgBase64}`;
+    const nextSrc = `data:image/svg+xml;base64,${svgBase64}`;
+
+    log.debug(`🖼️ Generated new SVG (${svgContent.length} chars), preparing to swap...`);
+
+    // Pre-load the new image before swapping (old image stays visible)
+    await new Promise((resolve) => {
+      const probe = new Image();
+      probe.onload = () => {
+        log.debug('✅ New image pre-loaded successfully');
+        resolve();
+      };
+      probe.onerror = (err) => {
+        log.error('❌ Failed to pre-load new image:', err);
+        resolve(); // Still resolve to continue
+      };
+      probe.src = nextSrc;
+    });
+
+    // Now swap to the new image with a smooth fade-in
+    log.debug('🔄 Swapping image src...');
+    img.style.animation = 'chemtex-fade-in 160ms ease-out';
+    img.src = nextSrc;
+    log.debug('✅ Image src updated successfully');
+
+    setTimeout(() => {
+      try { img.style.animation = ''; } catch (_) { }
+    }, 220);
 
   } catch (e) {
     log.error('Error re-rendering single molecule:', e);
+    throw e; // Re-throw so caller can handle
   }
 }
 
@@ -793,10 +857,12 @@ function applyTagVisibility(showTags) {
 }
 
 /**
- * Reload ALL images on the page (full re-render)
+ * Reload ALL images on the page (full re-render).
+ * This is triggered by the "Reload All" button - immediate re-render for all.
+ * Shows loading indicator on each image during re-render.
  */
 async function reloadAllImages() {
-  log.info('🔄 Reloading all images...');
+  log.info('🔄 Reloading all images (forced refresh)...');
 
   // Clear pending indicator
   hidePendingIndicator();
@@ -806,8 +872,16 @@ async function reloadAllImages() {
   let count = 0;
 
   for (const img of moleculeImages) {
-    await reRenderSingleMolecule(img, settings);
-    count++;
+    // Show loading indicator during re-render
+    addLoadingIndicator(img);
+    try {
+      await reRenderSingleMolecule(img, settings);
+      count++;
+    } catch (e) {
+      log.error('Failed to reload image:', e);
+    } finally {
+      removeLoadingIndicator(img);
+    }
   }
 
   log.success(`✅ Reloaded ${count} images`);
@@ -815,21 +889,26 @@ async function reloadAllImages() {
 
 // Listen for messages from popup via background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.warn('[ChemRenderer] 📩📩📩 MESSAGE RECEIVED:', request.type);
+  console.log('%c[ChemRenderer] Message details:', 'background: yellow; color: black; font-weight: bold;', request);
+
   if (request.type === 'APPLY_SETTINGS') {
+    console.warn('[ChemRenderer] ⚙️⚙️⚙️ APPLY_SETTINGS - STARTING UPDATE');
+    console.log('%c[ChemRenderer] Settings to apply:', 'background: green; color: white; font-weight: bold;', request.settings);
     log.info('📬 Received settings update from popup:', request.settings);
 
-    // Use lazy re-render if performance mode is on
-    if (settings.performanceMode) {
-      lazyReRenderMolecules(request.settings);
-    } else {
-      reRenderAllMolecules(request.settings);
-    }
+    // Always use lazy re-render: old images stay visible with loading indicator
+    // Images only re-render when scrolled into view (IntersectionObserver)
+    console.warn('[ChemRenderer] 🔄🔄🔄 CALLING lazyReRenderMolecules NOW...');
+    lazyReRenderMolecules(request.settings);
+    console.warn('[ChemRenderer] ✅✅✅ lazyReRenderMolecules FINISHED');
 
     sendResponse({ success: true });
     return true;
   }
 
   if (request.type === 'RELOAD_ALL_IMAGES') {
+    console.warn('[ChemRenderer] 🔄 RELOAD_ALL_IMAGES received');
     log.info('📬 Received reload all images command');
     reloadAllImages();
     sendResponse({ success: true });
@@ -935,7 +1014,7 @@ async function backgroundFetchJSON(url, options = {}) {
 async function directFetchJSON(url, options = {}) {
   const response = await fetch(url, options);
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    throw new Error(`HTTP ${response.status}: ${response.statusText} `);
   }
   return response.json();
 }
@@ -977,7 +1056,7 @@ async function backgroundFetchBlob(url) {
 async function directFetchBlob(url) {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    throw new Error(`HTTP ${response.status}: ${response.statusText} `);
   }
   const blob = await response.blob();
   // Convert to base64 for consistency with background response
@@ -1957,6 +2036,11 @@ let settings = {
   viewer3DSource: 'molview',  // Uses embed.molview.org (no local server)
   viewer3DSize: 'normal',
   viewer3DStyle: 'stick',
+  // Compound MolView options
+  molviewRepresentation: 'ballAndStick',
+  compoundMolviewBgColor: 'black',
+  molviewEngine: 'glmol',
+  molviewCrystallography: 'none',
   // Protein/Mineral MolView options
   proteinRemoveWhiteBg: false,
   molviewChainType: 'ribbon',
@@ -2066,7 +2150,7 @@ chrome.storage.onChanged.addListener((changes) => {
   // dynamic re-rendering. Removing this prevents the page from reloading.
 });
 
-// Listen for messages from popup (live preview)
+// Listen for messages from popup (live preview and settings changes)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'renderPreview') {
     try {
@@ -2078,6 +2162,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ html: `<span style="color: red;">Error: ${error.message}</span>` });
     }
     return true; // Keep channel open for async response
+  }
+
+  // Handle SETTINGS_CHANGED from popup (instant updates with lazy loading)
+  if (request.type === 'SETTINGS_CHANGED') {
+    console.log('%c⚙️ [Content] Settings changed from popup:', 'background: #2196F3; color: white; font-weight: bold; padding: 4px;', request.settings);
+
+    // Use lazy re-render: old images stay visible with loading indicator
+    // Images only re-render when scrolled into view
+    lazyReRenderMolecules(request.settings);
+
+    sendResponse({ success: true });
+    return true;
   }
 });
 
@@ -2741,12 +2837,25 @@ function buildMolViewEmbedUrl(baseIdentifier, identifierType, moleculeType = 'co
     }
   }
 
-  // For compounds with SMILES, add mode settings
-  if (identifierType === 'smiles' || identifierType === 'cid') {
-    // Could add compound-specific settings here in the future
-    // For now, use balls mode as default for small molecules
-    if (!params.has('mode')) {
+  // For compounds with SMILES or CID, add compound-specific settings
+  if (identifierType === 'smiles' || identifierType === 'cid' || moleculeType === 'compound') {
+    // Representation mode: balls, stick, vdw, wireframe, line
+    if (settings.molviewRepresentation) {
+      const modeMap = {
+        'ballAndStick': 'balls',
+        'stick': 'stick',
+        'vdwSpheres': 'vdw',
+        'wireframe': 'wireframe',
+        'line': 'line'
+      };
+      params.set('mode', modeMap[settings.molviewRepresentation] || 'balls');
+    } else if (!params.has('mode')) {
       params.set('mode', 'balls');
+    }
+
+    // Background color for compounds
+    if (settings.compoundMolviewBgColor) {
+      params.set('bg', settings.compoundMolviewBgColor);
     }
   }
 
@@ -2993,9 +3102,21 @@ function setupLazyLoading() {
         if (!smiles && !moleculeData.flags?.isDirectSmiles) {
           const cachedData = await getCachedSmiles(cleanName);
           if (cachedData && cachedData.smiles) {
-            console.log('%c🎯 [Client] SMILES CACHE HIT!', 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;', cleanName);
-            smiles = cachedData.smiles;
-            // Skip all API lookups, fall through to rendering
+            // Validate cached SMILES - if it looks like a compound name, skip it (bad cache entry)
+            const cachedSmiles = cachedData.smiles;
+            const looksLikeName = /\b(acid|ol|ene|ane|ine|one|ide|ate|ose|yl|methyl|ethyl|propyl|butyl|amino|hydroxy|tartaric|butanol|ethanol)\b/i.test(cachedSmiles);
+            const hasNomenclaturePattern = /^\(?[RSrs],?[RSrs]?\)?-?\d*-?[a-zA-Z]{4,}/i.test(cachedSmiles);
+
+            if (looksLikeName || hasNomenclaturePattern) {
+              console.warn('%c⚠️ [Client] BAD CACHE ENTRY DETECTED - cached value looks like a name, not SMILES!', 'background: #ff9800; color: black; font-weight: bold; padding: 4px;');
+              console.warn('Cached value:', cachedSmiles);
+              console.warn('Will re-fetch SMILES for:', cleanName);
+              // Don't use this cached value, let it fall through to API lookup
+            } else {
+              console.log('%c🎯 [Client] SMILES CACHE HIT!', 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;', cleanName);
+              smiles = cachedSmiles;
+              // Skip all API lookups, fall through to rendering
+            }
           }
         }
 
@@ -3271,6 +3392,23 @@ function setupLazyLoading() {
         throw new Error(`Could not obtain SMILES for "${compoundName}" - check internet connection or enable MolView-Only Mode`);
       }
 
+      // ===== VALIDATE SMILES BEFORE USING =====
+      // Skip validation if user explicitly specified +smiles flag
+      // SMILES should not look like a compound name (no words like "acid", "ol", etc.)
+      if (!moleculeData.flags?.isDirectSmiles) {
+        const looksLikeName = /\b(acid|ol|ene|ane|ine|one|ide|ate|ose|yl|methyl|ethyl|propyl|butyl|amino|hydroxy|chloro|bromo|iodo|nitro|tartaric|glucose|fructose|butanol|ethanol|methanol|propanol|benzene|phenyl|insulin|hemoglobin|quartz)\b/i.test(smiles);
+        const hasNomenclaturePattern = /^\(?[RSrs],?[RSrs]?\)?-?\d*-?[a-zA-Z]{4,}/i.test(smiles); // Like "(R)-2-butanol" or "(R,R)-tartaric"
+
+        if (looksLikeName || hasNomenclaturePattern) {
+          console.error('%c❌ SMILES VALIDATION FAILED - This looks like a compound name, not SMILES!', 'background: #f44336; color: white; font-weight: bold; padding: 4px;');
+          console.error('Invalid SMILES:', smiles);
+          console.error('Original nomenclature:', compoundName);
+          throw new Error(`Invalid SMILES received for "${compoundName}" - got "${smiles}" which appears to be a compound name, not SMILES notation`);
+        }
+      } else {
+        console.log('%c✅ Skipping SMILES validation - user specified +smiles flag', 'color: #4CAF50;');
+      }
+
       // ===== CACHE THE SMILES FOR FUTURE USE =====
       // Only cache if we got it from API (not from cache hit or direct flag)
       if (moleculeData.nomenclature && !moleculeData.flags?.isDirectSmiles) {
@@ -3285,6 +3423,7 @@ function setupLazyLoading() {
 
       console.log('%c🎨 Rendering with SmilesDrawer:', 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;');
       console.log(`%c📊 SMILES: ${smiles}`, 'background: #FF9800; color: white; font-weight: bold; padding: 4px;');
+      console.log(`%c📝 For compound: ${compoundName}`, 'color: #9c27b0;');
 
       // Get mol2chemfig-style rendering options from settings
       // Then apply any per-molecule flag overrides (e.g., +c, +m, /d-c)
@@ -4279,11 +4418,7 @@ function wrapChemicalFormulas(text) {
       log.debug(`  Converting molecule: ${content_trimmed}`);
       window.chemRendererPerformance.recordStructure();
 
-      // Determine if it's SMILES or nomenclature by checking for SMILES-specific characters
-      // Removed + from check to avoid confusing 'name/+flags' with SMILES
-      const isSMILES = /[=\[\]()@#\\]/.test(content_trimmed);
-
-      // For basic functionality, just use the content as is (backward compatibility)
+      // Extract compound name (before any flags)
       let compoundName = content_trimmed;
 
       // Process flags if any are detected (always enabled by default)
@@ -4330,13 +4465,15 @@ function wrapChemicalFormulas(text) {
             addH2: currentSettings.m2cfAddH2,
             flipHorizontal: currentSettings.m2cfFlipHorizontal,
             flipVertical: currentSettings.m2cfFlipVertical,
-            invert: currentSettings.m2cfInvert
+            invert: currentSettings.m2cfInvert,
+            compoundType: flagOverrides.compoundType,
+            isDirectSmiles: flagOverrides.isDirectSmiles
           });
 
           // Extract compound name by removing flag parts
           if (content_trimmed.includes('/')) {
             compoundName = content_trimmed.split('/')[0].trim();
-          } else if (content_trimmed.includes('+') && !isSMILES) {
+          } else if (content_trimmed.includes('+')) {
             // For + flags, split on first + to get compound name
             const parts = content_trimmed.split('+');
             compoundName = parts[0].trim();
@@ -4349,38 +4486,61 @@ function wrapChemicalFormulas(text) {
         }
       }
 
+      // =============== NEW FLAG-BASED TYPE DETECTION ===============
+      // Priority:
+      // 1. +smiles → Direct SMILES, send to SmilesDrawer
+      // 2. +biomolecule/+protein → Search RCSB PDB
+      // 3. +mineral → Search COD
+      // 4. +compound → Search PubChem for compounds
+      // 5. No flag → Use IntegratedSearch for auto-detection
+
+      const isDirectSmiles = flagOverrides.isDirectSmiles;
+      const specifiedType = flagOverrides.compoundType; // 'compound', 'biomolecule', or 'mineral'
+
+      console.log(`%c📦 Type detection: isDirectSmiles=${isDirectSmiles}, specifiedType=${specifiedType}, compoundName=${compoundName}`, 'color: #2196F3; font-weight: bold;');
+
+      // Build flags object for renderClientSide
+      const flagsForRender = {
+        ...flagOverrides,
+        compoundType: specifiedType,
+        isDirectSmiles: isDirectSmiles
+      };
+
       // Check for special flags that override renderer selection
       // +3d flag: Use 3D viewer (PubChem-based)
       if (flagOverrides.is3D) {
         const pubchemData = {
-          ...(isSMILES ? { smiles: compoundName } : { nomenclature: compoundName }),
+          // Use isDirectSmiles to determine if compoundName is SMILES or nomenclature
+          ...(isDirectSmiles ? { smiles: compoundName } : { nomenclature: compoundName }),
           name: compoundName, // Always pass name for fallback
-          type: isSMILES ? 'smiles' : 'nomenclature',
+          type: isDirectSmiles ? 'smiles' : 'nomenclature',
           isPubChem: true,
           show3D: true,  // Signal to show 3D viewer immediately
-          auto3D: true   // Hint to viewer to auto-select best 3D mode
+          auto3D: true,  // Hint to viewer to auto-select best 3D mode
+          flags: flagsForRender
         };
 
         const encoded = btoa(JSON.stringify(pubchemData));
         const converted = `<img src="" alt="chem" class="molecule-diagram molecule-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" data-show-3d="true" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
 
-        log.debug(`  📤 Sending ${isSMILES ? 'SMILES' : 'nomenclature'} to 3D viewer: ${compoundName}`);
+        log.debug(`  📤 Sending ${isDirectSmiles ? 'SMILES' : 'nomenclature'} to 3D viewer: ${compoundName}`);
         return converted;
       }
 
       // +pubchem flag: Force PubChem renderer
       if (flagOverrides.isPubchem) {
         const pubchemData = {
-          ...(isSMILES ? { smiles: compoundName } : { nomenclature: compoundName }),
+          ...(isDirectSmiles ? { smiles: compoundName } : { nomenclature: compoundName }),
           name: compoundName,
-          type: isSMILES ? 'smiles' : 'nomenclature',
-          isPubChem: true
+          type: isDirectSmiles ? 'smiles' : 'nomenclature',
+          isPubChem: true,
+          flags: flagsForRender
         };
 
         const encoded = btoa(JSON.stringify(pubchemData));
         const converted = `<img src="" alt="chem" class="molecule-diagram molecule-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
 
-        log.debug(`  📤 Sending ${isSMILES ? 'SMILES' : 'nomenclature'} to PubChem (forced by +pubchem flag): ${compoundName}`);
+        log.debug(`  📤 Sending ${isDirectSmiles ? 'SMILES' : 'nomenclature'} to PubChem (forced by +pubchem flag): ${compoundName}`);
         return converted;
       }
 
@@ -4388,26 +4548,29 @@ function wrapChemicalFormulas(text) {
       if (currentSettings.rendererEngine === 'pubchem') {
         // Use PubChem - supports 3D viewer when enabled
         const pubchemData = {
-          ...(isSMILES ? { smiles: compoundName } : { nomenclature: compoundName }),
+          ...(isDirectSmiles ? { smiles: compoundName } : { nomenclature: compoundName }),
           name: compoundName,
-          type: isSMILES ? 'smiles' : 'nomenclature',
-          isPubChem: true
+          type: isDirectSmiles ? 'smiles' : 'nomenclature',
+          isPubChem: true,
+          flags: flagsForRender
         };
 
         const encoded = btoa(JSON.stringify(pubchemData));
         const converted = `<img src="" alt="chem" class="molecule-diagram molecule-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
 
-        log.debug(`  📤 Sending ${isSMILES ? 'SMILES' : 'nomenclature'} to PubChem: ${compoundName}`);
+        log.debug(`  📤 Sending ${isDirectSmiles ? 'SMILES' : 'nomenclature'} to PubChem: ${compoundName}`);
         return converted;
       }
 
-      // Default: Send to MoleculeViewer (2D only)
+      // Default: Send to MoleculeViewer (uses IntegratedSearch for type detection)
       const rotation = currentSettings.m2cfRotate || currentSettings.mvRotate || 0;
       const scale = flagOverrides.size || 1.0;
 
       const moleculeViewerData = {
-        ...(isSMILES ? { smiles: compoundName } : { nomenclature: compoundName }),
-        type: isSMILES ? 'smiles' : 'nomenclature',
+        // If +smiles flag: use smiles property
+        // Otherwise: use nomenclature and let IntegratedSearch detect the type
+        ...(isDirectSmiles ? { smiles: compoundName } : { nomenclature: compoundName }),
+        type: isDirectSmiles ? 'smiles' : 'nomenclature',
         options: {
           width: Math.round(300 * scale),
           height: Math.round(200 * scale),
@@ -4422,15 +4585,15 @@ function wrapChemicalFormulas(text) {
           flipVertical: currentSettings.m2cfFlipVertical,
           scale: scale,  // Pass through the scale from +s flag
           rotation: flagOverrides.rotation || rotation  // Pass through the rotation from +r flag
-          // invert removed - now auto-applied based on dark mode detection
         },
-        isMoleculeViewer: true
+        isMoleculeViewer: true,
+        flags: flagsForRender  // Pass flags for renderClientSide to use
       };
 
       const encoded = btoa(JSON.stringify(moleculeViewerData));
       const converted = `<img src="" alt="chem" class="molecule-diagram molecule-viewer" data-molecule-viewer="${encoded}" data-loaded="false" data-rotation="${rotation}" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
 
-      log.debug(`  📤 Sending ${isSMILES ? 'SMILES' : 'nomenclature'} to MoleculeViewer: ${compoundName}`);
+      log.debug(`  📤 Sending ${isDirectSmiles ? 'SMILES' : 'nomenclature'} to MoleculeViewer: ${compoundName} (type: ${specifiedType || 'auto-detect'})`);
       return converted;
     });
   }
@@ -4509,6 +4672,13 @@ function observePageChanges() {
     clearTimeout(observer.timer);
     // Use shorter timeout for faster detection (especially for ChatGPT streaming)
     observer.timer = setTimeout(() => {
+      // CRITICAL: Skip re-scan if we're currently updating images
+      // This prevents images from disappearing when settings change
+      if (isUpdatingImages) {
+        log.debug('⏭️ Skipping re-scan - currently updating images');
+        return;
+      }
+
       if (settings.enabled) {
         log.inject('⚡ Re-scanning page after dynamic content detected');
         scanAndRender();
@@ -4617,9 +4787,12 @@ log.info('ℹ️  Run window.chemRendererDebug.scanPage() to manually trigger a 
 // ============================================
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Handler for "Render as Molecule" (treats text as chemical name/nomenclature)
+  // Uses IntegratedSearch to auto-detect type (compound/biomolecule/mineral)
   if (request.type === 'INSPECT_MOLECULE') {
-    const text = request.text;
-    console.log('%c🧪 Rendering selection as molecule (nomenclature):', 'color: #2196F3; font-weight: bold;', text);
+    const text = request.text?.trim();
+    if (!text) return;
+
+    console.log('%c🧪 Rendering selection as molecule (using IntegratedSearch):', 'color: #2196F3; font-weight: bold;', text);
 
     // Get the current selection to find where to insert the image
     const selection = window.getSelection();
@@ -4631,30 +4804,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const img = document.createElement('img');
     img.className = 'molecule-diagram molecule-viewer';
     img.alt = text;
-    img.title = text;
+    img.title = `Searching: ${text}`;
+    img.src = ''; // Empty src, will be filled by loader
 
     // Create molecule data - treats text as nomenclature
+    // IntegratedSearch will auto-detect if it's a compound/biomolecule/mineral
     const moleculeData = {
       nomenclature: text,
       type: 'nomenclature',
       options: {
         width: 400,
         height: 300,
-        isMoleculeViewer: true
+        scale: 1,
+        rotation: 0
+      },
+      isMoleculeViewer: true,
+      flags: {
+        // No type specified - let IntegratedSearch detect the type
+        compoundType: undefined,
+        isDirectSmiles: false
       }
     };
 
     // Set dataset
     img.dataset.moleculeViewer = btoa(JSON.stringify(moleculeData));
     img.dataset.loaded = 'false';
+    img.dataset.rotation = '0';
 
     // Style it to look good inline
     img.style.cssText = `
       display: inline-block;
       vertical-align: middle;
       margin: 0 4px;
-      min-width: 50px;
-      min-height: 50px;
+      min-width: 100px;
+      min-height: 80px;
+      background: rgba(128,128,128,0.1);
+      border-radius: 4px;
+      padding: 4px;
     `;
 
     // Replace selected text with the image
@@ -4664,20 +4850,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Clear selection
     selection.removeAllRanges();
 
-    // Load the molecule with a slight delay to ensure DOM update is complete
-    setTimeout(() => {
-      console.log('%c🔄 Triggering loadMoleculeViewerImage for selection...', 'color: #2196F3;');
-      if (window.loadMoleculeViewerImage) {
-        window.loadMoleculeViewerImage(img);
-      } else {
-        console.error('❌ loadMoleculeViewerImage not found on window object');
-      }
-    }, 50);
+    // Load the molecule using the same pipeline as chem:: syntax
+    console.log('%c🔄 Triggering molecule render via _loadMoleculeImage...', 'color: #2196F3;');
+    if (window._loadMoleculeImage) {
+      window._loadMoleculeImage(img);
+    } else {
+      console.error('❌ _loadMoleculeImage not found on window object');
+      img.alt = 'Error: Renderer not ready';
+    }
   }
 
   // Handler for "Render as SMILES" (treats text directly as SMILES string)
+  // Bypasses IntegratedSearch - sends directly to SmilesDrawer
   if (request.type === 'RENDER_SMILES') {
-    const text = request.text;
+    const text = request.text?.trim();
+    if (!text) return;
+
     console.log('%c🧪 Rendering selection as SMILES:', 'color: #4CAF50; font-weight: bold;', text);
 
     // Get the current selection to find where to insert the image
@@ -4689,31 +4877,44 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Create image element (same structure as standard renderer)
     const img = document.createElement('img');
     img.className = 'molecule-diagram molecule-viewer';
-    img.alt = text;
+    img.alt = `SMILES: ${text}`;
     img.title = `SMILES: ${text}`;
+    img.src = ''; // Empty src, will be filled by loader
 
-    // Create molecule data - treats text directly as SMILES (no PubChem lookup)
+    // Create molecule data - treats text directly as SMILES
+    // isDirectSmiles flag tells renderer to skip API lookup
     const moleculeData = {
       smiles: text,
+      nomenclature: text, // Also set nomenclature for display purposes
       type: 'smiles',
       options: {
         width: 400,
         height: 300,
-        isMoleculeViewer: true
+        scale: 1,
+        rotation: 0
+      },
+      isMoleculeViewer: true,
+      flags: {
+        compoundType: 'compound',
+        isDirectSmiles: true  // This tells renderer to use text as SMILES directly
       }
     };
 
     // Set dataset
     img.dataset.moleculeViewer = btoa(JSON.stringify(moleculeData));
     img.dataset.loaded = 'false';
+    img.dataset.rotation = '0';
 
     // Style it to look good inline
     img.style.cssText = `
       display: inline-block;
       vertical-align: middle;
       margin: 0 4px;
-      min-width: 50px;
-      min-height: 50px;
+      min-width: 100px;
+      min-height: 80px;
+      background: rgba(128,128,128,0.1);
+      border-radius: 4px;
+      padding: 4px;
     `;
 
     // Replace selected text with the image
@@ -4723,16 +4924,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Clear selection
     selection.removeAllRanges();
 
-    // Load the molecule with a slight delay to ensure DOM update is complete
-    setTimeout(() => {
-      console.log('%c🔄 Triggering loadMoleculeViewerImage for SMILES...', 'color: #4CAF50;');
-      if (window.loadMoleculeViewerImage) {
-        window.loadMoleculeViewerImage(img);
-      } else {
-        console.error('❌ loadMoleculeViewerImage not found on window object');
-      }
-    }, 50);
+    // Load the molecule using the same pipeline as chem:: syntax
+    console.log('%c🔄 Triggering SMILES render via _loadMoleculeImage...', 'color: #4CAF50;');
+    if (window._loadMoleculeImage) {
+      window._loadMoleculeImage(img);
+    } else {
+      console.error('❌ _loadMoleculeImage not found on window object');
+      img.alt = 'Error: Renderer not ready';
+    }
   }
 });
-
 

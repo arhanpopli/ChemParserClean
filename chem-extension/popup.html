@@ -13,14 +13,15 @@
 
     body {
       width: 360px;
-      min-height: 600px;
-      max-height: 650px;
+      height: 600px;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-size: 14px;
       color: #1a1a1a;
       background: #fafafa;
       overflow: hidden;
       position: relative;
+      margin: 0;
+      padding: 0;
     }
 
     /* Container for floating SVG molecules */
@@ -45,8 +46,7 @@
       z-index: 1;
       display: flex;
       flex-direction: column;
-      min-height: 600px;
-      max-height: 650px;
+      height: 600px;
       overflow: hidden;
     }
 
@@ -76,7 +76,9 @@
     .content {
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 12px;
+      min-height: 0;
     }
 
     .content::-webkit-scrollbar {
@@ -398,6 +400,43 @@
       border-color: #1a1a1a;
     }
 
+    /* Inline dropdown option - dropdown on right side */
+    .option-with-dropdown {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .option-with-dropdown:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .option-with-dropdown .option-label {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .option-with-dropdown .option-label strong {
+      display: block;
+      font-weight: 600;
+      color: #1a1a1a;
+      font-size: 13px;
+    }
+
+    .option-with-dropdown select {
+      width: auto;
+      min-width: 100px;
+      max-width: 140px;
+      margin-top: 0;
+      flex-shrink: 0;
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+
     /* Slider styles */
     .slider-option {
       padding: 8px 0;
@@ -606,7 +645,7 @@
               <strong>Show Carbon Atoms</strong>
               <small>Display C labels (+c flag)</small>
             </label>
-            <input type="checkbox" id="sdShowCarbonsToggle">
+            <input type="checkbox" id="sdShowCarbonsToggle" checked>
             <label class="toggle" for="sdShowCarbonsToggle"></label>
           </div>
 
@@ -624,7 +663,7 @@
               <strong>Show Methyl Groups</strong>
               <small>Display terminal CH₃ labels (+m flag)</small>
             </label>
-            <input type="checkbox" id="sdShowMethylsToggle">
+            <input type="checkbox" id="sdShowMethylsToggle" checked>
             <label class="toggle" for="sdShowMethylsToggle"></label>
           </div>
 
@@ -664,21 +703,20 @@
             <label class="toggle" for="sdFlipVerticalToggle"></label>
           </div>
 
-          <div class="option">
+          <div class="option-with-dropdown">
             <label class="option-label">
               <strong>Theme</strong>
-              <small>Color scheme for molecules</small>
             </label>
+            <select id="sdThemeSelect">
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="oldschool">Oldschool</option>
+              <option value="solarized">Solarized</option>
+              <option value="matrix">Matrix</option>
+              <option value="github">GitHub</option>
+              <option value="carbon">Carbon</option>
+            </select>
           </div>
-          <select id="sdThemeSelect">
-            <option value="light">Light (dark bonds on light bg)</option>
-            <option value="dark">Dark (light bonds on dark bg)</option>
-            <option value="oldschool">Oldschool (all black)</option>
-            <option value="solarized">Solarized</option>
-            <option value="matrix">Matrix (green)</option>
-            <option value="github">GitHub</option>
-            <option value="carbon">Carbon</option>
-          </select>
 
           <div class="slider-option">
             <div class="slider-header">
@@ -840,136 +878,75 @@
             <label class="toggle" for="enable3DViewerToggle"></label>
           </div>
 
-          <div class="option">
+          <div class="option-with-dropdown">
             <label class="option-label">
               <strong>3D Viewer Source</strong>
-              <small>Choose where to load 3D models from</small>
             </label>
+            <select id="viewer3DSourceSelect">
+              <option value="3dmol" selected>3Dmol.js</option>
+              <option value="molview">MolView</option>
+              <option value="molstar">Mol*</option>
+              <option value="pubchem">PubChem</option>
+            </select>
           </div>
-          <select id="viewer3DSourceSelect">
-            <option value="3dmol" selected>3Dmol.js - Client-side, customizable (recommended)</option>
-            <option value="molview">MolView (Local) - Advanced features</option>
-            <option value="molstar">Mol* (MolView.com renderer)</option>
-            <option value="pubchem">PubChem Official - Fallback option</option>
-          </select>
 
-          <!-- MolView Specific Options -->
-          <div id="molviewOptions"
-            style="display: none; margin-top: 10px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 10px;">
-            <div class="option">
+          <!-- MolView Compound Options (for small molecules) -->
+          <div id="molviewOptions" style="margin-top: 10px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 10px;">
+            <div style="font-size: 11px; font-weight: 600; color: #333; margin-bottom: 8px;">
+              🧪 Compound 3D Options (MolView)
+            </div>
+            <div class="option-with-dropdown">
               <label class="option-label"><strong>Representation</strong></label>
+              <select id="molviewRepresentationSelect">
+                <option value="ballAndStick">Ball & Stick</option>
+                <option value="stick">Stick</option>
+                <option value="vdwSpheres">vdW Spheres</option>
+                <option value="wireframe">Wireframe</option>
+                <option value="line">Line</option>
+              </select>
             </div>
-            <select id="molviewRepresentationSelect">
-              <option value="ballAndStick">Ball and Stick</option>
-              <option value="stick">Stick</option>
-              <option value="vdwSpheres">van der Waals Spheres</option>
-              <option value="wireframe">Wireframe</option>
-              <option value="line">Line</option>
-            </select>
 
-            <div class="option">
+            <div class="option-with-dropdown">
+              <label class="option-label"><strong>Background</strong></label>
+              <select id="compoundMolviewBgColorSelect">
+                <option value="black" selected>Black</option>
+                <option value="gray">Gray</option>
+                <option value="white">White</option>
+              </select>
+            </div>
+
+            <div class="option-with-dropdown">
               <label class="option-label"><strong>Engine</strong></label>
+              <select id="molviewEngineSelect">
+                <option value="glmol">GLmol</option>
+                <option value="jmol">Jmol</option>
+                <option value="chemdoodle">ChemDoodle</option>
+              </select>
             </div>
-            <select id="molviewEngineSelect">
-              <option value="glmol">GLmol</option>
-              <option value="jmol">Jmol</option>
-              <option value="chemdoodle">ChemDoodle</option>
-            </select>
 
-            <div class="option">
+            <div class="option-with-dropdown">
               <label class="option-label"><strong>Crystallography</strong></label>
+              <select id="molviewCrystallographySelect">
+                <option value="none">None</option>
+                <option value="unitcell">Unit cell</option>
+                <option value="supercell_2x2x2">2×2×2</option>
+                <option value="supercell_1x3x3">1×3×3</option>
+              </select>
             </div>
-            <select id="molviewCrystallographySelect">
-              <option value="none">None</option>
-              <option value="unitcell">Load unit cell</option>
-              <option value="supercell_2x2x2">Load 2x2x2 supercell</option>
-              <option value="supercell_1x3x3">Load 1x3x3 supercell</option>
-            </select>
           </div>
 
-          <div class="option">
-            <label class="option-label">
-              <strong>3D Visualization Style</strong>
-              <small>For 3Dmol.js only</small>
-            </label>
-          </div>
-          <select id="viewer3DStyleSelect">
-            <option value="stick">Stick - Lines only (thin)</option>
-            <option value="line">Line - Very thin wireframe</option>
-            <option value="cross">Cross - Simple cross marks</option>
-            <option value="sphere">Sphere - Space-filling (CPK)</option>
-            <option value="stick:sphere" selected>Ball and Stick - Sticks with atom spheres</option>
-            <option value="cartoon">Cartoon - For proteins (not for small molecules)</option>
-          </select>
-
-          <div class="option">
-            <label class="option-label">
-              <strong>Stick Thickness</strong>
-              <small>Only applies to: stick, ball-and-stick modes</small>
-            </label>
-          </div>
-          <select id="viewer3DStickRadiusSelect">
-            <option value="0.1">Thin (0.1)</option>
-            <option value="0.15" selected>Normal (0.15)</option>
-            <option value="0.2">Medium (0.2)</option>
-            <option value="0.25">Thick (0.25)</option>
-            <option value="0.3">Very Thick (0.3)</option>
-          </select>
-
-          <div class="option">
-            <label class="option-label">
-              <strong>Atom Sphere Size</strong>
-              <small>Only applies to: sphere, ball-and-stick modes</small>
-            </label>
-          </div>
-          <select id="viewer3DSphereRadiusSelect">
-            <option value="0.2">Small (0.2)</option>
-            <option value="0.3" selected>Normal (0.3)</option>
-            <option value="0.4">Medium (0.4)</option>
-            <option value="0.5">Large (0.5)</option>
-            <option value="0.7">Very Large (0.7)</option>
-            <option value="0.9">XXL (0.9)</option>
-            <option value="1.2">XXXL (1.2)</option>
-          </select>
-
-          <div class="option">
-            <label class="option-label" for="viewer3DAutoRotateToggle">
-              <strong>Auto-Rotate 3D Models</strong>
-              <small>Automatically spin molecules</small>
-            </label>
-            <input type="checkbox" id="viewer3DAutoRotateToggle" checked>
-            <label class="toggle" for="viewer3DAutoRotateToggle"></label>
-          </div>
-
-          <div class="option">
+          <div class="option-with-dropdown">
             <label class="option-label">
               <strong>3D Viewer Size</strong>
-              <small>Dimensions of embedded 3D viewer</small>
             </label>
+            <select id="viewer3DSizeSelect">
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="normal" selected>Normal</option>
+              <option value="large">Large</option>
+              <option value="xlarge">X-Large</option>
+            </select>
           </div>
-          <select id="viewer3DSizeSelect">
-            <option value="small">Small (200x150)</option>
-            <option value="medium">Medium (300x250)</option>
-            <option value="normal" selected>Normal (400x350)</option>
-            <option value="large">Large (600x450)</option>
-            <option value="xlarge">Extra Large (800x600)</option>
-          </select>
-
-          <div class="option">
-            <label class="option-label">
-              <strong>3D Background Color</strong>
-              <small>Background color for 3D viewer</small>
-            </label>
-          </div>
-          <select id="viewer3DBgColorSelect">
-            <option value="#1a1a2e" selected>Dark Blue (default)</option>
-            <option value="#000000">Black</option>
-            <option value="#FFFFFF">White</option>
-            <option value="#808080">Gray</option>
-            <option value="#2c3e50">Slate Gray</option>
-            <option value="#34495e">Dark Gray</option>
-            <option value="transparent">Transparent</option>
-          </select>
         </div>
       </div>
 
@@ -1000,19 +977,18 @@
             <label class="toggle" for="molviewBioAssemblyToggle"></label>
           </div>
 
-          <div class="option">
+          <div class="option-with-dropdown">
             <label class="option-label">
               <strong>Chain Representation</strong>
-              <small>How protein backbone is rendered</small>
             </label>
+            <select id="molviewChainTypeSelect">
+              <option value="ribbon" selected>Ribbon</option>
+              <option value="cylinders">Cylinder</option>
+              <option value="btube">B-factor</option>
+              <option value="ctrace">C-alpha</option>
+              <option value="bonds">Bonds</option>
+            </select>
           </div>
-          <select id="molviewChainTypeSelect">
-            <option value="ribbon" selected>Ribbon</option>
-            <option value="cylinders">Cylinder and Plate</option>
-            <option value="btube">B-factor Tube</option>
-            <option value="ctrace">C-alpha Trace</option>
-            <option value="bonds">Bonds</option>
-          </select>
 
           <div class="option">
             <label class="option-label" for="molviewChainBondsToggle">
@@ -1023,32 +999,30 @@
             <label class="toggle" for="molviewChainBondsToggle"></label>
           </div>
 
-          <div class="option">
+          <div class="option-with-dropdown">
             <label class="option-label">
-              <strong>Chain Color Scheme</strong>
-              <small>How to color the protein chain</small>
+              <strong>Chain Color</strong>
             </label>
+            <select id="molviewChainColorSelect">
+              <option value="ss" selected>Structure</option>
+              <option value="spectrum">Spectrum</option>
+              <option value="chain">Chain</option>
+              <option value="residue">Residue</option>
+              <option value="polarity">Polarity</option>
+              <option value="bfactor">B-factor</option>
+            </select>
           </div>
-          <select id="molviewChainColorSelect">
-            <option value="ss" selected>Secondary Structure</option>
-            <option value="spectrum">Spectrum (rainbow)</option>
-            <option value="chain">By Chain</option>
-            <option value="residue">By Residue</option>
-            <option value="polarity">By Polarity</option>
-            <option value="bfactor">B-factor (temperature)</option>
-          </select>
 
-          <div class="option">
+          <div class="option-with-dropdown">
             <label class="option-label">
-              <strong>Background Color (MolView)</strong>
-              <small>Background for MolView 3D viewer (proteins only)</small>
+              <strong>Background</strong>
             </label>
+            <select id="proteinMolviewBgColorSelect">
+              <option value="black" selected>Black</option>
+              <option value="gray">Gray</option>
+              <option value="white">White</option>
+            </select>
           </div>
-          <select id="proteinMolviewBgColorSelect">
-            <option value="black" selected>Black</option>
-            <option value="gray">Gray</option>
-            <option value="white">White</option>
-          </select>
         </div>
       </div>
 
@@ -1061,44 +1035,41 @@
           </svg>
         </div>
         <div class="section-content">
-          <div class="option">
+          <div class="option-with-dropdown">
             <label class="option-label">
               <strong>Representation</strong>
-              <small>How to display mineral structure</small>
             </label>
+            <select id="mineralRepresentationSelect">
+              <option value="ballAndStick" selected>Ball & Stick</option>
+              <option value="stick">Stick</option>
+              <option value="vdwSpheres">vdW Spheres</option>
+              <option value="wireframe">Wireframe</option>
+              <option value="line">Line</option>
+            </select>
           </div>
-          <select id="mineralRepresentationSelect">
-            <option value="ballAndStick" selected>Ball and Stick</option>
-            <option value="stick">Stick</option>
-            <option value="vdwSpheres">van der Waals Spheres</option>
-            <option value="wireframe">Wireframe</option>
-            <option value="line">Line</option>
-          </select>
 
-          <div class="option">
+          <div class="option-with-dropdown">
             <label class="option-label">
-              <strong>Background Color (MolView)</strong>
-              <small>Background for MolView 3D viewer (minerals only)</small>
+              <strong>Background</strong>
             </label>
+            <select id="mineralMolviewBgColorSelect">
+              <option value="black" selected>Black</option>
+              <option value="gray">Gray</option>
+              <option value="white">White</option>
+            </select>
           </div>
-          <select id="mineralMolviewBgColorSelect">
-            <option value="black" selected>Black</option>
-            <option value="gray">Gray</option>
-            <option value="white">White</option>
-          </select>
 
-          <div class="option">
+          <div class="option-with-dropdown">
             <label class="option-label">
               <strong>Crystallography</strong>
-              <small>Unit cell or supercell display</small>
             </label>
+            <select id="mineralCrystallographySelect">
+              <option value="none">None</option>
+              <option value="unitcell">Unit cell</option>
+              <option value="supercell_2x2x2" selected>2×2×2</option>
+              <option value="supercell_1x3x3">1×3×3</option>
+            </select>
           </div>
-          <select id="mineralCrystallographySelect">
-            <option value="none">None</option>
-            <option value="unitcell">Load unit cell</option>
-            <option value="supercell_2x2x2" selected>Load 2×2×2 supercell</option>
-            <option value="supercell_1x3x3">Load 1×3×3 supercell</option>
-          </select>
         </div>
       </div>
 
@@ -1125,28 +1096,8 @@
               <strong>Save Size By SMILES</strong>
               <small>Use same size for identical molecules</small>
             </label>
-            <input type="checkbox" id="saveSizeBySMILESToggle">
+            <input type="checkbox" id="saveSizeBySMILESToggle" checked>
             <label class="toggle" for="saveSizeBySMILESToggle"></label>
-          </div>
-        </div>
-      </div>
-
-      <!-- Performance -->
-      <div class="section">
-        <div class="section-title">
-          <span>Performance</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6,9 12,15 18,9"></polyline>
-          </svg>
-        </div>
-        <div class="section-content">
-          <div class="option">
-            <label class="option-label" for="perfModeToggle">
-              <strong>Lazy-Loading Mode</strong>
-              <small>Only render visible formulas</small>
-            </label>
-            <input type="checkbox" id="perfModeToggle" checked>
-            <label class="toggle" for="perfModeToggle"></label>
           </div>
         </div>
       </div>

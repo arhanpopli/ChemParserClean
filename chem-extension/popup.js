@@ -45,6 +45,7 @@ const viewer3DBgColorSelect = document.getElementById('viewer3DBgColorSelect');
 // MolView specific options
 const molviewOptions = document.getElementById('molviewOptions');
 const molviewRepresentationSelect = document.getElementById('molviewRepresentationSelect');
+const compoundMolviewBgColorSelect = document.getElementById('compoundMolviewBgColorSelect');
 const molviewEngineSelect = document.getElementById('molviewEngineSelect');
 const molviewCrystallographySelect = document.getElementById('molviewCrystallographySelect');
 
@@ -274,8 +275,9 @@ chrome.storage.sync.get(null, (storedSettings) => {
   if (viewer3DSizeSelect) viewer3DSizeSelect.value = settings.viewer3DSize || 'normal';
   if (viewer3DBgColorSelect) viewer3DBgColorSelect.value = settings.viewer3DBgColor || '#1a1a2e';
 
-  // Load MolView specific options
+  // Load MolView specific options (compound)
   if (molviewRepresentationSelect) molviewRepresentationSelect.value = settings.molviewRepresentation || 'ballAndStick';
+  if (compoundMolviewBgColorSelect) compoundMolviewBgColorSelect.value = settings.compoundMolviewBgColor || 'black';
   if (molviewEngineSelect) molviewEngineSelect.value = settings.molviewEngine || 'glmol';
   if (molviewCrystallographySelect) molviewCrystallographySelect.value = settings.molviewCrystallography || 'none';
 
@@ -759,11 +761,21 @@ if (viewer3DBgColorSelect) {
   });
 }
 
-// MolView specific options event listeners
+// MolView specific options event listeners (compound)
 if (molviewRepresentationSelect) {
   molviewRepresentationSelect.addEventListener('change', (e) => {
     chrome.storage.sync.set({ molviewRepresentation: e.target.value }, () => {
-      showStatus('Representation set to ' + e.target.options[e.target.selectedIndex].text + '. Reload page to apply.', 'success');
+      broadcastSettingsChange({ molviewRepresentation: e.target.value });
+      showStatus('Representation set to ' + e.target.options[e.target.selectedIndex].text, 'success');
+    });
+  });
+}
+
+if (compoundMolviewBgColorSelect) {
+  compoundMolviewBgColorSelect.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ compoundMolviewBgColor: e.target.value }, () => {
+      broadcastSettingsChange({ compoundMolviewBgColor: e.target.value });
+      showStatus('Compound background set to ' + e.target.options[e.target.selectedIndex].text, 'success');
     });
   });
 }

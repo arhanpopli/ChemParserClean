@@ -1,96 +1,48 @@
-# Chemistry Renderer - Extension Usage Guide
+*ChemTex Extension Guide*
+*Syntax:* chem:TYPE=VALUE+flag-flag:
+*Types:*
+smiles: Direct render (no API call)
+mol: Compound (PubChem lookup)
+biomol: Protein (RCSB PDB lookup)
+mineral: Mineral (COD crystal lookup)
+[none]: Auto-detect (slower)
 
-## 📌 Updated Syntax: `chem:text:`
+**Examples:**
+chem:ethanolsmiles=CCO: (Named SMILES - "ethanol" appears as tag, CCO is the SMILES)
+chem:mol=benzene: (PubChem lookup)
+chem:biomol=rhinovirus: (RCSB PDB lookup)
+chem:mineral=quartz: (COD crystal lookup)
+chem:aspirin: (Auto-detect - slower)
 
-The extension now uses **double colons** to clearly define what gets converted to a molecule.
+**Named SMILES Syntax:**
+Format: chem:<displayname>smiles=<SMILES>:
+Example: chem:Ethanolsmiles=CCO: → displays "Ethanol" as the tag, renders CCO structure
+Example: chem:Cyclohexanesmiles=C1CCCCC1: → displays "Cyclohexane", renders cyclohexane structure
+This is useful when ChatGPT generates SMILES directly - specify the compound name before "smiles="
 
-### Syntax
-```
-chem:TEXT:
-```
 
-Everything between the two colons is sent to MoleculeViewer.
+Flags (+ enable, - disable):
+You can use these flags to show and explain stuff, like resonance using aromatic rings, Or using atom numbers or show carbons to explain nomenclature etc, They are your tools
+c=Show carbons
+n=Atom numbers
+o=Aromatic rings
+h=Explicit H
+m=Show methyls
+i=Implicit H labels
+p=Flip Horiz
+q=Flip Vert
+d=Use Defaults Base
+s= size, usecase s150
 
-### Examples
+Combinations:
+chem:mol=benzene+c+n-o: (Overrides ALL settings)
+chem:mol=benzene+d+c-n: (Base defaults + overrides)
+chem:smiles=C1CCCCC1: (cyclohexane)
+Notes
+- Always use chem: prefix and end with :
+- `+d` ensures user's popup settings apply first, Without using +d overrides users default settings
 
-#### ✅ Chemical Names
-```
-chem:benzene:
-chem:acetone:
-chem:1-chloro-benzene:
-chem:aspirin:
-chem:caffeine:
-```
-
-#### ✅ SMILES Notation
-```
-chem:CCO:          (ethanol)
-chem:CC(=O)C:      (acetone)
-chem:c1ccccc1:     (benzene)
-chem:C1=CC=CC=C1:  (benzene alternative)
-```
-
-#### ✅ Complex Names
-```
-chem:2-methylpropane:
-chem:n-butyl acetate:
-chem:1,2-dichlorobenzene:
-chem:alpha-pinene:
-```
-
-## 🖥️ Starting the System
-
-### Windows Users
-1. **Double-click `START_ALL.bat`** in the MoleculeViewer folder
-2. A black command window will open (leave it running)
-3. Your browser will automatically open to http://localhost:5000
-4. You can now use the extension in ChatGPT
-
-### Manual Start (if needed)
-```bash
-cd C:\Users\Kapil\Personal\PROJECTS\Mol2chemfig\MoleculeViewer
-python -m flask --app app.api run --host=0.0.0.0 --port=5000
-```
-
-Then go to: http://localhost:5000
-
-## 🧪 Testing in ChatGPT
-
-1. Open ChatGPT
-2. Type: `Look up this molecule: chem:aspirin:`
-3. The extension will replace it with a rendered molecule image
-4. Or try: `Show me chem:1-methyl-naphthalene:`
-
-## 🎨 Features
-
-The extension automatically detects if your input is:
-- **Chemical name** (like `aspirin`, `caffeine`) → Looks up SMILES
-- **SMILES string** (like `CC(=O)O`, `c1ccccc1`) → Renders directly
-
-## ⚙️ Troubleshooting
-
-**"It's not rendering"**
-- Make sure the black command window from START_ALL.bat is still open
-- Reload the ChatGPT page (F5)
-- Check that you're using the correct syntax: `chem:NAME:`
-
-**"I see the text but not the image"**
-- Reload the ChatGPT page
-- Try a different molecule like `chem:benzene:`
-- Open the browser console (F12) to check for errors
-
-**"Port 5000 is already in use"**
-- Close other Flask instances or use a different port
-- Edit START_ALL.bat to use a different port number
-
-## 📝 Notes
-
-- Everything between `chem:` and `:` is processed
-- Names can include numbers, hyphens, and spaces
-- SMILES strings must use valid SMILES notation
-- Molecules are cached for 24 hours on the server
-- Works with ChatGPT and any website with the extension enabled
-
----
-
-**Quick Start:** Just double-click `START_ALL.bat` and you're ready to go!
+- Without `+d`, flags strictly define the view (good for teaching)
+- 3D mode falls back to 2D if 3D unavailable
+- Never EVER wrap `chem:text:` in inline backticks NEVER USE THEM (pill-style inline code).
+- When writing long reactions, You can use codeblocks with multiple compounds, so the user can scroll horizontally to see more molecules

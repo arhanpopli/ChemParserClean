@@ -8,45 +8,27 @@
 // ============================================
 const SIZE_STEP = 20; // Pixels to increase/decrease per click
 const MIN_SIZE = 100; // Minimum size in pixels
-const MAX_SIZE = 800; // Maximum size in pixels
+// NO MAX SIZE - users can make images as large as they want!
 
-// Non-linear (parabolic) default size calculation
-// Instead of linear scaling, use a parabolic curve where size increase rate diminishes
-// This prevents very large molecules from becoming excessively large
-const BASE_SIZE = 150; // Base size for small molecules
-const SIZE_SCALE_FACTOR = 0.5; // Controls the rate of size increase (lower = slower growth)
-const MAX_DEFAULT_SIZE = 400; // Maximum default size for very large molecules
+// Default size - now SAME for all molecules
+// The intelligent scaling happens in renderClientSide based on atom count
+const BASE_SIZE = 300; // Default size for all molecules (was 150)
+const DEFAULT_WIDTH = BASE_SIZE;
+const DEFAULT_HEIGHT = Math.round(BASE_SIZE * 0.8); // 4:5 aspect ratio
 
 /**
- * Calculate default size based on molecule complexity using parabolic scaling
- * Formula: size = BASE_SIZE + sqrt(complexity) * SCALE_FACTOR
- * This creates a curve where size increases quickly at first, then slows down
+ * Calculate default size - now returns SAME size for all molecules
+ * The intelligent scaling is handled by renderClientSide based on atom count
+ * This ensures users can resize any molecule without artificial restrictions
  */
 function calculateDefaultSize(moleculeData) {
-  if (!moleculeData) return { width: BASE_SIZE, height: BASE_SIZE };
-
-  // Estimate molecule complexity from SMILES length or atom count
-  let complexity = 0;
-  if (moleculeData.smiles) {
-    complexity = moleculeData.smiles.length;
-  } else if (moleculeData.nomenclature) {
-    complexity = moleculeData.nomenclature.length * 0.5; // Nomenclature is typically longer
-  }
-
-  // Apply parabolic scaling: sqrt creates the diminishing rate of increase
-  const scaledSize = BASE_SIZE + Math.sqrt(complexity) * SIZE_SCALE_FACTOR * 50;
-
-  // Clamp to reasonable bounds
-  const finalSize = Math.min(MAX_DEFAULT_SIZE, Math.max(BASE_SIZE, scaledSize));
-
+  // All molecules start at the same size
+  // Intelligent scaling happens during rendering, not here
   return {
-    width: Math.round(finalSize),
-    height: Math.round(finalSize * 0.67) // Maintain aspect ratio
+    width: DEFAULT_WIDTH,
+    height: DEFAULT_HEIGHT
   };
 }
-
-const DEFAULT_WIDTH = BASE_SIZE;
-const DEFAULT_HEIGHT = Math.round(BASE_SIZE * 0.67);
 
 // ============================================
 // SIZE STORAGE MANAGEMENT
@@ -252,21 +234,21 @@ function createSizeControls(container, svgImg, moleculeData, settings) {
  * Adjust image size
  */
 function adjustImageSize(container, svgImg, moleculeData, delta, settings) {
-  // Get current size
-  const currentWidth = parseInt(svgImg.style.maxWidth) || DEFAULT_WIDTH;
-  const currentHeight = parseInt(svgImg.style.maxHeight) || DEFAULT_HEIGHT;
+  // Get current size - try width first, fall back to offsetWidth
+  const currentWidth = parseInt(svgImg.style.width) || svgImg.offsetWidth || DEFAULT_WIDTH;
+  const currentHeight = parseInt(svgImg.style.height) || svgImg.offsetHeight || DEFAULT_HEIGHT;
 
   // Calculate new size
   let newWidth = currentWidth + delta;
   let newHeight = currentHeight + Math.round(delta * (currentHeight / currentWidth));
 
-  // Clamp to min/max
-  newWidth = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newWidth));
-  newHeight = Math.max(MIN_SIZE, Math.min(MAX_SIZE, newHeight));
+  // Only enforce minimum size, NO MAXIMUM
+  newWidth = Math.max(MIN_SIZE, newWidth);
+  newHeight = Math.max(MIN_SIZE, newHeight);
 
-  // Apply new size
-  svgImg.style.maxWidth = `${newWidth}px`;
-  svgImg.style.maxHeight = `${newHeight}px`;
+  // Apply new size - use width/height NOT maxWidth/maxHeight!
+  svgImg.style.width = `${newWidth}px`;
+  svgImg.style.height = `${newHeight}px`;
 
   // Save size if enabled
   const pageUrl = window.location.href;
@@ -295,9 +277,9 @@ async function wrapImageWithSizeControls(svgImg, originalImg, moleculeData, sett
     const pageUrl = window.location.href;
     const savedSize = await loadImageSize(moleculeData, pageUrl, settings);
 
-    // Apply saved size to image
-    svgImg.style.maxWidth = `${savedSize.width}px`;
-    svgImg.style.maxHeight = `${savedSize.height}px`;
+    // Apply saved size to image - use width/height NOT maxWidth/maxHeight
+    svgImg.style.width = `${savedSize.width}px`;
+    svgImg.style.height = `${savedSize.height}px`;
 
     // Store molecule data on the image for later reference
     if (moleculeData) {

@@ -505,7 +505,22 @@ async function lazyReRenderMolecules(newSettings) {
         continue;
       }
 
+      // Skip molecules with locked flags - they shouldn't be affected by global settings
+      // Check if flags are locked by decoding the moleculeViewer data
+      if (img.dataset.moleculeViewer) {
+        try {
+          const data = JSON.parse(atob(img.dataset.moleculeViewer));
+          if (data.flags?.flagsLocked && !data.flags?.useDefaults) {
+            console.log(`[ChemRenderer] ⏭️ Skipping ${nomenclature} - flags are locked (explicit flags set)`);
+            continue;
+          }
+        } catch (e) {
+          // If we can't decode, just continue with re-render
+        }
+      }
+
       console.log(`[ChemRenderer] 🔄 Re-rendering: ${nomenclature} (type: ${compoundType})`);
+
 
       // Build molecule data with CURRENT settings based on compound type
       let moleculeData;
@@ -2540,122 +2555,317 @@ function injectStyles() {
 }
 
 // Parse flags from chem: notation and return overrides
+// NEW SYNTAX:
+//   chem:smiles=CCO:           → Direct SMILES to SmilesDrawer
+//   chem:mol=benzene:          → Uses PubChem for SMILES (compound)
+//   chem:biomol=rhinovirus:    → Uses RCSB for pdbid
+//   chem:mineral=quartz:       → Uses COD for codid/smiles
+//   chem:mol=benzene+c+n-o:    → Flags without +d (completely overrides settings)
+//   chem:mol=benzene+d+c+n-o:  → Flags with +d (applies to default settings)
+// FLAGS:
+// FLAGS:
+//   c = show carbons, n = atom numbers, o = aromatic rings
+//   h = show hydrogens, p = flip horizontal, q = flip vertical
+//   +flag to enable, -flag to disable
+//   +d = use defaults then apply flags (vs completely override)
 function parseChemFlags(chemFormula) {
-  // Example: chem:histamine/+c+o+m+n+3d: or chem:histamine/d-c: or chem:histamine/+s200+r45:
-  // New: chem:insulin/+biomolecule: or chem:quartz/+mineral: or chem:aspirin/+compound:
   const result = {
-    useDefaults: false, // Whether to use the user's defaults
+    useDefaults: false,           // +d flag: Whether to use the user's defaults as base
+    flagsLocked: false,           // Whether flags are explicitly set (prevents popup from overriding)
     showCarbons: undefined,
     aromaticCircles: undefined,
     showMethyls: undefined,
     atomNumbers: undefined,
     flipHorizontal: undefined,
     flipVertical: undefined,
-    addHydrogens: undefined, // Add explicit hydrogens (+h)
-    showImplicitHydrogens: undefined, // Show H counts in labels like CH3, OH (+i)
-    size: undefined, // Scale factor
+    addHydrogens: undefined,
+    showImplicitHydrogens: undefined,
+    size: undefined,
     rotation: undefined,
-    is3D: false,
     isPubchem: false,
-    // Compound type flags - skip IntegratedSearch when specified
-    compoundType: undefined,  // 'compound', 'biomolecule', or 'mineral'
-    // Direct SMILES flag - treat input as SMILES string directly
-    isDirectSmiles: false
+    compoundType: undefined,      // 'compound', 'biomolecule', 'mineral', or 'smiles'
+    isDirectSmiles: false,
+    moleculeName: null            // The extracted molecule name/value
   };
 
-  // Check if it contains flags
+  if (!chemFormula) return result;
+
+  // ===== NEW SYNTAX: chem:type=value: OR chem:<name>type=value: format =====
+  // Match: chem:smiles=CCO:, chem:mol=benzene+c+n:, chem:biomol=hemoglobin:, chem:mineral=quartz:
+  // ALSO: chem:<name>smiles=CCO: where <name> becomes the molecule tag
+  // Example: chem:ethanolsmiles=CCO: → name="ethanol", type="smiles", value="CCO"
+
+  // First try the standard format: chem:type=value: (check this FIRST to avoid false named matches)
+  const newSyntaxMatch = chemFormula.match(/chem:(smiles|mol|biomol|mineral)=([^:]+):/i);
+
+  // Only try named format if standard didn't match
+  // Named format: chem:<name>type=value: where name must start with a letter and be 2+ chars
+  // Examples: chem:ethanolsmiles=CCO:, chem:Aspirinmol=aspirin:
+  const namedSyntaxMatch = !newSyntaxMatch ?
+    chemFormula.match(/chem:([a-zA-Z][a-zA-Z0-9\s]{1,}?)(smiles|mol|biomol|mineral)=([^:]+):/i) : null;
+
+  // Handle standard syntax first (chem:type=value:)
+  if (newSyntaxMatch) {
+    const type = newSyntaxMatch[1].toLowerCase();
+    const valueWithFlags = newSyntaxMatch[2];
+
+    // Set compound type based on prefix
+    switch (type) {
+      case 'smiles':
+        result.compoundType = 'smiles';
+        result.isDirectSmiles = true;
+        break;
+      case 'mol':
+        result.compoundType = 'compound';
+        result.isPubchem = true;
+        break;
+      case 'biomol':
+        result.compoundType = 'biomolecule';
+        break;
+      case 'mineral':
+        result.compoundType = 'mineral';
+        break;
+    }
+
+    // Extract molecule name (everything before flags)
+    // CRITICAL: Don't split on hyphens that are part of compound names like "butan-2-ol"
+    // Flags are: +c, +n, -c, -o, etc. (single letter after +/-)
+    // But "butan-2-ol" has "-2" and "-ol" which are NOT flags
+    let moleculeName = valueWithFlags;
+
+    // Find the first ACTUAL flag: +letter or -letter where it's NOT part of the name
+    // Look for patterns like +c, +n, -c, -o at the end, separated from the name
+    const flagMatch = valueWithFlags.match(/^(.+?)([+\-][a-zA-Z](?:[+\-][a-zA-Z])*)$/);
+    if (flagMatch) {
+      moleculeName = flagMatch[1];
+      result.flagsLocked = true;
+    }
+    result.moleculeName = moleculeName.trim();
+
+    // For direct SMILES, store the SMILES value
+    if (type === 'smiles') {
+      result.smilesValue = moleculeName.trim();
+    }
+
+    // Parse flags (if any were found)
+    const flagsPart = flagMatch ? flagMatch[2] : '';
+    if (flagsPart.includes('+d')) result.useDefaults = true;
+
+    const plusFlags = flagsPart.match(/\+([a-zA-Z0-9]+)/g);
+    if (plusFlags) {
+      plusFlags.forEach(flag => {
+        const f = flag.substring(1).toLowerCase();
+        if (f === 'c') result.showCarbons = true;
+        if (f === 'o') result.aromaticCircles = true;
+        if (f === 'm') result.showMethyls = true;
+        if (f === 'n') result.atomNumbers = true;
+        if (f === 'h') result.addHydrogens = true;
+        if (f === 'i') result.showImplicitHydrogens = true;
+        if (f === 'p') result.flipHorizontal = true;
+        if (f === 'q') result.flipVertical = true;
+        if (f === 'd') result.useDefaults = true;
+        if (f.startsWith('s') && f.length > 1) {
+          const sizeValue = parseInt(f.substring(1));
+          if (!isNaN(sizeValue)) result.size = sizeValue / 100;
+        }
+      });
+    }
+
+    const minusFlags = flagsPart.match(/-([a-zA-Z])/g);
+    if (minusFlags) {
+      minusFlags.forEach(flag => {
+        const f = flag.substring(1).toLowerCase();
+        if (f === 'c') result.showCarbons = false;
+        if (f === 'o') result.aromaticCircles = false;
+        if (f === 'm') result.showMethyls = false;
+        if (f === 'n') result.atomNumbers = false;
+        if (f === 'h') result.addHydrogens = false;
+        if (f === 'i') result.showImplicitHydrogens = false;
+        if (f === 'p') result.flipHorizontal = false;
+        if (f === 'q') result.flipVertical = false;
+      });
+    }
+
+    console.log('%c📦 Standard syntax parsed:', 'color: #2196F3;', { type, value: valueWithFlags, result });
+    return result;
+  }
+
+  // Handle named syntax (chem:<name>type=value:)
+  if (namedSyntaxMatch) {
+    const displayName = namedSyntaxMatch[1].trim(); // e.g., "ethanol"
+    const type = namedSyntaxMatch[2].toLowerCase(); // e.g., "smiles"
+    const valueWithFlags = namedSyntaxMatch[3]; // e.g., "CCO+c"
+
+    // Set compound type based on prefix
+    switch (type) {
+      case 'smiles':
+        result.compoundType = 'smiles';
+        result.isDirectSmiles = true;
+        break;
+      case 'mol':
+        result.compoundType = 'compound';
+        result.isPubchem = true;
+        break;
+      case 'biomol':
+        result.compoundType = 'biomolecule';
+        break;
+      case 'mineral':
+        result.compoundType = 'mineral';
+        break;
+    }
+
+    // Use the display name for the tag (not the SMILES/value string)
+    result.moleculeName = displayName;
+
+    // For SMILES, store the actual SMILES separately (before flags)
+    const firstFlagIndex = valueWithFlags.search(/[+-]/);
+    const actualValue = firstFlagIndex !== -1 ? valueWithFlags.substring(0, firstFlagIndex).trim() : valueWithFlags.trim();
+    if (type === 'smiles') {
+      result.smilesValue = actualValue;
+    }
+
+    if (firstFlagIndex !== -1) {
+      result.flagsLocked = true;
+    }
+
+    // Parse flags from the value part
+    const flagsPart = firstFlagIndex !== -1 ? valueWithFlags.substring(firstFlagIndex) : '';
+
+    // Check for +d flag (use defaults as base)
+    if (flagsPart.includes('+d')) {
+      result.useDefaults = true;
+    }
+
+    // Parse + flags (enable)
+    const plusFlags = flagsPart.match(/\+([a-zA-Z0-9]+)/g);
+    if (plusFlags) {
+      plusFlags.forEach(flag => {
+        const f = flag.substring(1).toLowerCase();
+        if (f === 'c') result.showCarbons = true;
+        if (f === 'o') result.aromaticCircles = true;
+        if (f === 'm') result.showMethyls = true;
+        if (f === 'n') result.atomNumbers = true;
+        if (f === 'h') result.addHydrogens = true;
+        if (f === 'i') result.showImplicitHydrogens = true;
+        if (f === 'p') result.flipHorizontal = true;
+        if (f === 'q') result.flipVertical = true;
+        if (f === 'd') result.useDefaults = true;
+        // Size: +s150 = 1.5x scale
+        if (f.startsWith('s') && f.length > 1) {
+          const size = parseInt(f.substring(1));
+          if (!isNaN(size)) result.size = size / 100;
+        }
+        // Rotation: +r45 = 45 degrees
+        if (f.startsWith('r') && f.length > 1) {
+          const rot = parseInt(f.substring(1));
+          if (!isNaN(rot)) result.rotation = rot;
+        }
+      });
+    }
+
+    // Parse - flags (disable)
+    const minusFlags = flagsPart.match(/-([a-zA-Z])/g);
+    if (minusFlags) {
+      minusFlags.forEach(flag => {
+        const f = flag.substring(1).toLowerCase();
+        if (f === 'c') result.showCarbons = false;
+        if (f === 'o') result.aromaticCircles = false;
+        if (f === 'm') result.showMethyls = false;
+        if (f === 'n') result.atomNumbers = false;
+        if (f === 'h') result.addHydrogens = false;
+        if (f === 'i') result.showImplicitHydrogens = false;
+        if (f === 'p') result.flipHorizontal = false;
+        if (f === 'q') result.flipVertical = false;
+      });
+    }
+
+    console.log('%c🏷️ Named syntax parsed:', 'color: #9C27B0;', { displayName, type, value: valueWithFlags, smilesValue: result.smilesValue, result });
+    return result;
+  }
+
+  // ===== LEGACY SYNTAX: chem:name/flags: or chem:name+flags: =====
+  // Example: chem:histamine/+c+o: or chem:histamine+c+o:
+
+  // Check if it contains flags with / separator
   if (chemFormula.includes('/')) {
     const parts = chemFormula.split('/');
     if (parts.length > 1) {
-      // The part after the first slash might contain flags
       const flagsPart = parts[1];
       if (flagsPart.includes(':')) {
-        // Get the flags before the colon
         const flags = flagsPart.split(':')[0].toLowerCase();
 
-        // Check for 'd' flag (use defaults)
         if (flags.includes('d')) {
           result.useDefaults = true;
-          // Process default overrides like d-c, d-o, etc.
-          const remainingFlags = flags.replace('d', '');
-          // Handle individual overrides like -c, -o, -m, -n, -p, -q
-          if (remainingFlags.includes('-c')) result.showCarbons = false;
-          if (remainingFlags.includes('-o')) result.aromaticCircles = false;
-          if (remainingFlags.includes('-m')) result.showMethyls = false;
-          if (remainingFlags.includes('-n')) result.atomNumbers = false;
-          if (remainingFlags.includes('-p')) result.flipHorizontal = true;  // Flip horizontal
-          if (remainingFlags.includes('-q')) result.flipVertical = true;    // Flip vertical
-          // -i flag removed - inversion now auto-applied based on dark mode
+          const remaining = flags.replace('d', '');
+          if (remaining.includes('-c')) result.showCarbons = false;
+          if (remaining.includes('-o')) result.aromaticCircles = false;
+          if (remaining.includes('-m')) result.showMethyls = false;
+          if (remaining.includes('-n')) result.atomNumbers = false;
+          if (remaining.includes('-p')) result.flipHorizontal = true;
+          if (remaining.includes('-q')) result.flipVertical = true;
         }
       }
     }
   }
 
-  // Check for + flags
+  // Check for + flags anywhere in the formula
   if (chemFormula.includes('+')) {
+    result.flagsLocked = true;  // Has explicit flags
     const flagMatches = chemFormula.match(/\+([a-zA-Z0-9]+)/g);
     if (flagMatches) {
       flagMatches.forEach(flag => {
-        const flagContent = flag.substring(1).toLowerCase(); // Remove the + and normalize to lowercase
-
-        if (flagContent === 'c') result.showCarbons = true;
-        if (flagContent === 'o') result.aromaticCircles = true;
-        if (flagContent === 'm') result.showMethyls = true;
-        if (flagContent === 'n') result.atomNumbers = true;
-        if (flagContent === 'h') result.addHydrogens = true;  // Add explicit hydrogens (+h)
-        if (flagContent === 'i') result.showImplicitHydrogens = true;  // Show H counts in labels (+i)
-        if (flagContent === 'p') result.flipHorizontal = true;  // Flip horizontal (+p)
-        if (flagContent === 'q') result.flipVertical = true;    // Flip vertical (+q)
-        if (flagContent === '3d') result.is3D = true;
-        if (flagContent === 'pubchem') result.isPubchem = true;
-        // Compound type flags - tells ChatGPT/AI what type this is
-        if (flagContent === 'compound') result.compoundType = 'compound';
-        if (flagContent === 'biomolecule' || flagContent === 'bio' || flagContent === 'protein') result.compoundType = 'biomolecule';
-        if (flagContent === 'mineral' || flagContent === 'crystal') result.compoundType = 'mineral';
-        // Direct SMILES flag - skip API lookup, treat input as SMILES directly
-        if (flagContent === 'smiles' || flagContent === 'smi') result.isDirectSmiles = true;
-        // +inv flag removed - inversion now auto-applied based on dark mode
-
-        // Handle flags with values
-        if (flagContent.startsWith('s')) { // Size flag: +s200
-          const sizeValue = parseInt(flagContent.substring(1));
-          if (!isNaN(sizeValue)) result.size = sizeValue / 100; // Convert to scale factor
+        const f = flag.substring(1).toLowerCase();
+        if (f === 'c') result.showCarbons = true;
+        if (f === 'o') result.aromaticCircles = true;
+        if (f === 'm') result.showMethyls = true;
+        if (f === 'n') result.atomNumbers = true;
+        if (f === 'h') result.addHydrogens = true;
+        if (f === 'i') result.showImplicitHydrogens = true;
+        if (f === 'p') result.flipHorizontal = true;
+        if (f === 'q') result.flipVertical = true;
+        if (f === 'd') result.useDefaults = true;
+        if (f === 'pubchem') result.isPubchem = true;
+        if (f === 'compound') result.compoundType = 'compound';
+        if (f === 'biomolecule' || f === 'bio' || f === 'protein') result.compoundType = 'biomolecule';
+        if (f === 'mineral' || f === 'crystal') result.compoundType = 'mineral';
+        if (f === 'smiles' || f === 'smi') result.isDirectSmiles = true;
+        if (f.startsWith('s') && f.length > 1) {
+          const size = parseInt(f.substring(1));
+          if (!isNaN(size)) result.size = size / 100;
         }
-        if (flagContent.startsWith('r')) { // Rotation flag: +r60
-          const rotationValue = parseInt(flagContent.substring(1));
-          if (!isNaN(rotationValue)) result.rotation = rotationValue;
+        if (f.startsWith('r') && f.length > 1) {
+          const rot = parseInt(f.substring(1));
+          if (!isNaN(rot)) result.rotation = rot;
         }
       });
     }
   }
 
-  // Check for - flags (to disable options) - but not the ones in the /d- format
-  // Only process - flags if they're not part of the /d- pattern
+  // Check for - flags (disable)
   const slashIndex = chemFormula.indexOf('/');
   const afterSlash = slashIndex !== -1 ? chemFormula.substring(slashIndex) : '';
-  const minusFlags = chemFormula.match(/-([cmnhopqi])/gi);
+  const minusFlagsMatch = chemFormula.match(/-([cmnhopqi])/gi);
 
-  if (minusFlags) {
-    minusFlags.forEach(flag => {
-      // Skip if this flag is part of the /d- pattern
+  if (minusFlagsMatch) {
+    result.flagsLocked = true;  // Has explicit flags
+    minusFlagsMatch.forEach(flag => {
       if (!afterSlash.toLowerCase().includes(flag.toLowerCase())) {
-        const flagContent = flag.substring(1).toLowerCase(); // Remove the -
-
-        if (flagContent === 'c') result.showCarbons = false;
-        if (flagContent === 'o') result.aromaticCircles = false;
-        if (flagContent === 'm') result.showMethyls = false;
-        if (flagContent === 'n') result.atomNumbers = false;
-        if (flagContent === 'h') result.addHydrogens = false;    // Disable explicit hydrogens (-h)
-        if (flagContent === 'i') result.showImplicitHydrogens = false;  // Hide H counts in labels (-i)
-        if (flagContent === 'p') result.flipHorizontal = false;  // Disable flip horizontal (-p)
-        if (flagContent === 'q') result.flipVertical = false;    // Disable flip vertical (-q)
-        // -i flag removed - inversion now auto-applied based on dark mode
+        const f = flag.substring(1).toLowerCase();
+        if (f === 'c') result.showCarbons = false;
+        if (f === 'o') result.aromaticCircles = false;
+        if (f === 'm') result.showMethyls = false;
+        if (f === 'n') result.atomNumbers = false;
+        if (f === 'h') result.addHydrogens = false;
+        if (f === 'i') result.showImplicitHydrogens = false;
+        if (f === 'p') result.flipHorizontal = false;
+        if (f === 'q') result.flipVertical = false;
       }
     });
   }
 
   return result;
 }
+
 
 // Helper function to strip flags from molecule name
 // Example: "phenol/d-c" → "phenol", "histamine/+c+o" → "histamine"
@@ -2714,26 +2924,22 @@ function applyFlagOverrides(baseSettings, flagOverrides) {
  * @returns {HTMLElement} The wrapper element
  */
 function wrapImageWithRotationContainer(img, rotation, moleculeName, moleculeData) {
-  // Always create wrapper container (img elements cannot have children for hover controls)
+  // Create a MINIMAL wrapper - only for controls positioning, NO size constraints whatsoever
   const wrapper = document.createElement('div');
-  wrapper.className = 'molecule-rotation-wrapper molecule-diagram';
+  wrapper.className = 'molecule-container';
   wrapper.style.cssText = `
-    display: inline-block !important;
-    position: relative !important;
-    vertical-align: middle !important;
-    margin: 0 12px 0 0 !important;
-    padding: 0 !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    line-height: 0 !important;
-    width: fit-content !important;
-    height: fit-content !important;
+    display: inline-block;
+    position: relative;
+    vertical-align: middle;
+    margin: 0 12px 8px 0;
   `;
+  // CRITICAL: NO width, NO height, NO max-width, NO max-height, NO fit-content
+  // The wrapper will naturally wrap whatever size the image is
 
   // Add the image to wrapper
   wrapper.appendChild(img);
 
-  // Add hover controls to wrapper (not to img, since img can't have children)
+  // Add hover controls to wrapper (3D button, name tag, size arrows)
   addHoverControls(wrapper, moleculeName, moleculeData);
 
   return wrapper;
@@ -2861,36 +3067,111 @@ function addHoverControls(element, moleculeName, moleculeData) {
       btn.style.background = 'rgba(0, 0, 0, 0.9)';
     });
     btn.addEventListener('mouseleave', () => {
-      btn.style.background = 'rgba(0, 0, 0, 0.7)';
     });
   });
 
-  let currentScale = 1.0;
+  // Find the img OR iframe element (iframe for 3D viewer, img for 2D)
   const imgElement = element.querySelector('img');
+  const iframeElement = element.querySelector('iframe');
+  const targetElement = imgElement || iframeElement;
+
+  // DEBUG: Log what we find
+  console.log('🔍 Size control setup:', {
+    element: element,
+    elementClass: element.className,
+    imgElement: imgElement,
+    iframeElement: iframeElement,
+    targetElement: targetElement,
+    targetType: targetElement ? targetElement.tagName : 'none',
+    children: Array.from(element.children).map(c => c.tagName)
+  });
 
   upButton.addEventListener('click', (e) => {
     e.stopPropagation();
-    currentScale = Math.min(currentScale + 0.2, 5.0);
-    if (imgElement) {
+    console.log('🔼 UP BUTTON CLICKED!');
+
+    // Re-query in case it changed (2D/3D toggle)
+    const img = element.querySelector('img') || element.querySelector('iframe');
+    console.log('🔍 Looking for img/iframe:', { found: !!img, type: img ? img.tagName : 'none' });
+
+    if (img) {
       // Get current rendered width as baseline (handles SVG data URLs properly)
-      const currentWidth = imgElement.offsetWidth || imgElement.width || imgElement.naturalWidth || 300;
+      const currentWidth = img.offsetWidth || img.width || img.naturalWidth || 300;
+      const currentStyle = window.getComputedStyle(img);
+
+      console.log('📐 Current state:', {
+        offsetWidth: img.offsetWidth,
+        width: img.width,
+        naturalWidth: img.naturalWidth,
+        styleWidth: img.style.width,
+        computedWidth: currentStyle.width,
+        using: currentWidth
+      });
+
       const newWidth = Math.round(currentWidth * 1.2); // 20% increase
-      imgElement.style.width = `${newWidth}px`;
-      imgElement.style.height = 'auto';
-      console.log(`Size up: ${currentWidth}px → ${newWidth}px (scale: ${currentScale.toFixed(2)})`);
+
+      // Get current height to maintain aspect ratio
+      const currentHeight = img.offsetHeight || img.height || img.naturalHeight || 200;
+      const newHeight = Math.round(currentHeight * 1.2); // Same 20% increase
+
+      // FORCE both width AND height - don't use auto, set explicitly!
+      img.style.setProperty('width', `${newWidth}px`, 'important');
+      img.style.setProperty('height', `${newHeight}px`, 'important');
+      img.style.setProperty('max-width', 'none', 'important');
+      img.style.setProperty('max-height', 'none', 'important');
+      img.style.setProperty('min-width', `${newWidth}px`, 'important');
+      img.style.setProperty('min-height', `${newHeight}px`, 'important');
+
+      // CRITICAL: Sync wrapper (element) size so controls stay in corners
+      // 'element' is the wrapper that addHoverControls was called on
+      element.style.setProperty('width', `${newWidth}px`, 'important');
+      element.style.setProperty('height', `${newHeight}px`, 'important');
+      element.style.setProperty('max-width', 'none', 'important');
+      element.style.setProperty('max-height', 'none', 'important');
+
+      console.log(`✅ Size UP: ${currentWidth}x${currentHeight} → ${newWidth}x${newHeight} (wrapper synced)`);
+
+      // Verify it worked
+      setTimeout(() => {
+        console.log('✔️ After resize:', {
+          offsetWidth: img.offsetWidth,
+          styleWidth: img.style.width
+        });
+      }, 100);
+    } else {
+      console.error('❌ No img element found for size control');
+      console.error('Element structure:', element.innerHTML.substring(0, 200));
     }
   });
 
   downButton.addEventListener('click', (e) => {
     e.stopPropagation();
-    currentScale = Math.max(currentScale - 0.2, 0.5);
-    if (imgElement) {
-      // Get current rendered width as baseline
-      const currentWidth = imgElement.offsetWidth || imgElement.width || imgElement.naturalWidth || 300;
-      const newWidth = Math.round(currentWidth * 0.8333); // ~20% decrease (inverse of 1.2)
-      imgElement.style.width = `${newWidth}px`;
-      imgElement.style.height = 'auto';
-      console.log(`Size down: ${currentWidth}px → ${newWidth}px (scale: ${currentScale.toFixed(2)})`);
+    console.log('🔽 DOWN BUTTON CLICKED!');
+
+    const img = element.querySelector('img') || element.querySelector('iframe');
+    if (img) {
+      const currentWidth = img.offsetWidth || img.width || img.naturalWidth || 300;
+      const currentHeight = img.offsetHeight || img.height || img.naturalHeight || 200;
+
+      const newWidth = Math.max(100, Math.round(currentWidth * 0.8333)); // ~20% decrease, min 100px
+      const newHeight = Math.max(80, Math.round(currentHeight * 0.8333)); // ~20% decrease, min 80px
+
+      img.style.setProperty('width', `${newWidth}px`, 'important');
+      img.style.setProperty('height', `${newHeight}px`, 'important');
+      img.style.setProperty('max-width', 'none', 'important');
+      img.style.setProperty('max-height', 'none', 'important');
+      img.style.setProperty('min-width', `${newWidth}px`, 'important');
+      img.style.setProperty('min-height', `${newHeight}px`, 'important');
+
+      // CRITICAL: Sync wrapper (element) size so controls stay in corners
+      element.style.setProperty('width', `${newWidth}px`, 'important');
+      element.style.setProperty('height', `${newHeight}px`, 'important');
+      element.style.setProperty('max-width', 'none', 'important');
+      element.style.setProperty('max-height', 'none', 'important');
+
+      console.log(`✅ Size DOWN: ${currentWidth}x${currentHeight} → ${newWidth}x${newHeight} (wrapper synced)`);
+    } else {
+      console.error('❌ No img element found for size control');
     }
   });
 
@@ -3385,9 +3666,17 @@ function setupLazyLoading() {
 
         // ===== PRIORITY 0: IntegratedSearch (NO SERVER NEEDED!) =====
         // Replicates search-server.js logic - properly detects biomolecules, minerals, compounds
-        // Skip if compound type was explicitly specified
+        // Skip if compound type was explicitly specified OR if using direct SMILES
         let searchResult = null;
-        const skipIntegratedSearch = moleculeData.flags?.compoundType === 'compound';
+        const skipIntegratedSearch = moleculeData.flags?.isDirectSmiles ||
+          moleculeData.flags?.compoundType === 'compound' ||
+          moleculeData.flags?.compoundType === 'smiles' ||
+          moleculeData.flags?.skipIntegratedSearch ||
+          moleculeData.directLookup;
+
+        if (skipIntegratedSearch) {
+          console.log('%c📝 [Client] IntegratedSearch SKIPPED (explicit compound type or directLookup)', 'color: #4CAF50; font-weight: bold;');
+        }
 
         // Wait for IntegratedSearch to load if not immediately available
         let integratedSearchAvailable = !!window.IntegratedSearch;
@@ -3453,10 +3742,13 @@ function setupLazyLoading() {
               }
 
               // ============ GET SMILES FROM RESULT ============
+              // Prefer isomeric SMILES when stereochemistry is enabled (for stereochemical accuracy)
               if (searchResult.canonical_smiles) {
-                smiles = use3DSmiles && searchResult.isomeric_smiles ?
+                const useStereochemistry = settings.useStereochemistry !== false;
+                smiles = useStereochemistry && searchResult.isomeric_smiles ?
                   searchResult.isomeric_smiles :
                   searchResult.canonical_smiles;
+                console.log(`%c🧬 Using ${useStereochemistry && searchResult.isomeric_smiles ? 'isomeric' : 'canonical'} SMILES`, 'color: #9C27B0;');
               }
 
               // ============ HANDLE MINERAL WITHOUT SMILES (use existing 3D viewer pipeline) ============
@@ -3622,7 +3914,7 @@ function setupLazyLoading() {
       }
 
       if (!smiles) {
-        throw new Error(`Could not obtain SMILES for "${compoundName}" - check internet connection or enable MolView-Only Mode`);
+        throw new Error(`Could not find SMILES for "${compoundName}" - not found in PubChem or invalid compound name`);
       }
 
       // ===== VALIDATE SMILES BEFORE USING =====
@@ -3658,43 +3950,91 @@ function setupLazyLoading() {
       console.log(`%c📊 SMILES: ${smiles}`, 'background: #FF9800; color: white; font-weight: bold; padding: 4px;');
       console.log(`%c📝 For compound: ${compoundName}`, 'color: #9c27b0;');
 
-      // Get mol2chemfig-style rendering options from settings
-      // Then apply any per-molecule flag overrides (e.g., +c, +m, /d-c)
-      let showCarbons = settings.m2cfShowCarbons === true;          // -c flag: Display C labels
-      let aromaticCircles = settings.m2cfAromaticCircles === true;   // -o flag: Draw circles in rings  
-      let showMethyl = settings.m2cfShowMethyls === true;            // -m flag: Display CH3 labels
-      let showAtomNumbers = settings.m2cfAtomNumbers === true;       // -n flag: Number atoms
-      let flipVertical = settings.m2cfFlipVertical === true;         // Upside down
-      let flipHorizontal = settings.m2cfFlipHorizontal === true;     // Mirror
-      let addHydrogens = settings.m2cfAddH2 === true;                // Show H atoms as explicit branches
-      let showImplicitH = settings.m2cfShowImplicitH !== false;       // Show H counts in labels (CH3, OH, NH2)
-      let compactDrawing = settings.m2cfCompactDrawing === true;      // Compact mode (linear text strings)
+      // Get flags from molecule data
+      const flags = moleculeData.flags || moleculeData.options || {};
+
+      // Determine rendering options based on flagsLocked:
+      // - If flagsLocked && !useDefaults: ONLY use explicit flags (start from false/off)
+      // - If flagsLocked && useDefaults: Start with popup settings, then apply flags
+      // - If !flagsLocked: Start with popup settings, then apply flags
+      const useOnlyFlags = flags.flagsLocked && !flags.useDefaults;
+
+      let showCarbons, aromaticCircles, showMethyl, showAtomNumbers;
+      let flipVertical, flipHorizontal, addHydrogens, showImplicitH, compactDrawing;
       let customSize = null;
       let customRotation = null;
 
-      // Apply per-molecule flag overrides if present
-      const flags = moleculeData.flags || moleculeData.options || {};
-      if (flags) {
+      if (useOnlyFlags) {
+        // Flags are locked without +d: start with all OFF, only apply explicit flags
+        console.log('%c🔒 Flags locked (no defaults) - using explicit flags only', 'color: #FF5722; font-weight: bold;');
+        showCarbons = flags.showCarbons === true;
+        aromaticCircles = flags.aromaticCircles === true;
+        showMethyl = flags.showMethyls === true;
+        showAtomNumbers = flags.atomNumbers === true;
+        flipVertical = flags.flipVertical === true;
+        flipHorizontal = flags.flipHorizontal === true;
+        addHydrogens = flags.addHydrogens === true || flags.addH2 === true;
+        showImplicitH = flags.showImplicitHydrogens !== false && flags.showImplicitH !== false;
+        compactDrawing = settings.m2cfCompactDrawing === true;  // Keep compact from settings (not a flag)
+      } else {
+        // Use popup settings as base, then apply flags on top
+        showCarbons = settings.m2cfShowCarbons === true;
+        aromaticCircles = settings.m2cfAromaticCircles === true;
+        showMethyl = settings.m2cfShowMethyls === true;
+        showAtomNumbers = settings.m2cfAtomNumbers === true;
+        flipVertical = settings.m2cfFlipVertical === true;
+        flipHorizontal = settings.m2cfFlipHorizontal === true;
+        addHydrogens = settings.m2cfAddH2 === true;
+        showImplicitH = settings.m2cfShowImplicitH !== false;
+        compactDrawing = settings.m2cfCompactDrawing === true;
+
+        // Apply per-molecule flag overrides if present
         if (flags.showCarbons !== undefined) showCarbons = flags.showCarbons;
         if (flags.aromaticCircles !== undefined) aromaticCircles = flags.aromaticCircles;
         if (flags.showMethyls !== undefined) showMethyl = flags.showMethyls;
         if (flags.atomNumbers !== undefined) showAtomNumbers = flags.atomNumbers;
         if (flags.addHydrogens !== undefined) addHydrogens = flags.addHydrogens;
-        if (flags.addH2 !== undefined) addHydrogens = flags.addH2; // Also check addH2
+        if (flags.addH2 !== undefined) addHydrogens = flags.addH2;
         if (flags.showImplicitHydrogens !== undefined) showImplicitH = flags.showImplicitHydrogens;
-        if (flags.showImplicitH !== undefined) showImplicitH = flags.showImplicitH; // Also check showImplicitH
+        if (flags.showImplicitH !== undefined) showImplicitH = flags.showImplicitH;
         if (flags.flipHorizontal !== undefined) flipHorizontal = flags.flipHorizontal;
         if (flags.flipVertical !== undefined) flipVertical = flags.flipVertical;
-        if (flags.size !== undefined) customSize = flags.size;
-        if (flags.rotation !== undefined) customRotation = flags.rotation;
       }
+
+      // Size and rotation always from flags if specified
+      if (flags.size !== undefined) customSize = flags.size;
+      if (flags.rotation !== undefined) customRotation = flags.rotation;
+
 
       console.log('%c🎌 Flag overrides:', 'color: #FF6B6B;', flags);
 
-      // Calculate dimensions (default, can be overridden by +s flag)
+      // Calculate intelligent size scaling based on molecule complexity
+      let intelligentSizeMultiplier = 1;
+
+      if (settings.sdScaleByWeight && smiles) {
+        // Count heavy atoms (non-hydrogen) in SMILES as a proxy for molecule size
+        // Remove stereochemistry markers, charges, and counts
+        const cleanSmiles = smiles.replace(/[@\/\\]/g, '').replace(/\[[^\]]+\]/g, 'X');
+        const heavyAtomMatches = cleanSmiles.match(/[A-Z]/g);
+        const heavyAtomCount = heavyAtomMatches ? heavyAtomMatches.length : 20;
+
+        // Logarithmic scaling: sqrt gives gentle curve
+        // Small molecules (10 atoms): sqrt(10)/sqrt(20) = 0.71 → ~1.0x (stays small)
+        // Medium molecules (50 atoms): sqrt(50)/sqrt(20) = 1.58 → ~1.6x
+        // Large molecules (200 atoms): sqrt(200)/sqrt(20) = 3.16 → ~3.2x
+        // This makes large molecules relatively bigger without making small ones tiny
+        intelligentSizeMultiplier = Math.sqrt(heavyAtomCount) / Math.sqrt(20);
+
+        // Clamp between 0.7x and 4x to avoid extremes
+        intelligentSizeMultiplier = Math.max(0.7, Math.min(4, intelligentSizeMultiplier));
+
+        console.log(`📐 Intelligent sizing: ${heavyAtomCount} atoms → ${intelligentSizeMultiplier.toFixed(2)}x scale`);
+      }
+
+      // Calculate dimensions (default, can be overridden by +s flag or intelligent scaling)
       const baseWidth = 300;
       const baseHeight = 240;
-      const sizeMultiplier = customSize || 1;
+      const sizeMultiplier = customSize || intelligentSizeMultiplier;
       const renderWidth = Math.round(baseWidth * sizeMultiplier);
       const renderHeight = Math.round(baseHeight * sizeMultiplier);
 
@@ -4502,7 +4842,38 @@ function setupLazyLoading() {
 }
 
 
+// Debounce scanAndRender to prevent excessive processing
+let scanAndRenderTimeout = null;
+let lastScanTime = 0;
+const MIN_SCAN_INTERVAL = 1000; // Minimum 1 second between scans
+
 function scanAndRender() {
+  // Clear any pending scan
+  if (scanAndRenderTimeout) {
+    clearTimeout(scanAndRenderTimeout);
+  }
+
+  // Check if we scanned recently
+  const now = Date.now();
+  const timeSinceLastScan = now - lastScanTime;
+
+  if (timeSinceLastScan < MIN_SCAN_INTERVAL) {
+    // Schedule for later
+    const delay = MIN_SCAN_INTERVAL - timeSinceLastScan;
+    scanAndRenderTimeout = setTimeout(() => {
+      scanAndRenderImmediate();
+    }, delay);
+    console.log(`[ChemRenderer] Debouncing scan, will run in ${delay}ms`);
+    return;
+  }
+
+  // Run immediately
+  scanAndRenderImmediate();
+}
+
+function scanAndRenderImmediate() {
+  lastScanTime = Date.now();
+
   if (!settings.enabled) {
     log.debug('scanAndRender() called but extension is disabled');
     return;
@@ -4532,76 +4903,97 @@ function scanAndRender() {
       continue;
     }
 
+    // CRITICAL FIX FOR CHATGPT: ChatGPT splits text like "chem:mineral=calcite:" into separate nodes
+    // But we can't use element.innerHTML because it breaks React
+    // Solution: Combine all text node content, process it, then replace only the first text node
+
+    const textNodes = [];
+    let combinedText = '';
+
+    // Collect all text nodes and build combined text
     for (let j = 0; j < element.childNodes.length; j++) {
       const node = element.childNodes[j];
+      if (node.nodeType === 3) { // Text node
+        textNodes.push(node);
+        combinedText += node.nodeValue;
+      }
+    }
 
-      // Only process text nodes (nodeType 3)
-      if (node.nodeType === 3) {
-        textNodesFound++;
-        const text = node.nodeValue;
+    if (textNodes.length === 0 || !combinedText) {
+      continue;
+    }
 
-        // Log ALL text nodes that contain backslash (potential formulas)
-        if (text.includes('\\') || text.includes('ce{') || text.includes('chem:')) {
-          chemistryTextFound.push(text.substring(0, 100));
-          log.debug(`🔬 Found potential chemistry text: "${text.substring(0, 80)}..."`);
-        }
+    // Check if combined text contains chemistry notation
+    if (combinedText.includes('chem:') || combinedText.includes('\\ce{') || combinedText.includes('ce{')) {
+      textNodesFound++;
+      chemistryTextFound.push(combinedText.substring(0, 100));
+      log.debug(`🔬 Found potential chemistry text: "${combinedText.substring(0, 80)}..."`);
 
-        const replacedText = wrapChemicalFormulas(text);
+      const replacedText = wrapChemicalFormulas(combinedText);
 
-        if (replacedText !== text) {
-          log.debug(`✨ Found formula in text: "${text.substring(0, 50)}..."`);
-          log.debug(`Wrapped result: "${replacedText.substring(0, 50)}..."`);
+      if (replacedText !== combinedText) {
+        log.debug(`✨ Found formula in text: "${combinedText.substring(0, 50)}..."`);
+        log.debug(`Wrapped result: "${replacedText.substring(0, 50)}..."`);
 
-          // Replace the text node with new content
-          const span = document.createElement('span');
-          span.innerHTML = replacedText;
-          span.setAttribute('data-chem-processed', 'true');
-          element.replaceChild(span, node);
+        // SAFE: Replace only the first text node with a span containing the result
+        // Remove all other text nodes to avoid duplication
+        const span = document.createElement('span');
+        span.innerHTML = replacedText;
+        span.setAttribute('data-chem-processed', 'true');
 
-          // Setup loading for newly created images
-          const images = span.querySelectorAll('img.molecule-diagram[data-loaded="false"]');
-          console.log('%c[ChemRenderer] Found images to load:', 'color: #FF00FF; font-weight: bold;', images.length);
-          if (images.length > 0) {
-            console.log('%c[ChemRenderer] Performance mode:', 'color: #FF00FF;', settings.performanceMode);
-            console.log('%c[ChemRenderer] _lazyLoadObserver exists:', 'color: #FF00FF;', !!window._lazyLoadObserver);
-            console.log('%c[ChemRenderer] _loadMoleculeImage exists:', 'color: #FF00FF;', !!window._loadMoleculeImage);
+        // Replace first text node with span
+        element.replaceChild(span, textNodes[0]);
 
-            if (settings.performanceMode && window._lazyLoadObserver) {
-              // Performance mode ON: lazy-load as images scroll into view
-              images.forEach(img => {
-                console.log('%c[ChemRenderer] Observing image for lazy load:', 'color: #FF00FF;', img.className);
-                window._lazyLoadObserver.observe(img);
-              });
-              log.debug(`📊 Setup lazy-loading for ${images.length} SVGs`);
-            } else if (window._loadMoleculeImage) {
-              // Performance mode OFF: load ALL images immediately (no lazy loading)
-              // Stagger loads to prevent system overload
-              console.log(`%c[ChemRenderer] 🚀 Loading ALL ${images.length} images immediately (lazy loading disabled)`, 'color: #00FF00; font-weight: bold;');
-
-              let delay = 0;
-              const staggerInterval = 100; // 100ms between each load start
-
-              images.forEach((img, index) => {
-                // Mark as loading immediately so observer doesn't pick it up
-                img.dataset.loaded = 'loading';
-
-                // Stagger the actual load calls
-                setTimeout(() => {
-                  console.log(`%c[ChemRenderer] Loading image ${index + 1}/${images.length}: ${img.alt || 'unknown'}`, 'color: #00FF00;');
-                  window._loadMoleculeImage(img);
-                }, delay);
-
-                delay += staggerInterval;
-              });
-
-              log.debug(`📊 Triggered immediate loading for ${images.length} SVGs (staggered ${staggerInterval}ms apart)`);
-            } else {
-              console.error('%c[ChemRenderer] ERROR: No loader available!', 'color: #FF0000; font-weight: bold;');
-            }
+        // Remove remaining text nodes (they're now part of the combined/replaced text)
+        for (let k = 1; k < textNodes.length; k++) {
+          if (textNodes[k].parentNode) {
+            textNodes[k].parentNode.removeChild(textNodes[k]);
           }
-
-          replacements++;
         }
+
+        // Setup loading for newly created images
+        const images = span.querySelectorAll('img.molecule-diagram[data-loaded="false"]');
+        console.log('%c[ChemRenderer] Found images to load:', 'color: #FF00FF; font-weight: bold;', images.length);
+        if (images.length > 0) {
+          console.log('%c[ChemRenderer] Performance mode:', 'color: #FF00FF;', settings.performanceMode);
+          console.log('%c[ChemRenderer] _lazyLoadObserver exists:', 'color: #FF00FF;', !!window._lazyLoadObserver);
+          console.log('%c[ChemRenderer] _loadMoleculeImage exists:', 'color: #FF00FF;', !!window._loadMoleculeImage);
+
+          if (settings.performanceMode && window._lazyLoadObserver) {
+            // Performance mode ON: lazy-load as images scroll into view
+            images.forEach(img => {
+              console.log('%c[ChemRenderer] Observing image for lazy load:', 'color: #FF00FF;', img.className);
+              window._lazyLoadObserver.observe(img);
+            });
+            log.debug(`📊 Setup lazy-loading for ${images.length} SVGs`);
+          } else if (window._loadMoleculeImage) {
+            // Performance mode OFF: load ALL images immediately (no lazy loading)
+            // Stagger loads to prevent system overload
+            console.log(`%c[ChemRenderer] 🚀 Loading ALL ${images.length} images immediately (lazy loading disabled)`, 'color: #00FF00; font-weight: bold;');
+
+            let delay = 0;
+            const staggerInterval = 100; // 100ms between each load start
+
+            images.forEach((img, index) => {
+              // Mark as loading immediately so observer doesn't pick it up
+              img.dataset.loaded = 'loading';
+
+              // Stagger the actual load calls
+              setTimeout(() => {
+                console.log(`%c[ChemRenderer] Loading image ${index + 1}/${images.length}: ${img.alt || 'unknown'}`, 'color: #00FF00;');
+                window._loadMoleculeImage(img);
+              }, delay);
+
+              delay += staggerInterval;
+            });
+
+            log.debug(`📊 Triggered immediate loading for ${images.length} SVGs (staggered ${staggerInterval}ms apart)`);
+          } else {
+            console.error('%c[ChemRenderer] ERROR: No loader available!', 'color: #FF0000; font-weight: bold;');
+          }
+        }
+
+        replacements++;
       }
     }
   }
@@ -4652,205 +5044,287 @@ function scanAndRender() {
 function wrapChemicalFormulas(text) {
   if (!text || text.trim().length === 0) return text;
 
+  // SAFETY: Limit text length to prevent excessive processing
+  if (text.length > 50000) {
+    console.warn('[ChemRenderer] Text too long for processing, skipping');
+    return text;
+  }
+
   let result = text;
   let patternMatches = [];
 
   // Pattern 0b: chem:text: (double colon format - captures everything in between)
-  // Example: chem:CCO:, chem:benzene:, chem:1-chloro-benzene:, chem:CC(=O)C:, chem:histamine/+c+o+m+n+3d:, chem:phenol/d-c:
+  // Example: chem:CCO:, chem:benzene:, chem:1-chloro-benzene:, chem:CC(=O)C:, chem:histamine/+c+o+m+n:, chem:phenol/d-c:
   log.debug('🧪 Applying Pattern 0b: chem:text: → Using selected renderer engine');
+
+  // DEBUG: Log a sample of the text being scanned
+  if (result.length > 0) {
+    const sample = result.substring(0, 200);
+    console.log('[ChemRenderer] 🔍 DEBUG: Scanning text sample:', sample);
+    console.log('[ChemRenderer] 🔍 DEBUG: Text length:', result.length);
+    console.log('[ChemRenderer] 🔍 DEBUG: Looking for pattern: /\\bchem:([^:]+):/g');
+  }
+
   const chemMatches = result.match(/\bchem:([^:]+):/g);
+
+  console.log('[ChemRenderer] 🔍 DEBUG: chemMatches result:', chemMatches);
+
   if (chemMatches) {
+    // SAFETY: Limit number of matches to prevent excessive processing
+    if (chemMatches.length > 100) {
+      console.warn('[ChemRenderer] Too many chem: patterns detected, limiting to first 100');
+      chemMatches.length = 100;
+    }
+
     log.debug(`  Found ${chemMatches.length} chem:text: patterns`);
+    console.log('[ChemRenderer] ✅ Found patterns:', chemMatches);
     log.debug(`  Renderer engine: ${settings.rendererEngine}, 3D Viewer enabled: ${settings.enable3DViewer}`);
 
     result = result.replace(/\bchem:([^:]+):/g, (match, content) => {
-      const content_trimmed = content.trim();
-      if (!content_trimmed) {
-        return match; // Empty content, skip
-      }
+      try {
+        const content_trimmed = content.trim();
+        if (!content_trimmed || content_trimmed.length > 500) {
+          return match; // Empty or too long, skip
+        }
 
-      log.debug(`  Converting molecule: ${content_trimmed}`);
-      window.chemRendererPerformance.recordStructure();
+        log.debug(`  Converting molecule: ${content_trimmed}`);
+        window.chemRendererPerformance.recordStructure();
 
-      // Extract compound name (before any flags)
-      let compoundName = content_trimmed;
+        // Extract compound name (before any flags)
+        let compoundName = content_trimmed;
 
-      // Process flags if any are detected (always enabled by default)
-      let flagOverrides = { useDefaults: false }; // Default empty flags
-      let currentSettings = settings; // Default to original settings
 
-      // Check if there are flags to process
-      if (content_trimmed.includes('/') || content_trimmed.includes('+') || content_trimmed.includes('-')) {
-        try {
-          flagOverrides = window.parseChemFlags('chem:' + content_trimmed + ':');
-          console.log('%c🏴 Parsed flags:', 'color: #FF6B00; font-weight: bold;', flagOverrides);
+        // Process flags if any are detected (always enabled by default)
+        let flagOverrides = { useDefaults: false }; // Default empty flags
+        let currentSettings = settings; // Default to original settings
 
-          // Determine base settings:
-          // - If /d flag is present: use global defaults
-          // - If no /d flag: start with clean slate (no defaults)
-          let baseSettings;
-          if (flagOverrides.useDefaults) {
-            // /d flag present: use defaults and apply overrides
-            baseSettings = settings;
-          } else {
-            // No /d flag: start clean, only apply explicit flags
-            baseSettings = {
-              ...settings,
-              // Clear all display options to start fresh
-              m2cfShowCarbons: undefined,
-              m2cfAromaticCircles: undefined,
-              m2cfShowMethyls: undefined,
-              m2cfAtomNumbers: undefined,
-              m2cfAddH2: undefined,
-              m2cfFlipHorizontal: undefined,
-              m2cfFlipVertical: undefined,
-              m2cfInvert: undefined
-            };
+        // Check if there are flags to process OR if using new syntax (type=value)
+        // New syntax: chem:smiles=CCO:, chem:mol=benzene:, chem:biomol=insulin:, chem:mineral=quartz:
+        const hasNewSyntax = content_trimmed.includes('=');
+
+        // Flag detection: Only treat +/- as flags if they appear AFTER the compound name
+        // e.g., "benzene+c" has flags, but "(R)-butan-2-ol" does NOT have flags
+        // Flags should be: /flags or +flag at end or -flag at end
+        // A hyphen INSIDE a name like "butan-2-ol" or "(R)-" is NOT a flag
+        const hasSlashFlags = content_trimmed.includes('/');
+        // Check for trailing flags: must have + or - followed by single letters at the end
+        // e.g., "benzene+c+n" or "histamine-c"
+        const hasTrailingFlags = /[+\-][a-zA-Z](?:[+\-][a-zA-Z])*$/.test(content_trimmed) &&
+          !content_trimmed.match(/^[a-zA-Z0-9()\[\]-]+$/); // Exclude pure compound names with internal hyphens
+        const hasFlags = hasSlashFlags || hasTrailingFlags || hasNewSyntax;
+
+        if (hasNewSyntax || hasFlags) {
+          try {
+            flagOverrides = window.parseChemFlags('chem:' + content_trimmed + ':');
+            console.log('%c🏴 Parsed flags:', 'color: #FF6B00; font-weight: bold;', flagOverrides);
+
+            // Use moleculeName from new syntax if available
+            if (flagOverrides.moleculeName) {
+              compoundName = flagOverrides.moleculeName;
+            }
+
+            // Determine base settings:
+            // - If +d flag is present: use global defaults as base, then apply flags
+            // - If no +d flag AND flagsLocked: start with clean slate, only apply explicit flags
+            // - If no flags at all: use global defaults
+            let baseSettings;
+            if (flagOverrides.useDefaults) {
+              // +d flag present: use defaults and apply overrides
+              baseSettings = settings;
+            } else if (flagOverrides.flagsLocked) {
+              // Explicit flags but no +d: start clean, only apply explicit flags
+              // This prevents popup settings from overriding explicit flags
+              baseSettings = {
+                ...settings,
+                // Clear all display options to start fresh
+                m2cfShowCarbons: false,
+                m2cfAromaticCircles: false,
+                m2cfShowMethyls: false,
+                m2cfAtomNumbers: false,
+                m2cfAddH2: false,
+                m2cfFlipHorizontal: false,
+                m2cfFlipVertical: false,
+                m2cfInvert: false
+              };
+            } else {
+              // No explicit flags: use global settings
+              baseSettings = settings;
+            }
+
+            // Apply flag overrides to base settings
+            currentSettings = window.applyFlagOverrides(baseSettings, flagOverrides);
+            console.log('%c⚙️ Applied settings:', 'color: #9C27B0; font-weight: bold;', {
+              useDefaults: flagOverrides.useDefaults,
+              flagsLocked: flagOverrides.flagsLocked,
+              showCarbons: currentSettings.m2cfShowCarbons,
+              aromaticCircles: currentSettings.m2cfAromaticCircles,
+              showMethyls: currentSettings.m2cfShowMethyls,
+              atomNumbers: currentSettings.m2cfAtomNumbers,
+              addH2: currentSettings.m2cfAddH2,
+              flipHorizontal: currentSettings.m2cfFlipHorizontal,
+              flipVertical: currentSettings.m2cfFlipVertical,
+              invert: currentSettings.m2cfInvert,
+              compoundType: flagOverrides.compoundType,
+              isDirectSmiles: flagOverrides.isDirectSmiles
+            });
+
+            // Extract compound name by removing flag parts (for legacy syntax)
+            if (!flagOverrides.moleculeName) {
+              if (content_trimmed.includes('/')) {
+                compoundName = content_trimmed.split('/')[0].trim();
+              } else if (content_trimmed.includes('+')) {
+                // For + flags, split on first + to get compound name
+                const parts = content_trimmed.split('+');
+                compoundName = parts[0].trim();
+              } else if (content_trimmed.includes('-')) {
+                // For - flags, split on first - to get compound name
+                const parts = content_trimmed.split('-');
+                compoundName = parts[0].trim();
+              }
+            }
+          } catch (e) {
+            console.error('Error processing flags, using default behavior:', e);
+            // Fall back to basic behavior
+            compoundName = content_trimmed;
+            currentSettings = settings;
           }
+        }
 
-          // Apply flag overrides to base settings
-          currentSettings = window.applyFlagOverrides(baseSettings, flagOverrides);
-          console.log('%c⚙️ Applied settings:', 'color: #9C27B0; font-weight: bold;', {
-            useDefaults: flagOverrides.useDefaults,
-            showCarbons: currentSettings.m2cfShowCarbons,
+        // =============== FLAG-BASED TYPE DETECTION ===============
+        // Priority (new syntax handles this in parseChemFlags):
+        // 1. chem:smiles=CCO: OR +smiles → Direct SMILES, send to SmilesDrawer
+        // 2. chem:biomol=insulin: OR +biomolecule/+protein → Search RCSB PDB
+        // 3. chem:mineral=quartz: OR +mineral → Search COD
+        // 4. chem:mol=benzene: OR +compound → Search PubChem for compounds
+        // 5. No type specified → Use IntegratedSearch for auto-detection
+
+        const isDirectSmiles = flagOverrides.isDirectSmiles;
+        const specifiedType = flagOverrides.compoundType; // 'compound', 'biomolecule', 'mineral', or 'smiles'
+
+        console.log(`%c📦 Type detection: isDirectSmiles=${isDirectSmiles}, specifiedType=${specifiedType}, compoundName=${compoundName}`, 'color: #2196F3; font-weight: bold;');
+
+        // Build flags object for renderClientSide
+        // Include flagsLocked so renderer knows not to override with popup settings
+        const flagsForRender = {
+          ...flagOverrides,
+          compoundType: specifiedType === 'smiles' ? 'compound' : specifiedType,  // 'smiles' type uses compound rendering
+          isDirectSmiles: isDirectSmiles,
+          smilesValue: flagOverrides.smilesValue,  // Pass actual SMILES for named syntax (e.g., chem:ethanolsmiles=CCO:)
+          displayName: flagOverrides.moleculeName  // Pass display name for tag
+        };
+
+        // For named SMILES syntax, use smilesValue as the SMILES and moleculeName for display
+        const actualSmiles = flagOverrides.smilesValue || (isDirectSmiles ? compoundName : null);
+
+
+        // Check for special flags that override renderer selection
+        // +3d flag: Use 3D viewer (PubChem-based)
+        if (flagOverrides.is3D) {
+          const pubchemData = {
+            // Use actualSmiles if available, otherwise use compoundName for lookup
+            ...(actualSmiles ? { smiles: actualSmiles } : { nomenclature: compoundName }),
+            name: compoundName, // Display name for the tag
+            type: actualSmiles ? 'smiles' : 'nomenclature',
+            isPubChem: true,
+            show3D: true,  // Signal to show 3D viewer immediately
+            auto3D: true,  // Hint to viewer to auto-select best 3D mode
+            flags: flagsForRender
+          };
+
+          const encoded = btoa(JSON.stringify(pubchemData));
+          const converted = `<img src="" alt="chem" class="molecule-diagram molecule-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" data-show-3d="true" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
+
+          log.debug(`  📤 Sending ${actualSmiles ? 'SMILES' : 'nomenclature'} to 3D viewer: ${compoundName}`);
+          return converted;
+        }
+
+        // mol= syntax: Force PubChem renderer - Direct lookup, no IntegratedSearch!
+        // This is triggered by chem:mol=benzene: which sets isPubchem=true and compoundType='compound'
+        if (flagOverrides.isPubchem || specifiedType === 'compound') {
+          console.log('%c🧪 DIRECT PUBCHEM PATH (mol= syntax)', 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;');
+          const pubchemData = {
+            ...(actualSmiles ? { smiles: actualSmiles } : { nomenclature: compoundName }),
+            name: compoundName,
+            type: actualSmiles ? 'smiles' : 'nomenclature',
+            isPubChem: true,
+            directLookup: true,  // Signal to skip IntegratedSearch
+            flags: {
+              ...flagsForRender,
+              compoundType: 'compound',  // Ensure compound type is set
+              skipIntegratedSearch: true  // Ensure IntegratedSearch is skipped
+            }
+          };
+
+          const encoded = btoa(JSON.stringify(pubchemData));
+          const converted = `<img src="" alt="chem" class="molecule-diagram molecule-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
+
+          log.debug(`  📤 Sending ${actualSmiles ? 'SMILES' : 'nomenclature'} DIRECTLY to PubChem (mol= syntax): ${compoundName}`);
+          return converted;
+        }
+
+        // Check if using PubChem renderer (which supports 3D viewer)
+        if (currentSettings.rendererEngine === 'pubchem') {
+          // Use PubChem - supports 3D viewer when enabled
+          const pubchemData = {
+            ...(actualSmiles ? { smiles: actualSmiles } : { nomenclature: compoundName }),
+            name: compoundName,
+            type: actualSmiles ? 'smiles' : 'nomenclature',
+            isPubChem: true,
+            flags: flagsForRender
+          };
+
+          const encoded = btoa(JSON.stringify(pubchemData));
+          const converted = `<img src="" alt="chem" class="molecule-diagram molecule-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
+
+          log.debug(`  📤 Sending ${actualSmiles ? 'SMILES' : 'nomenclature'} to PubChem: ${compoundName}`);
+          return converted;
+        }
+
+        // Default: Send to MoleculeViewer (uses IntegratedSearch for type detection)
+        const rotation = currentSettings.m2cfRotate || currentSettings.mvRotate || 0;
+        const scale = flagOverrides.size || 1.0;
+
+        const moleculeViewerData = {
+          // If actualSmiles available (from named syntax or direct): use smiles property
+          // Otherwise: use nomenclature and let IntegratedSearch detect the type
+          ...(actualSmiles ? { smiles: actualSmiles } : { nomenclature: compoundName }),
+          type: actualSmiles ? 'smiles' : 'nomenclature',
+          options: {
+            width: Math.round(300 * scale),
+            height: Math.round(200 * scale),
             aromaticCircles: currentSettings.m2cfAromaticCircles,
+            fancyBonds: currentSettings.m2cfFancyBonds,
+            showCarbons: currentSettings.m2cfShowCarbons,
             showMethyls: currentSettings.m2cfShowMethyls,
             atomNumbers: currentSettings.m2cfAtomNumbers,
+            hydrogensMode: currentSettings.m2cfHydrogensMode,
             addH2: currentSettings.m2cfAddH2,
             flipHorizontal: currentSettings.m2cfFlipHorizontal,
             flipVertical: currentSettings.m2cfFlipVertical,
-            invert: currentSettings.m2cfInvert,
-            compoundType: flagOverrides.compoundType,
-            isDirectSmiles: flagOverrides.isDirectSmiles
-          });
-
-          // Extract compound name by removing flag parts
-          if (content_trimmed.includes('/')) {
-            compoundName = content_trimmed.split('/')[0].trim();
-          } else if (content_trimmed.includes('+')) {
-            // For + flags, split on first + to get compound name
-            const parts = content_trimmed.split('+');
-            compoundName = parts[0].trim();
-          }
-        } catch (e) {
-          console.error('Error processing flags, using default behavior:', e);
-          // Fall back to basic behavior
-          compoundName = content_trimmed;
-          currentSettings = settings;
-        }
-      }
-
-      // =============== NEW FLAG-BASED TYPE DETECTION ===============
-      // Priority:
-      // 1. +smiles → Direct SMILES, send to SmilesDrawer
-      // 2. +biomolecule/+protein → Search RCSB PDB
-      // 3. +mineral → Search COD
-      // 4. +compound → Search PubChem for compounds
-      // 5. No flag → Use IntegratedSearch for auto-detection
-
-      const isDirectSmiles = flagOverrides.isDirectSmiles;
-      const specifiedType = flagOverrides.compoundType; // 'compound', 'biomolecule', or 'mineral'
-
-      console.log(`%c📦 Type detection: isDirectSmiles=${isDirectSmiles}, specifiedType=${specifiedType}, compoundName=${compoundName}`, 'color: #2196F3; font-weight: bold;');
-
-      // Build flags object for renderClientSide
-      const flagsForRender = {
-        ...flagOverrides,
-        compoundType: specifiedType,
-        isDirectSmiles: isDirectSmiles
-      };
-
-      // Check for special flags that override renderer selection
-      // +3d flag: Use 3D viewer (PubChem-based)
-      if (flagOverrides.is3D) {
-        const pubchemData = {
-          // Use isDirectSmiles to determine if compoundName is SMILES or nomenclature
-          ...(isDirectSmiles ? { smiles: compoundName } : { nomenclature: compoundName }),
-          name: compoundName, // Always pass name for fallback
-          type: isDirectSmiles ? 'smiles' : 'nomenclature',
-          isPubChem: true,
-          show3D: true,  // Signal to show 3D viewer immediately
-          auto3D: true,  // Hint to viewer to auto-select best 3D mode
-          flags: flagsForRender
+            scale: scale,  // Pass through the scale from +s flag
+            rotation: flagOverrides.rotation || rotation  // Pass through the rotation from +r flag
+          },
+          isMoleculeViewer: true,
+          flags: flagsForRender  // Pass flags for renderClientSide to use
         };
 
-        const encoded = btoa(JSON.stringify(pubchemData));
-        const converted = `<img src="" alt="chem" class="molecule-diagram molecule-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" data-show-3d="true" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
+        const encoded = btoa(JSON.stringify(moleculeViewerData));
+        const converted = `<img src="" alt="chem" class="molecule-diagram molecule-viewer" data-molecule-viewer="${encoded}" data-loaded="false" data-rotation="${rotation}" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
 
-        log.debug(`  📤 Sending ${isDirectSmiles ? 'SMILES' : 'nomenclature'} to 3D viewer: ${compoundName}`);
+        log.debug(`  📤 Sending ${isDirectSmiles ? 'SMILES' : 'nomenclature'} to MoleculeViewer: ${compoundName} (type: ${specifiedType || 'auto-detect'})`);
         return converted;
+      } catch (error) {
+        console.error('[ChemRenderer] ❌ Error processing molecule:', {
+          error: error.message,
+          stack: error.stack,
+          content: content_trimmed,
+          match: match
+        });
+        return match; // Return original text on error
       }
-
-      // +pubchem flag: Force PubChem renderer
-      if (flagOverrides.isPubchem) {
-        const pubchemData = {
-          ...(isDirectSmiles ? { smiles: compoundName } : { nomenclature: compoundName }),
-          name: compoundName,
-          type: isDirectSmiles ? 'smiles' : 'nomenclature',
-          isPubChem: true,
-          flags: flagsForRender
-        };
-
-        const encoded = btoa(JSON.stringify(pubchemData));
-        const converted = `<img src="" alt="chem" class="molecule-diagram molecule-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
-
-        log.debug(`  📤 Sending ${isDirectSmiles ? 'SMILES' : 'nomenclature'} to PubChem (forced by +pubchem flag): ${compoundName}`);
-        return converted;
-      }
-
-      // Check if using PubChem renderer (which supports 3D viewer)
-      if (currentSettings.rendererEngine === 'pubchem') {
-        // Use PubChem - supports 3D viewer when enabled
-        const pubchemData = {
-          ...(isDirectSmiles ? { smiles: compoundName } : { nomenclature: compoundName }),
-          name: compoundName,
-          type: isDirectSmiles ? 'smiles' : 'nomenclature',
-          isPubChem: true,
-          flags: flagsForRender
-        };
-
-        const encoded = btoa(JSON.stringify(pubchemData));
-        const converted = `<img src="" alt="chem" class="molecule-diagram molecule-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
-
-        log.debug(`  📤 Sending ${isDirectSmiles ? 'SMILES' : 'nomenclature'} to PubChem: ${compoundName}`);
-        return converted;
-      }
-
-      // Default: Send to MoleculeViewer (uses IntegratedSearch for type detection)
-      const rotation = currentSettings.m2cfRotate || currentSettings.mvRotate || 0;
-      const scale = flagOverrides.size || 1.0;
-
-      const moleculeViewerData = {
-        // If +smiles flag: use smiles property
-        // Otherwise: use nomenclature and let IntegratedSearch detect the type
-        ...(isDirectSmiles ? { smiles: compoundName } : { nomenclature: compoundName }),
-        type: isDirectSmiles ? 'smiles' : 'nomenclature',
-        options: {
-          width: Math.round(300 * scale),
-          height: Math.round(200 * scale),
-          aromaticCircles: currentSettings.m2cfAromaticCircles,
-          fancyBonds: currentSettings.m2cfFancyBonds,
-          showCarbons: currentSettings.m2cfShowCarbons,
-          showMethyls: currentSettings.m2cfShowMethyls,
-          atomNumbers: currentSettings.m2cfAtomNumbers,
-          hydrogensMode: currentSettings.m2cfHydrogensMode,
-          addH2: currentSettings.m2cfAddH2,
-          flipHorizontal: currentSettings.m2cfFlipHorizontal,
-          flipVertical: currentSettings.m2cfFlipVertical,
-          scale: scale,  // Pass through the scale from +s flag
-          rotation: flagOverrides.rotation || rotation  // Pass through the rotation from +r flag
-        },
-        isMoleculeViewer: true,
-        flags: flagsForRender  // Pass flags for renderClientSide to use
-      };
-
-      const encoded = btoa(JSON.stringify(moleculeViewerData));
-      const converted = `<img src="" alt="chem" class="molecule-diagram molecule-viewer" data-molecule-viewer="${encoded}" data-loaded="false" data-rotation="${rotation}" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
-
-      log.debug(`  📤 Sending ${isDirectSmiles ? 'SMILES' : 'nomenclature'} to MoleculeViewer: ${compoundName} (type: ${specifiedType || 'auto-detect'})`);
-      return converted;
     });
   }
+
 
   // Pattern 1: \ce{H2O} → convert to Unicode subscripts (avoids ChatGPT's LaTeX conflict)
   if (settings.renderMhchem) {
@@ -5047,13 +5521,13 @@ if (window.IntegratedSearch) {
 // CONTEXT MENU HANDLER
 // ============================================
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  // Handler for "Render as Molecule" (treats text as chemical name/nomenclature)
-  // Uses IntegratedSearch to auto-detect type (compound/biomolecule/mineral)
+  // Handler for "Render as Molecule" (treats text as chemical compound name)
+  // Goes directly to PubChem for CID/SMILES lookup (no IntegratedSearch auto-detection)
   if (request.type === 'INSPECT_MOLECULE') {
     const text = request.text?.trim();
     if (!text) return;
 
-    console.log('%c🧪 Rendering selection as molecule (using IntegratedSearch):', 'color: #2196F3; font-weight: bold;', text);
+    console.log('%c🧪 Rendering selection as Molecule (PubChem):', 'color: #2196F3; font-weight: bold;', text);
 
     // Get the current selection to find where to insert the image
     const selection = window.getSelection();
@@ -5065,11 +5539,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const img = document.createElement('img');
     img.className = 'molecule-diagram molecule-viewer';
     img.alt = text;
-    img.title = `Searching: ${text}`;
+    img.title = `Searching PubChem: ${text}`;
     img.src = ''; // Empty src, will be filled by loader
 
-    // Create molecule data - treats text as nomenclature
-    // IntegratedSearch will auto-detect if it's a compound/biomolecule/mineral
+    // Create molecule data - forces compound type (PubChem lookup)
+    // compoundType='compound' tells renderClientSide to use PubChem directly
     const moleculeData = {
       nomenclature: text,
       type: 'nomenclature',
@@ -5081,8 +5555,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       },
       isMoleculeViewer: true,
       flags: {
-        // No type specified - let IntegratedSearch detect the type
-        compoundType: undefined,
+        compoundType: 'compound',  // Force PubChem lookup (not auto-detect)
         isDirectSmiles: false
       }
     };
@@ -5091,6 +5564,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     img.dataset.moleculeViewer = btoa(JSON.stringify(moleculeData));
     img.dataset.loaded = 'false';
     img.dataset.rotation = '0';
+    img.dataset.compoundType = 'compound';
+
 
     // Style it to look good inline
     img.style.cssText = `
@@ -5122,12 +5597,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   // Handler for "Render as SMILES" (treats text directly as SMILES string)
-  // Bypasses IntegratedSearch - sends directly to SmilesDrawer
+  // Uses the SAME pipeline as chem:: syntax, but with isDirectSmiles flag
+  // This ensures caching, persistence, and consistent UI
   if (request.type === 'RENDER_SMILES') {
     const text = request.text?.trim();
     if (!text) return;
 
-    console.log('%c🧪 Rendering selection as SMILES:', 'color: #4CAF50; font-weight: bold;', text);
+    console.log('%c🧪 Rendering selection as SMILES (same pipeline as chem::):', 'color: #4CAF50; font-weight: bold;', text);
 
     // Get the current selection to find where to insert the image
     const selection = window.getSelection();
@@ -5138,16 +5614,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Create image element (same structure as standard renderer)
     const img = document.createElement('img');
     img.className = 'molecule-diagram molecule-viewer';
-    img.alt = `SMILES: ${text}`;
+    img.alt = text;  // Just the SMILES, not "SMILES: CCO"
     img.title = `SMILES: ${text}`;
     img.src = ''; // Empty src, will be filled by loader
 
     // Create molecule data - treats text directly as SMILES
-    // isDirectSmiles flag tells renderer to skip API lookup
+    // isDirectSmiles flag tells renderClientSide to skip API lookup
     const moleculeData = {
-      smiles: text,
-      nomenclature: text, // Also set nomenclature for display purposes
+      smiles: text,  // Pre-set the SMILES so it skips lookup
+      nomenclature: text,  // Just the SMILES string (not "SMILES: CCO")
       type: 'smiles',
+
       options: {
         width: 400,
         height: 300,
@@ -5163,8 +5640,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     // Set dataset
     img.dataset.moleculeViewer = btoa(JSON.stringify(moleculeData));
+    img.dataset.smiles = text;  // Also set directly for caching
     img.dataset.loaded = 'false';
     img.dataset.rotation = '0';
+    img.dataset.compoundType = 'compound';
 
     // Style it to look good inline
     img.style.cssText = `
@@ -5193,6 +5672,447 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.error('❌ _loadMoleculeImage not found on window object');
       img.alt = 'Error: Renderer not ready';
     }
+  }
+
+  // Handler for "Render as Biomolecule" (goes directly to RCSB PDB)
+  // Uses the SAME pipeline as chem:: syntax, but with compoundType='biomolecule' flag
+  // This ensures caching, persistence, and consistent UI
+  if (request.type === 'RENDER_BIOMOLECULE') {
+    const text = request.text?.trim();
+    if (!text) return;
+
+    console.log('%c🧬 Rendering selection as Biomolecule (same pipeline as chem::):', 'color: #E91E63; font-weight: bold;', text);
+
+    // Get the current selection to find where to insert the image
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+
+    // Create image element (same structure as standard renderer)
+    const img = document.createElement('img');
+    img.className = 'molecule-diagram molecule-viewer';
+    img.alt = text;
+    img.title = `Searching RCSB PDB: ${text}`;
+    img.src = ''; // Empty src, will be filled by loader
+
+    // Create molecule data - forces biomolecule type
+    // compoundType='biomolecule' tells renderClientSide to query RCSB directly
+    const moleculeData = {
+      nomenclature: text,
+      type: 'nomenclature',
+      options: {
+        width: 400,
+        height: 300,
+        scale: 1,
+        rotation: 0
+      },
+      isMoleculeViewer: true,
+      flags: {
+        compoundType: 'biomolecule',  // Force biomolecule type - goes to RCSB
+        isDirectSmiles: false
+      }
+    };
+
+    // Set dataset
+    img.dataset.moleculeViewer = btoa(JSON.stringify(moleculeData));
+    img.dataset.loaded = 'false';
+    img.dataset.rotation = '0';
+    img.dataset.compoundType = 'biomolecule';
+
+    // Style it to look good inline
+    img.style.cssText = `
+      display: inline-block;
+      vertical-align: middle;
+      margin: 0 4px;
+      min-width: 100px;
+      min-height: 80px;
+      background: rgba(128,128,128,0.1);
+      border-radius: 4px;
+      padding: 4px;
+    `;
+
+    // Replace selected text with the image
+    range.deleteContents();
+    range.insertNode(img);
+
+    // Clear selection
+    selection.removeAllRanges();
+
+    // Load the molecule using the same pipeline as chem:: syntax
+    console.log('%c🔄 Triggering biomolecule render via _loadMoleculeImage...', 'color: #E91E63;');
+    if (window._loadMoleculeImage) {
+      window._loadMoleculeImage(img);
+    } else {
+      console.error('❌ _loadMoleculeImage not found on window object');
+      img.alt = 'Error: Renderer not ready';
+    }
+  }
+
+  // Handler for "Render as Mineral" (goes directly to COD crystal database)
+  // Uses the SAME pipeline as chem:: syntax, but with compoundType='mineral' flag
+  // This ensures caching, persistence, and consistent UI
+  if (request.type === 'RENDER_MINERAL') {
+    const text = request.text?.trim();
+    if (!text) return;
+
+    console.log('%c💎 Rendering selection as Mineral (same pipeline as chem::):', 'color: #00BCD4; font-weight: bold;', text);
+
+    // Get the current selection to find where to insert the image
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+
+    // Create image element (same structure as standard renderer)
+    const img = document.createElement('img');
+    img.className = 'molecule-diagram molecule-viewer';
+    img.alt = text;
+    img.title = `Searching COD: ${text}`;
+    img.src = ''; // Empty src, will be filled by loader
+
+    // Create molecule data - forces mineral type
+    // compoundType='mineral' tells renderClientSide to query COD directly
+    const moleculeData = {
+      nomenclature: text,
+      type: 'nomenclature',
+      options: {
+        width: 400,
+        height: 300,
+        scale: 1,
+        rotation: 0
+      },
+      isMoleculeViewer: true,
+      flags: {
+        compoundType: 'mineral',  // Force mineral type - goes to COD
+        isDirectSmiles: false
+      }
+    };
+
+    // Set dataset
+    img.dataset.moleculeViewer = btoa(JSON.stringify(moleculeData));
+    img.dataset.loaded = 'false';
+    img.dataset.rotation = '0';
+    img.dataset.compoundType = 'mineral';
+
+    // Style it to look good inline
+    img.style.cssText = `
+      display: inline-block;
+      vertical-align: middle;
+      margin: 0 4px;
+      min-width: 100px;
+      min-height: 80px;
+      background: rgba(128,128,128,0.1);
+      border-radius: 4px;
+      padding: 4px;
+    `;
+
+    // Replace selected text with the image
+    range.deleteContents();
+    range.insertNode(img);
+
+    // Clear selection
+    selection.removeAllRanges();
+
+    // Load the molecule using the same pipeline as chem:: syntax
+    console.log('%c🔄 Triggering mineral render via _loadMoleculeImage...', 'color: #00BCD4;');
+    if (window._loadMoleculeImage) {
+      window._loadMoleculeImage(img);
+    } else {
+      console.error('❌ _loadMoleculeImage not found on window object');
+      img.alt = 'Error: Renderer not ready';
+    }
+  }
+
+  // Handler for "Re-render as..." (right-click on image to change rendering type)
+  // Uses the SAME pipeline as chem:: syntax, but changes the compound type
+  if (request.type === 'RERENDER_IMAGE') {
+    const srcUrl = request.srcUrl;
+    const renderAs = request.renderAs;
+
+    console.log('%c🔄 Re-rendering image as:', 'color: #FF5722; font-weight: bold;', renderAs);
+    console.log('Looking for image with src:', srcUrl?.substring(0, 100) + '...');
+
+    // Find the image by its src URL
+    const images = document.querySelectorAll('img.molecule-diagram, img.molecule-viewer, img[data-molecule-viewer]');
+    let targetImg = null;
+
+    for (const img of images) {
+      if (img.src === srcUrl) {
+        targetImg = img;
+        break;
+      }
+    }
+
+    if (!targetImg) {
+      console.warn('❌ Could not find molecule image with the given src');
+      return;
+    }
+
+    console.log('%c✅ Found target image:', 'color: #4CAF50;', targetImg);
+
+    // Get the original nomenclature or SMILES from the image's data
+    let originalText = targetImg.dataset.nomenclature ||
+      targetImg.dataset.smiles ||
+      targetImg.alt?.replace(/^(SMILES|Biomolecule|Mineral):\s*/, '') ||
+      targetImg.title?.replace(/^(Searching|Rendering|PDB|COD).*?:\s*/, '');
+
+    // Try to decode from moleculeViewer dataset
+    if (!originalText && targetImg.dataset.moleculeViewer) {
+      try {
+        const data = JSON.parse(atob(targetImg.dataset.moleculeViewer));
+        originalText = data.smiles || data.nomenclature || data.name;
+      } catch (e) {
+        console.warn('Could not decode moleculeViewer data:', e);
+      }
+    }
+
+    if (!originalText) {
+      console.warn('❌ Could not extract original text from image');
+      alert('Could not determine the original molecule name/SMILES from this image.');
+      return;
+    }
+
+    // Clean up the text
+    originalText = originalText.trim();
+    console.log('%c📝 Original text:', 'color: #2196F3;', originalText);
+
+    // Create new molecule data based on the requested render type
+    let newMoleculeData;
+    let newFlags;
+
+    switch (renderAs) {
+      case 'molecule':
+        // Force PubChem lookup for compounds (no auto-detect)
+        newFlags = { compoundType: 'compound', isDirectSmiles: false };
+        newMoleculeData = {
+          nomenclature: originalText,
+          type: 'nomenclature',
+          flags: newFlags
+        };
+        break;
+
+
+      case 'smiles':
+        // Render directly as SMILES
+        newFlags = { compoundType: 'compound', isDirectSmiles: true };
+        newMoleculeData = {
+          smiles: originalText,
+          nomenclature: `SMILES: ${originalText}`,
+          type: 'smiles',
+          flags: newFlags
+        };
+        targetImg.dataset.smiles = originalText;
+        break;
+
+      case 'biomolecule':
+        // Force RCSB PDB lookup
+        newFlags = { compoundType: 'biomolecule', isDirectSmiles: false };
+        newMoleculeData = {
+          nomenclature: originalText,
+          type: 'nomenclature',
+          flags: newFlags
+        };
+        break;
+
+      case 'mineral':
+        // Force COD lookup
+        newFlags = { compoundType: 'mineral', isDirectSmiles: false };
+        newMoleculeData = {
+          nomenclature: originalText,
+          type: 'nomenclature',
+          flags: newFlags
+        };
+        break;
+
+      default:
+        console.warn('Unknown render type:', renderAs);
+        return;
+    }
+
+    // Add common options
+    newMoleculeData.options = {
+      width: 400,
+      height: 300,
+      scale: 1,
+      rotation: 0
+    };
+    newMoleculeData.isMoleculeViewer = true;
+
+    // Update the image's dataset
+    targetImg.dataset.moleculeViewer = btoa(JSON.stringify(newMoleculeData));
+    targetImg.dataset.loaded = 'false';
+    targetImg.dataset.compoundType = newFlags.compoundType || 'auto';
+    targetImg.alt = originalText;
+    targetImg.title = `Re-rendering as ${renderAs}: ${originalText}`;
+    targetImg.src = ''; // Clear src to trigger reload
+
+    console.log('%c🔄 Triggering re-render via _loadMoleculeImage...', 'color: #FF5722;');
+
+    // Re-render the image using the same pipeline
+    if (window._loadMoleculeImage) {
+      window._loadMoleculeImage(targetImg);
+    } else {
+      console.error('❌ _loadMoleculeImage not found on window object');
+      targetImg.alt = 'Error: Renderer not ready';
+    }
+  }
+
+  // Handler for "Edit Flags..." - opens a dialog to toggle individual rendering flags
+  // Changes are temporary and will be overwritten when global settings change
+  if (request.type === 'EDIT_FLAGS') {
+    const srcUrl = request.srcUrl;
+
+    console.log('%c🎛️ Opening flag editor dialog', 'color: #9C27B0; font-weight: bold;');
+
+    // Find the image by its src URL
+    const images = document.querySelectorAll('img.molecule-diagram, img.molecule-viewer, img[data-molecule-viewer]');
+    let targetImg = null;
+
+    for (const img of images) {
+      if (img.src === srcUrl) {
+        targetImg = img;
+        break;
+      }
+    }
+
+    if (!targetImg) {
+      console.warn('❌ Could not find molecule image with the given src');
+      return;
+    }
+
+    // Get current flags from the image's data
+    let currentFlags = {};
+    let moleculeName = targetImg.alt || targetImg.title || 'Unknown';
+
+    if (targetImg.dataset.moleculeViewer) {
+      try {
+        const data = JSON.parse(atob(targetImg.dataset.moleculeViewer));
+        currentFlags = data.flags || {};
+        moleculeName = data.nomenclature || data.smiles || moleculeName;
+      } catch (e) {
+        console.warn('Could not decode moleculeViewer data:', e);
+      }
+    }
+
+    // Remove any existing dialog
+    const existingDialog = document.getElementById('chemtex-flag-editor');
+    if (existingDialog) existingDialog.remove();
+
+    // Create the dialog
+    const dialog = document.createElement('div');
+    dialog.id = 'chemtex-flag-editor';
+    dialog.innerHTML = `
+      <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999999; display: flex; align-items: center; justify-content: center;">
+        <div style="background: #fff; border-radius: 12px; padding: 24px; min-width: 350px; max-width: 450px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+          <h3 style="margin: 0 0 8px 0; font-size: 18px; color: #333;">🎛️ ChemTex Flag Editor</h3>
+          <p style="margin: 0 0 16px 0; font-size: 13px; color: #666; word-break: break-all;">${moleculeName}</p>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="flag-c" ${currentFlags.showCarbons ? 'checked' : ''} style="width: 18px; height: 18px;">
+              <span style="font-size: 14px;">Show Carbons (c)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="flag-n" ${currentFlags.atomNumbers ? 'checked' : ''} style="width: 18px; height: 18px;">
+              <span style="font-size: 14px;">Atom Numbers (n)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="flag-o" ${currentFlags.aromaticCircles ? 'checked' : ''} style="width: 18px; height: 18px;">
+              <span style="font-size: 14px;">Aromatic Rings (o)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="flag-h" ${currentFlags.addHydrogens ? 'checked' : ''} style="width: 18px; height: 18px;">
+              <span style="font-size: 14px;">Show Hydrogens (h)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="flag-m" ${currentFlags.showMethyls ? 'checked' : ''} style="width: 18px; height: 18px;">
+              <span style="font-size: 14px;">Show Methyls (m)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="flag-i" ${currentFlags.showImplicitHydrogens ? 'checked' : ''} style="width: 18px; height: 18px;">
+              <span style="font-size: 14px;">Implicit H (i)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="flag-p" ${currentFlags.flipHorizontal ? 'checked' : ''} style="width: 18px; height: 18px;">
+              <span style="font-size: 14px;">Flip Horizontal (p)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="flag-q" ${currentFlags.flipVertical ? 'checked' : ''} style="width: 18px; height: 18px;">
+              <span style="font-size: 14px;">Flip Vertical (q)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; grid-column: span 2;">
+              <input type="checkbox" id="flag-3d" ${currentFlags.is3D ? 'checked' : ''} style="width: 18px; height: 18px;">
+              <span style="font-size: 14px;">Show 3D Model First (3d)</span>
+            </label>
+          </div>
+          
+          <p style="margin: 0 0 16px 0; font-size: 11px; color: #999;">⚠️ Changes are temporary and will be reset when you change global settings in the popup.</p>
+          
+          <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            <button id="flag-cancel" style="padding: 10px 20px; border: 1px solid #ddd; background: #fff; border-radius: 6px; cursor: pointer; font-size: 14px;">Cancel</button>
+            <button id="flag-apply" style="padding: 10px 20px; border: none; background: #4CAF50; color: #fff; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">Apply</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(dialog);
+
+    // Handle cancel
+    document.getElementById('flag-cancel').addEventListener('click', () => {
+      dialog.remove();
+    });
+
+    // Handle apply
+    document.getElementById('flag-apply').addEventListener('click', () => {
+      // Get new flag values
+      const newFlags = {
+        showCarbons: document.getElementById('flag-c').checked,
+        atomNumbers: document.getElementById('flag-n').checked,
+        aromaticCircles: document.getElementById('flag-o').checked,
+        addHydrogens: document.getElementById('flag-h').checked,
+        showMethyls: document.getElementById('flag-m').checked,
+        showImplicitHydrogens: document.getElementById('flag-i').checked,
+        flipHorizontal: document.getElementById('flag-p').checked,
+        flipVertical: document.getElementById('flag-q').checked,
+        is3D: document.getElementById('flag-3d').checked,
+        flagsLocked: true,  // Prevent popup from overriding
+        ...currentFlags  // Preserve other flags like compoundType
+      };
+
+      console.log('%c🎛️ Applying new flags:', 'color: #9C27B0;', newFlags);
+
+      // Update the image's molecule data
+      let moleculeData = {};
+      if (targetImg.dataset.moleculeViewer) {
+        try {
+          moleculeData = JSON.parse(atob(targetImg.dataset.moleculeViewer));
+        } catch (e) { }
+      }
+
+      moleculeData.flags = newFlags;
+      moleculeData.isMoleculeViewer = true;
+
+      // Update dataset
+      targetImg.dataset.moleculeViewer = btoa(JSON.stringify(moleculeData));
+      targetImg.dataset.loaded = 'false';
+      targetImg.src = ''; // Clear src to trigger reload
+
+      // Re-render the image
+      if (window._loadMoleculeImage) {
+        window._loadMoleculeImage(targetImg);
+      }
+
+      dialog.remove();
+    });
+
+    // Close on backdrop click
+    dialog.querySelector('div').addEventListener('click', (e) => {
+      if (e.target === dialog.querySelector('div')) {
+        dialog.remove();
+      }
+    });
   }
 });
 

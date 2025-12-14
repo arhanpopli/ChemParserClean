@@ -220,6 +220,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // Create context menu items
 chrome.runtime.onInstalled.addListener(() => {
+  // ===== TEXT SELECTION CONTEXT MENUS =====
   // Option 1: Render as Molecule (treats text as chemical name/nomenclature)
   chrome.contextMenus.create({
     id: "inspect-molecule",
@@ -233,7 +234,80 @@ chrome.runtime.onInstalled.addListener(() => {
     title: "Render as SMILES: '%s'",
     contexts: ["selection"]
   });
+
+  // Option 3: Render as Biomolecule (goes directly to RCSB PDB)
+  chrome.contextMenus.create({
+    id: "render-biomolecule",
+    title: "Render as Biomolecule: '%s'",
+    contexts: ["selection"]
+  });
+
+  // Option 4: Render as Mineral (goes directly to COD crystal database)
+  chrome.contextMenus.create({
+    id: "render-mineral",
+    title: "Render as Mineral: '%s'",
+    contexts: ["selection"]
+  });
+
+  // ===== IMAGE RE-RENDER CONTEXT MENUS =====
+  // Parent menu for image re-rendering options
+  chrome.contextMenus.create({
+    id: "rerender-parent",
+    title: "ChemTex: Re-render as...",
+    contexts: ["image"]
+  });
+
+  // Re-render as Molecule (PubChem lookup)
+  chrome.contextMenus.create({
+    id: "rerender-molecule",
+    parentId: "rerender-parent",
+    title: "Molecule (PubChem)",
+    contexts: ["image"]
+  });
+
+
+  // Re-render as SMILES
+  chrome.contextMenus.create({
+    id: "rerender-smiles",
+    parentId: "rerender-parent",
+    title: "SMILES (direct render)",
+    contexts: ["image"]
+  });
+
+  // Re-render as Biomolecule
+  chrome.contextMenus.create({
+    id: "rerender-biomolecule",
+    parentId: "rerender-parent",
+    title: "Biomolecule (RCSB PDB)",
+    contexts: ["image"]
+  });
+
+  // Re-render as Mineral
+  chrome.contextMenus.create({
+    id: "rerender-mineral",
+    parentId: "rerender-parent",
+    title: "Mineral (COD)",
+    contexts: ["image"]
+  });
+
+  // Separator
+  chrome.contextMenus.create({
+    id: "separator-flags",
+    parentId: "rerender-parent",
+    type: "separator",
+    contexts: ["image"]
+  });
+
+  // Edit Flags (opens dialog to toggle individual flags)
+  chrome.contextMenus.create({
+    id: "edit-flags",
+    parentId: "rerender-parent",
+    title: "Edit Flags...",
+    contexts: ["image"]
+  });
 });
+
+
 
 // Handle SETTINGS_CHANGED messages from popup - broadcast to all tabs
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -323,4 +397,74 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       text: selectedText
     });
   }
+
+  if (info.menuItemId === "render-biomolecule") {
+    const selectedText = info.selectionText;
+    console.log('[Background] Rendering as Biomolecule (RCSB PDB):', selectedText);
+
+    // Send message to content script to handle biomolecule rendering
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'RENDER_BIOMOLECULE',
+      text: selectedText
+    });
+  }
+
+  if (info.menuItemId === "render-mineral") {
+    const selectedText = info.selectionText;
+    console.log('[Background] Rendering as Mineral (COD):', selectedText);
+
+    // Send message to content script to handle mineral rendering
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'RENDER_MINERAL',
+      text: selectedText
+    });
+  }
+
+  // ===== IMAGE RE-RENDER HANDLERS =====
+  // These handle right-click on images to change rendering type
+  if (info.menuItemId === "rerender-molecule") {
+    console.log('[Background] Re-rendering image as Molecule (auto-detect)');
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'RERENDER_IMAGE',
+      srcUrl: info.srcUrl,
+      renderAs: 'molecule'
+    });
+  }
+
+  if (info.menuItemId === "rerender-smiles") {
+    console.log('[Background] Re-rendering image as SMILES');
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'RERENDER_IMAGE',
+      srcUrl: info.srcUrl,
+      renderAs: 'smiles'
+    });
+  }
+
+  if (info.menuItemId === "rerender-biomolecule") {
+    console.log('[Background] Re-rendering image as Biomolecule');
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'RERENDER_IMAGE',
+      srcUrl: info.srcUrl,
+      renderAs: 'biomolecule'
+    });
+  }
+
+  if (info.menuItemId === "rerender-mineral") {
+    console.log('[Background] Re-rendering image as Mineral');
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'RERENDER_IMAGE',
+      srcUrl: info.srcUrl,
+      renderAs: 'mineral'
+    });
+  }
+
+  // Edit Flags handler - opens dialog to toggle flags
+  if (info.menuItemId === "edit-flags") {
+    console.log('[Background] Opening flag editor for image');
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'EDIT_FLAGS',
+      srcUrl: info.srcUrl
+    });
+  }
 });
+

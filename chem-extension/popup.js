@@ -131,11 +131,17 @@ chrome.storage.sync.get(null, (storedSettings) => {
     sdFlipVertical: false,
     sdTheme: 'light',
     sdRotate: 0,
+    sdBondThickness: 1.0,
+    sdGradientColors: false,
+    sdScaleByWeight: false,
     saveSizePerImage: false,
     saveSizeBySMILES: true,
     searchPubChem: true,
     searchRCSB: true,
     searchCOD: true,
+    useStereochemistry: true,
+    compoundMolviewBgColor: 'black',
+    disableFormulaFallback: false,
     enable3DViewer: false,
     default3DView: '2d',
     viewer3DSource: '3dmol',
@@ -165,7 +171,15 @@ chrome.storage.sync.get(null, (storedSettings) => {
     },
     enableAIMolecularControl: false,
     molSearchMode: false,
-    showTags: false
+    showTags: false,
+    // UI settings
+    uiBlur: 7,
+    uiOpacity: 23,
+    // Molecule animation settings
+    moleculeCount: 22,
+    moleculeScale: 0.4,
+    cursorGravityStrength: -0.9,
+    initialVelocity: 10
   };
 
   // Merge stored settings with defaults (stored settings take precedence)
@@ -263,6 +277,10 @@ chrome.storage.sync.get(null, (storedSettings) => {
   if (searchRCSBToggle) searchRCSBToggle.checked = settings.searchRCSB !== false;
   if (searchCODToggle) searchCODToggle.checked = settings.searchCOD !== false;
 
+  // Load stereochemistry preference
+  const useStereochemistryToggle = document.getElementById('useStereochemistryToggle');
+  if (useStereochemistryToggle) useStereochemistryToggle.checked = settings.useStereochemistry !== false;
+
   // Load image size control options
   if (saveSizePerImageToggle) saveSizePerImageToggle.checked = settings.saveSizePerImage;
   if (saveSizeBySMILESToggle) saveSizeBySMILESToggle.checked = settings.saveSizeBySMILES;
@@ -277,10 +295,17 @@ chrome.storage.sync.get(null, (storedSettings) => {
   if (viewer3DBgColorSelect) viewer3DBgColorSelect.value = settings.viewer3DBgColor || '#1a1a2e';
 
   // Load MolView specific options (compound)
+  console.log('[Popup] Loading compound settings:', {
+    storedBgColor: storedSettings.compoundMolviewBgColor,
+    mergedBgColor: settings.compoundMolviewBgColor,
+    willSetTo: settings.compoundMolviewBgColor || 'black'
+  });
   if (molviewRepresentationSelect) molviewRepresentationSelect.value = settings.molviewRepresentation || 'ballAndStick';
-  if (compoundMolviewBgColorSelect) compoundMolviewBgColorSelect.value = settings.compoundMolviewBgColor || 'black';
+  if (compoundMolviewBgColorSelect) {
+    compoundMolviewBgColorSelect.value = settings.compoundMolviewBgColor || 'black';
+    console.log('[Popup] Set compoundMolviewBgColorSelect.value to:', compoundMolviewBgColorSelect.value);
+  }
   if (molviewEngineSelect) molviewEngineSelect.value = settings.molviewEngine || 'glmol';
-
 
   // Load Biomolecule Options
   if (proteinRemoveWhiteBgToggle) proteinRemoveWhiteBgToggle.checked = settings.proteinRemoveWhiteBg;
@@ -344,6 +369,15 @@ chrome.storage.sync.get(null, (storedSettings) => {
     mineralOptionsInit.style.display = 'block';
   }
 });
+
+// Extension enabled toggle - CRITICAL: was missing, causing settings to not persist
+if (enabledToggle) {
+  enabledToggle.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ enabled: e.target.checked }, () => {
+      showStatus('ChemTex ' + (e.target.checked ? 'enabled' : 'disabled'), 'success');
+    });
+  });
+}
 
 if (mhchemToggle) {
   mhchemToggle.addEventListener('change', (e) => {
@@ -681,6 +715,15 @@ if (searchCODToggle) {
   });
 }
 
+// Stereochemistry toggle
+const useStereochemistryToggleHandler = document.getElementById('useStereochemistryToggle');
+if (useStereochemistryToggleHandler) {
+  useStereochemistryToggleHandler.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ useStereochemistry: e.target.checked }, () => {
+      showStatus('Stereochemistry ' + (e.target.checked ? 'enabled' : 'disabled'), 'success');
+    });
+  });
+}
 
 // MolView specific options event listeners (compound)
 if (molviewRepresentationSelect) {
@@ -694,9 +737,16 @@ if (molviewRepresentationSelect) {
 
 if (compoundMolviewBgColorSelect) {
   compoundMolviewBgColorSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ compoundMolviewBgColor: e.target.value }, () => {
-      broadcastSettingsChange({ compoundMolviewBgColor: e.target.value });
-      showStatus('Compound background set to ' + e.target.options[e.target.selectedIndex].text, 'success');
+    const value = e.target.value;
+    console.log('[Popup] Attempting to save compoundMolviewBgColor:', value);
+    saveSettingWithVerification('compoundMolviewBgColor', value, (success, error) => {
+      if (success) {
+        broadcastSettingsChange({ compoundMolviewBgColor: value });
+        showStatus('Compound background set to ' + e.target.options[e.target.selectedIndex].text, 'success');
+      } else {
+        showStatus('Error saving background color: ' + (error || 'Unknown error'), 'error');
+        // Don't revert the dropdown - let user see the issue
+      }
     });
   });
 }
@@ -947,8 +997,8 @@ function applyGlassmorphism(blur, opacity) {
 
 // Load UI settings
 chrome.storage.sync.get({
-  uiBlur: 10,
-  uiOpacity: 45
+  uiBlur: 7,
+  uiOpacity: 23
 }, function (settings) {
   if (blurSlider) {
     blurSlider.value = settings.uiBlur;
@@ -1029,8 +1079,10 @@ if (molScaleSlider) {
 
 // Load Molecule Settings
 chrome.storage.sync.get({
-  moleculeCount: 20,
-  moleculeScale: 0.5
+  moleculeCount: 22,
+  moleculeScale: 0.4,
+  cursorGravityStrength: -0.9,
+  initialVelocity: 10
 }, function (settings) {
   if (molCountSlider) {
     molCountSlider.value = settings.moleculeCount;
@@ -1040,7 +1092,58 @@ chrome.storage.sync.get({
     molScaleSlider.value = settings.moleculeScale;
     molScaleValue.textContent = settings.moleculeScale;
   }
+
+  // New physics UI controls
+  if (cursorGravitySlider) {
+    cursorGravitySlider.value = settings.cursorGravityStrength;
+    cursorGravityValue.textContent = settings.cursorGravityStrength;
+  }
+  if (initialVelocitySlider) {
+    initialVelocitySlider.value = settings.initialVelocity;
+    initialVelocityValue.textContent = settings.initialVelocity;
+  }
 });
+
+// =============================================
+// Popup Physics Controls (cursor gravity / initial velocity)
+// =============================================
+
+const cursorGravitySlider = document.getElementById('cursorGravitySlider');
+const cursorGravityValue = document.getElementById('cursorGravityValue');
+const initialVelocitySlider = document.getElementById('initialVelocitySlider');
+const initialVelocityValue = document.getElementById('initialVelocityValue');
+
+function triggerPopupPhysicsUpdate() {
+  try {
+    if (window.updateMoleculeAnimation) {
+      window.updateMoleculeAnimation();
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+if (cursorGravitySlider) {
+  cursorGravitySlider.addEventListener('input', function (e) {
+    if (cursorGravityValue) cursorGravityValue.textContent = e.target.value;
+  });
+  cursorGravitySlider.addEventListener('change', function (e) {
+    chrome.storage.sync.set({ cursorGravityStrength: parseFloat(e.target.value) }, () => {
+      triggerPopupPhysicsUpdate();
+    });
+  });
+}
+
+if (initialVelocitySlider) {
+  initialVelocitySlider.addEventListener('input', function (e) {
+    if (initialVelocityValue) initialVelocityValue.textContent = e.target.value;
+  });
+  initialVelocitySlider.addEventListener('change', function (e) {
+    chrome.storage.sync.set({ initialVelocity: parseFloat(e.target.value) }, () => {
+      triggerPopupPhysicsUpdate();
+    });
+  });
+}
 
 // =============================================
 // Collapsible Sections
@@ -1123,5 +1226,34 @@ if (metamaskDonateBtn) {
         alert('Address copied to clipboard! 📋');
       }
     }
+  });
+}
+
+// Icon button listeners (same functions as main buttons)
+const clearCacheIconBtn = document.getElementById('clearCacheIconBtn');
+if (clearCacheIconBtn) {
+  clearCacheIconBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' });
+    chrome.storage.local.get(null, (items) => {
+      const keysToRemove = Object.keys(items).filter(key =>
+        key.startsWith('smiles_') || key.startsWith('cid_') ||
+        key.startsWith('cache_') || key.startsWith('search_') ||
+        key === 'chemtex_smiles_cache'
+      );
+      if (keysToRemove.length > 0) {
+        chrome.storage.local.remove(keysToRemove);
+      } else {
+        chrome.storage.local.remove('chemtex_smiles_cache');
+      }
+    });
+    showStatus('Cache cleared!', 'success');
+  });
+}
+
+const reloadAllIconBtn = document.getElementById('reloadAllIconBtn');
+if (reloadAllIconBtn) {
+  reloadAllIconBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'RELOAD_ALL_IMAGES' });
+    showStatus('Reloading...', 'success');
   });
 }

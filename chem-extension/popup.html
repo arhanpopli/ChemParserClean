@@ -559,61 +559,6 @@
             <label class="toggle" for="showTagsToggle"></label>
           </div>
 
-          <div class="option" style="flex-direction: column; align-items: stretch; gap: 8px;">
-            <button id="reloadAllBtn" style="
-              padding: 10px 16px;
-              background: linear-gradient(135deg, #1a1a1a, #333);
-              color: white;
-              border: none;
-              border-radius: 8px;
-              font-size: 12px;
-              font-weight: 600;
-              cursor: pointer;
-              transition: all 0.2s;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 6px;
-            ">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M23 4v6h-6" />
-                <path d="M1 20v-6h6" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
-              Reload All Images
-            </button>
-            <small style="color: #666; font-size: 10px; text-align: center;">Re-render all molecules without page
-              reload</small>
-          </div>
-
-          <div class="option" style="flex-direction: column; align-items: stretch; gap: 8px;">
-            <button id="clearCacheBtn" style="
-              padding: 10px 16px;
-              background: linear-gradient(135deg, #c0392b, #e74c3c);
-              color: white;
-              border: none;
-              border-radius: 8px;
-              font-size: 12px;
-              font-weight: 600;
-              cursor: pointer;
-              transition: all 0.2s;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 6px;
-            ">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                <line x1="10" y1="11" x2="10" y2="17"></line>
-                <line x1="14" y1="11" x2="14" y2="17"></line>
-              </svg>
-              Clear Cache
-            </button>
-            <small style="color: #666; font-size: 10px; text-align: center;">Clear cached SMILES lookups (use if wrong
-              data was cached)</small>
-          </div>
-
         </div>
       </div>
 
@@ -655,6 +600,15 @@
             </label>
             <input type="checkbox" id="searchCODToggle" checked>
             <label class="toggle" for="searchCODToggle"></label>
+          </div>
+
+          <div class="option">
+            <label class="option-label" for="useStereochemistryToggle">
+              <strong>Use Stereochemistry</strong>
+              <small>Prefer isomeric SMILES when available</small>
+            </label>
+            <input type="checkbox" id="useStereochemistryToggle" checked>
+            <label class="toggle" for="useStereochemistryToggle"></label>
           </div>
         </div>
       </div>
@@ -933,7 +887,7 @@
           <div class="option-with-dropdown">
             <label class="option-label"><strong>Background</strong></label>
             <select id="compoundMolviewBgColorSelect">
-              <option value="black" selected>Black</option>
+              <option value="black">Black</option>
               <option value="gray">Gray</option>
               <option value="white">White</option>
             </select>
@@ -1154,33 +1108,49 @@
           <div class="slider-option">
             <div class="slider-header">
               <label><strong>Molecule Count</strong></label>
-              <span id="molCountValue">20</span>
+              <span id="molCountValue">22</span>
             </div>
-            <input type="range" id="molCountSlider" min="0" max="50" value="20" class="slider">
+            <input type="range" id="molCountSlider" min="0" max="50" value="22" class="slider">
           </div>
 
           <div class="slider-option">
             <div class="slider-header">
               <label><strong>Molecule Size</strong></label>
-              <span id="molScaleValue">0.6</span>
+              <span id="molScaleValue">0.4</span>
             </div>
-            <input type="range" id="molScaleSlider" min="0.1" max="1.5" step="0.1" value="0.6" class="slider">
+            <input type="range" id="molScaleSlider" min="0.1" max="1.5" step="0.1" value="0.4" class="slider">
           </div>
 
           <div class="slider-option">
             <div class="slider-header">
               <label><strong>Background Blur</strong></label>
-              <span id="blurValue">10px</span>
+              <span id="blurValue">7px</span>
             </div>
-            <input type="range" id="blurSlider" min="0" max="20" value="10" class="slider">
+            <input type="range" id="blurSlider" min="0" max="20" value="7" class="slider">
           </div>
 
           <div class="slider-option">
             <div class="slider-header">
               <label><strong>Box Opacity</strong></label>
-              <span id="opacityValue">45%</span>
+              <span id="opacityValue">23%</span>
             </div>
-            <input type="range" id="opacitySlider" min="0" max="100" value="45" class="slider">
+            <input type="range" id="opacitySlider" min="0" max="100" value="23" class="slider">
+          </div>
+
+          <div class="slider-option">
+            <div class="slider-header">
+              <label><strong>Cursor Gravity</strong></label>
+              <span id="cursorGravityValue">-0.9</span>
+            </div>
+            <input type="range" id="cursorGravitySlider" min="-4" max="4" step="0.1" value="-0.9" class="slider">
+          </div>
+
+          <div class="slider-option">
+            <div class="slider-header">
+              <label><strong>Initial Velocity</strong></label>
+              <span id="initialVelocityValue">10</span>
+            </div>
+            <input type="range" id="initialVelocitySlider" min="0" max="10" step="0.1" value="10" class="slider">
           </div>
         </div>
       </div>
@@ -1191,7 +1161,50 @@
 
     <div class="footer" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 16px;">
       <span style="font-size: 11px; color: #666;">ChemTex v6.0</span>
-      <div style="display: flex; gap: 12px; align-items: center;">
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <!-- Clear Cache Button -->
+        <button id="clearCacheBtn" title="Clear Cache" style="
+          padding: 6px;
+          background: #e74c3c;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+          width: 28px;
+          height: 28px;
+        ">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+        </button>
+        <!-- Reload All Button -->
+        <button id="reloadAllBtn" title="Reload All Images" style="
+          padding: 6px;
+          background: #2c3e50;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+          width: 28px;
+          height: 28px;
+        ">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6" />
+            <path d="M1 20v-6h6" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
+        </button>
         <!-- Discord Button -->
         <a href="https://discord.gg/YOUR_INVITE" target="_blank" title="Join Discord"
           style="display: flex; align-items: center; text-decoration: none;">
@@ -1224,7 +1237,9 @@
   </div>
 
   <!-- External scripts (CSP compliant) -->
-  <script src="smiles-drawer.min.js"></script>
+  <script src="vendor-matter.min.js"></script>
+  <script src="vendor-svg-path-properties-wrapper.js"></script>
+  <script src="physics-colliders.js"></script>
   <script src="popup-aninmation.js"></script>
   <script src="popup.js"></script>
 </body>

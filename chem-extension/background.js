@@ -278,6 +278,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ success: true });
     return true;
   }
+
+  // Handle CLEAR_CACHE from popup - broadcast to all tabs
+  if (request.type === 'CLEAR_CACHE') {
+    console.log('[Background] Broadcasting clear cache to all tabs');
+
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach(tab => {
+        if (tab.url && !tab.url.startsWith('chrome://') && !tab.url.startsWith('edge://')) {
+          chrome.tabs.sendMessage(tab.id, {
+            type: 'CLEAR_CACHE'
+          }).catch(() => {
+            // Tab might not have content script loaded, ignore
+          });
+        }
+      });
+    });
+
+    sendResponse({ success: true });
+    return true;
+  }
 });
 
 // Handle context menu clicks

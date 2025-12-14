@@ -586,6 +586,34 @@
               reload</small>
           </div>
 
+          <div class="option" style="flex-direction: column; align-items: stretch; gap: 8px;">
+            <button id="clearCacheBtn" style="
+              padding: 10px 16px;
+              background: linear-gradient(135deg, #c0392b, #e74c3c);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-size: 12px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+            ">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+              Clear Cache
+            </button>
+            <small style="color: #666; font-size: 10px; text-align: center;">Clear cached SMILES lookups (use if wrong
+              data was cached)</small>
+          </div>
+
         </div>
       </div>
 
@@ -677,12 +705,30 @@
           </div>
 
           <div class="option">
-            <label class="option-label" for="sdShowHydrogensToggle">
-              <strong>Show Hydrogens</strong>
-              <small>Explicitly display H atoms (+h flag)</small>
+            <label class="option-label" for="sdShowExplicitHydrogensToggle">
+              <strong>Show Explicit Hydrogens</strong>
+              <small>Draw H atoms as separate nodes with bonds (+h flag)</small>
             </label>
-            <input type="checkbox" id="sdShowHydrogensToggle">
-            <label class="toggle" for="sdShowHydrogensToggle"></label>
+            <input type="checkbox" id="sdShowExplicitHydrogensToggle">
+            <label class="toggle" for="sdShowExplicitHydrogensToggle"></label>
+          </div>
+
+          <div class="option">
+            <label class="option-label" for="sdShowImplicitHydrogensToggle">
+              <strong>Show Implicit Hydrogens</strong>
+              <small>Show H counts in labels: CH₃, OH, NH₂, H⁺ (+i flag)</small>
+            </label>
+            <input type="checkbox" id="sdShowImplicitHydrogensToggle" checked>
+            <label class="toggle" for="sdShowImplicitHydrogensToggle"></label>
+          </div>
+
+          <div class="option">
+            <label class="option-label" for="sdCompactDrawingToggle">
+              <strong>Compact Drawing</strong>
+              <small>Concatenate chains as text (CH₃COOH) - OFF for 2D structures</small>
+            </label>
+            <input type="checkbox" id="sdCompactDrawingToggle">
+            <label class="toggle" for="sdCompactDrawingToggle"></label>
           </div>
 
           <div class="option">
@@ -776,7 +822,11 @@
                   </tr>
                   <tr>
                     <td style="padding: 2px 4px;"><code>+h</code></td>
-                    <td>Show hydrogen atoms</td>
+                    <td>Explicit H (branched atoms)</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 2px 4px;"><code>+i</code></td>
+                    <td>Implicit H (CH₃, OH, NH₂, H⁺)</td>
                   </tr>
                   <tr>
                     <td style="padding: 2px 4px;"><code>+o</code></td>
@@ -860,100 +910,50 @@
         </div>
       </div>
 
-      <!-- 3D Viewer Settings -->
-      <div id="viewer3DSettings" class="section" style="display: none;">
+      <!-- Compound Options -->
+      <div id="compoundOptions" class="section">
         <div class="section-title">
-          <span>3D Viewer Settings</span>
+          <span>Compound Options</span>
           <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6,9 12,15 18,9"></polyline>
           </svg>
         </div>
         <div class="section-content">
-          <div class="option">
-            <label class="option-label" for="enable3DViewerToggle">
-              <strong>Enable 3D Viewer</strong>
-              <small>Show interactive 3D models inline</small>
-            </label>
-            <input type="checkbox" id="enable3DViewerToggle">
-            <label class="toggle" for="enable3DViewerToggle"></label>
-          </div>
-
           <div class="option-with-dropdown">
-            <label class="option-label">
-              <strong>3D Viewer Source</strong>
-            </label>
-            <select id="viewer3DSourceSelect">
-              <option value="3dmol" selected>3Dmol.js</option>
-              <option value="molview">MolView</option>
-              <option value="molstar">Mol*</option>
-              <option value="pubchem">PubChem</option>
+            <label class="option-label"><strong>Representation</strong></label>
+            <select id="molviewRepresentationSelect">
+              <option value="ballAndStick">Ball & Stick</option>
+              <option value="stick">Stick</option>
+              <option value="vdwSpheres">vdW Spheres</option>
+              <option value="wireframe">Wireframe</option>
+              <option value="line">Line</option>
             </select>
           </div>
 
-          <!-- MolView Compound Options (for small molecules) -->
-          <div id="molviewOptions" style="margin-top: 10px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 10px;">
-            <div style="font-size: 11px; font-weight: 600; color: #333; margin-bottom: 8px;">
-              🧪 Compound 3D Options (MolView)
-            </div>
-            <div class="option-with-dropdown">
-              <label class="option-label"><strong>Representation</strong></label>
-              <select id="molviewRepresentationSelect">
-                <option value="ballAndStick">Ball & Stick</option>
-                <option value="stick">Stick</option>
-                <option value="vdwSpheres">vdW Spheres</option>
-                <option value="wireframe">Wireframe</option>
-                <option value="line">Line</option>
-              </select>
-            </div>
-
-            <div class="option-with-dropdown">
-              <label class="option-label"><strong>Background</strong></label>
-              <select id="compoundMolviewBgColorSelect">
-                <option value="black" selected>Black</option>
-                <option value="gray">Gray</option>
-                <option value="white">White</option>
-              </select>
-            </div>
-
-            <div class="option-with-dropdown">
-              <label class="option-label"><strong>Engine</strong></label>
-              <select id="molviewEngineSelect">
-                <option value="glmol">GLmol</option>
-                <option value="jmol">Jmol</option>
-                <option value="chemdoodle">ChemDoodle</option>
-              </select>
-            </div>
-
-            <div class="option-with-dropdown">
-              <label class="option-label"><strong>Crystallography</strong></label>
-              <select id="molviewCrystallographySelect">
-                <option value="none">None</option>
-                <option value="unitcell">Unit cell</option>
-                <option value="supercell_2x2x2">2×2×2</option>
-                <option value="supercell_1x3x3">1×3×3</option>
-              </select>
-            </div>
+          <div class="option-with-dropdown">
+            <label class="option-label"><strong>Background</strong></label>
+            <select id="compoundMolviewBgColorSelect">
+              <option value="black" selected>Black</option>
+              <option value="gray">Gray</option>
+              <option value="white">White</option>
+            </select>
           </div>
 
           <div class="option-with-dropdown">
-            <label class="option-label">
-              <strong>3D Viewer Size</strong>
-            </label>
-            <select id="viewer3DSizeSelect">
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="normal" selected>Normal</option>
-              <option value="large">Large</option>
-              <option value="xlarge">X-Large</option>
+            <label class="option-label"><strong>Engine</strong></label>
+            <select id="molviewEngineSelect">
+              <option value="glmol">GLmol</option>
+              <option value="jmol">Jmol</option>
+              <option value="chemdoodle">ChemDoodle</option>
             </select>
           </div>
         </div>
       </div>
 
-      <!-- MolView Protein Options -->
-      <div id="molviewProteinOptions" class="section">
+      <!-- Biomolecule Options -->
+      <div id="biomoleculeOptions" class="section">
         <div class="section-title">
-          <span>MolView Protein Options</span>
+          <span>Biomolecule Options</span>
           <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6,9 12,15 18,9"></polyline>
           </svg>
@@ -1224,6 +1224,8 @@
   </div>
 
   <!-- External scripts (CSP compliant) -->
+  <script src="smiles-drawer.min.js"></script>
+  <script src="popup-aninmation.js"></script>
   <script src="popup.js"></script>
 </body>
 

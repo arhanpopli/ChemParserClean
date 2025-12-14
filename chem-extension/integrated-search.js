@@ -16,10 +16,10 @@
     // ============================================
     // SESSION CACHE - Deduplicates API calls per page session
     // ============================================
-    
+
     // In-memory cache for search results (cleared on page reload)
     const sessionCache = new Map();
-    
+
     // In-memory map of pending searches (for deduplication)
     const pendingSearches = new Map();
 
@@ -691,7 +691,12 @@
     // ============================================
 
     window.IntegratedSearch = {
-        search: integratedSearch
+        search: integratedSearch,
+        clearCache: function () {
+            sessionCache.clear();
+            pendingSearches.clear();
+            console.log('[IntegratedSearch] 🗑️ Cache cleared!');
+        }
     };
 
     console.log('[IntegratedSearch] ✅ Module loaded - Queries RCSB, COD, and PubChem APIs directly. NO local databases needed!');

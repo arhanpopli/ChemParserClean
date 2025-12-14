@@ -20,7 +20,9 @@ const sdShowCarbonsToggle = document.getElementById('sdShowCarbonsToggle');
 const sdAromaticRingsToggle = document.getElementById('sdAromaticRingsToggle');
 const sdShowMethylsToggle = document.getElementById('sdShowMethylsToggle');
 const sdAtomNumbersToggle = document.getElementById('sdAtomNumbersToggle');
-const sdShowHydrogensToggle = document.getElementById('sdShowHydrogensToggle');
+const sdShowExplicitHydrogensToggle = document.getElementById('sdShowExplicitHydrogensToggle');
+const sdShowImplicitHydrogensToggle = document.getElementById('sdShowImplicitHydrogensToggle');
+const sdCompactDrawingToggle = document.getElementById('sdCompactDrawingToggle');
 const sdFlipHorizontalToggle = document.getElementById('sdFlipHorizontalToggle');
 const sdFlipVerticalToggle = document.getElementById('sdFlipVerticalToggle');
 const sdThemeSelect = document.getElementById('sdThemeSelect');
@@ -36,20 +38,13 @@ const searchPubChemToggle = document.getElementById('searchPubChemToggle');
 const searchRCSBToggle = document.getElementById('searchRCSBToggle');
 const searchCODToggle = document.getElementById('searchCODToggle');
 
-// 3D Viewer Settings section
-const viewer3DSettings = document.getElementById('viewer3DSettings');
-const viewer3DSourceSelect = document.getElementById('viewer3DSourceSelect');
-const viewer3DSizeSelect = document.getElementById('viewer3DSizeSelect');
-const viewer3DBgColorSelect = document.getElementById('viewer3DBgColorSelect');
-
-// MolView specific options
-const molviewOptions = document.getElementById('molviewOptions');
+// Compound Options
+const compoundOptions = document.getElementById('compoundOptions');
 const molviewRepresentationSelect = document.getElementById('molviewRepresentationSelect');
 const compoundMolviewBgColorSelect = document.getElementById('compoundMolviewBgColorSelect');
 const molviewEngineSelect = document.getElementById('molviewEngineSelect');
-const molviewCrystallographySelect = document.getElementById('molviewCrystallographySelect');
 
-// Protein Options
+// Biomolecule Options
 const proteinRemoveWhiteBgToggle = document.getElementById('proteinRemoveWhiteBgToggle');
 const molviewBioAssemblyToggle = document.getElementById('molviewBioAssemblyToggle');
 const molviewChainTypeSelect = document.getElementById('molviewChainTypeSelect');
@@ -66,13 +61,6 @@ const mineralCrystallographySelect = document.getElementById('mineralCrystallogr
 const saveSizePerImageToggle = document.getElementById('saveSizePerImageToggle');
 const saveSizeBySMILESToggle = document.getElementById('saveSizeBySMILESToggle');
 
-// 3D Viewer options
-const enable3DViewerToggle = document.getElementById('enable3DViewerToggle');
-const default3DViewSelect = document.getElementById('default3DViewSelect');
-const viewer3DStyleSelect = document.getElementById('viewer3DStyleSelect');
-const viewer3DStickRadiusSelect = document.getElementById('viewer3DStickRadiusSelect');
-const viewer3DSphereRadiusSelect = document.getElementById('viewer3DSphereRadiusSelect');
-const viewer3DAutoRotateToggle = document.getElementById('viewer3DAutoRotateToggle');
 
 // MolView-Only Mode toggle
 const molSearchModeToggle = document.getElementById('molSearchModeToggle');
@@ -136,7 +124,9 @@ chrome.storage.sync.get(null, (storedSettings) => {
     sdAromaticRings: true,
     sdShowMethyls: true,
     sdAtomNumbers: false,
-    sdShowHydrogens: false,
+    sdShowExplicitHydrogens: false,
+    sdShowImplicitHydrogens: true,
+    sdCompactDrawing: false,
     sdFlipHorizontal: false,
     sdFlipVertical: false,
     sdTheme: 'light',
@@ -155,7 +145,7 @@ chrome.storage.sync.get(null, (storedSettings) => {
     viewer3DBgColor: '#1a1a2e',
     molviewRepresentation: 'ballAndStick',
     molviewEngine: 'glmol',
-    molviewCrystallography: 'none',
+
     proteinRemoveWhiteBg: false,
     molviewBioAssembly: false,
     molviewChainType: 'ribbon',
@@ -193,7 +183,9 @@ chrome.storage.sync.get(null, (storedSettings) => {
     sdAromaticRings: settings.sdAromaticRings,
     sdShowMethyls: settings.sdShowMethyls,
     sdAtomNumbers: settings.sdAtomNumbers,
-    sdShowHydrogens: settings.sdShowHydrogens,
+    sdShowExplicitHydrogens: settings.sdShowExplicitHydrogens,
+    sdShowImplicitHydrogens: settings.sdShowImplicitHydrogens,
+    sdCompactDrawing: settings.sdCompactDrawing,
     sdFlipHorizontal: settings.sdFlipHorizontal,
     sdFlipVertical: settings.sdFlipVertical
   });
@@ -211,7 +203,8 @@ chrome.storage.sync.get(null, (storedSettings) => {
   console.log('[Popup] sdAromaticRingsToggle exists?', !!sdAromaticRingsToggle);
   console.log('[Popup] sdShowMethylsToggle exists?', !!sdShowMethylsToggle);
   console.log('[Popup] sdAtomNumbersToggle exists?', !!sdAtomNumbersToggle);
-  console.log('[Popup] sdShowHydrogensToggle exists?', !!sdShowHydrogensToggle);
+  console.log('[Popup] sdShowExplicitHydrogensToggle exists?', !!sdShowExplicitHydrogensToggle);
+  console.log('[Popup] sdShowImplicitHydrogensToggle exists?', !!sdShowImplicitHydrogensToggle);
   console.log('[Popup] sdFlipHorizontalToggle exists?', !!sdFlipHorizontalToggle);
   console.log('[Popup] sdFlipVerticalToggle exists?', !!sdFlipVerticalToggle);
   console.log('[Popup] ================================================');
@@ -233,9 +226,17 @@ chrome.storage.sync.get(null, (storedSettings) => {
     sdAtomNumbersToggle.checked = settings.sdAtomNumbers;
     console.log('[Popup] Set sdAtomNumbersToggle.checked to:', settings.sdAtomNumbers, '| Actual value now:', sdAtomNumbersToggle.checked);
   }
-  if (sdShowHydrogensToggle) {
-    sdShowHydrogensToggle.checked = settings.sdShowHydrogens;
-    console.log('[Popup] Set sdShowHydrogensToggle.checked to:', settings.sdShowHydrogens, '| Actual value now:', sdShowHydrogensToggle.checked);
+  if (sdShowExplicitHydrogensToggle) {
+    sdShowExplicitHydrogensToggle.checked = settings.sdShowExplicitHydrogens;
+    console.log('[Popup] Set sdShowExplicitHydrogensToggle.checked to:', settings.sdShowExplicitHydrogens, '| Actual value now:', sdShowExplicitHydrogensToggle.checked);
+  }
+  if (sdShowImplicitHydrogensToggle) {
+    sdShowImplicitHydrogensToggle.checked = settings.sdShowImplicitHydrogens;
+    console.log('[Popup] Set sdShowImplicitHydrogensToggle.checked to:', settings.sdShowImplicitHydrogens, '| Actual value now:', sdShowImplicitHydrogensToggle.checked);
+  }
+  if (sdCompactDrawingToggle) {
+    sdCompactDrawingToggle.checked = settings.sdCompactDrawing;
+    console.log('[Popup] Set sdCompactDrawingToggle.checked to:', settings.sdCompactDrawing, '| Actual value now:', sdCompactDrawingToggle.checked);
   }
   if (sdFlipHorizontalToggle) {
     sdFlipHorizontalToggle.checked = settings.sdFlipHorizontal;
@@ -279,9 +280,9 @@ chrome.storage.sync.get(null, (storedSettings) => {
   if (molviewRepresentationSelect) molviewRepresentationSelect.value = settings.molviewRepresentation || 'ballAndStick';
   if (compoundMolviewBgColorSelect) compoundMolviewBgColorSelect.value = settings.compoundMolviewBgColor || 'black';
   if (molviewEngineSelect) molviewEngineSelect.value = settings.molviewEngine || 'glmol';
-  if (molviewCrystallographySelect) molviewCrystallographySelect.value = settings.molviewCrystallography || 'none';
 
-  // Load Protein Options
+
+  // Load Biomolecule Options
   if (proteinRemoveWhiteBgToggle) proteinRemoveWhiteBgToggle.checked = settings.proteinRemoveWhiteBg;
   if (molviewBioAssemblyToggle) molviewBioAssemblyToggle.checked = settings.molviewBioAssembly;
   if (molviewChainTypeSelect) molviewChainTypeSelect.value = settings.molviewChainType || 'ribbon';
@@ -294,9 +295,9 @@ chrome.storage.sync.get(null, (storedSettings) => {
   if (mineralMolviewBgColorSelect) mineralMolviewBgColorSelect.value = settings.mineralMolviewBgColor || 'black';
   if (mineralCrystallographySelect) mineralCrystallographySelect.value = settings.mineralCrystallography || 'supercell_2x2x2';
 
-  // Show/hide MolView options based on current source
-  if (molviewOptions) {
-    molviewOptions.style.display = (settings.viewer3DSource === 'molview') ? 'block' : 'none';
+  // Always show Compound Options
+  if (compoundOptions) {
+    compoundOptions.style.display = 'block';
   }
 
   // Load MolView-Only Mode option
@@ -323,24 +324,19 @@ chrome.storage.sync.get(null, (storedSettings) => {
     radio.checked = (radio.value === settings.rendererEngine);
   });
 
-  // Show SmilesDrawer, PubChem, or CDK Depict options based on selected engine
+  // Show SmilesDrawer options (client-side is the only engine now)
   if (smilesDrawerOptions) {
-    smilesDrawerOptions.style.display = (settings.rendererEngine === 'client-side') ? 'block' : 'none';
+    smilesDrawerOptions.style.display = 'block';
   }
-  if (pubchemOptions) {
-    pubchemOptions.style.display = (settings.rendererEngine === 'pubchem') ? 'block' : 'none';
+  // Show Compound Options for ALL engines
+  const compoundOptionsInit = document.getElementById('compoundOptions');
+  if (compoundOptionsInit) {
+    compoundOptionsInit.style.display = 'block';
   }
-  if (cdkDepictOptions) {
-    cdkDepictOptions.style.display = (settings.rendererEngine === 'cdk-depict') ? 'block' : 'none';
-  }
-  // Show 3D Viewer Settings section for ALL engines (always visible)
-  if (viewer3DSettings) {
-    viewer3DSettings.style.display = 'block';
-  }
-  // Show MolView Protein Options for ALL engines (Search API detects proteins regardless of renderer)
-  const molviewProteinOptionsInit = document.getElementById('molviewProteinOptions');
-  if (molviewProteinOptionsInit) {
-    molviewProteinOptionsInit.style.display = 'block';
+  // Show Biomolecule Options for ALL engines (Search API detects biomolecules regardless of renderer)
+  const biomoleculeOptionsInit = document.getElementById('biomoleculeOptions');
+  if (biomoleculeOptionsInit) {
+    biomoleculeOptionsInit.style.display = 'block';
   }
   // Show Mineral Options for ALL engines
   const mineralOptionsInit = document.getElementById('mineralOptions');
@@ -401,6 +397,40 @@ if (reloadAllBtn) {
       type: 'RELOAD_ALL_IMAGES'
     });
     showStatus('Reloading all images...', 'success');
+  });
+}
+
+// Clear Cache button - clear all cached SMILES lookups
+const clearCacheBtn = document.getElementById('clearCacheBtn');
+if (clearCacheBtn) {
+  clearCacheBtn.addEventListener('click', () => {
+    // Send message to content script to clear cache
+    chrome.runtime.sendMessage({
+      type: 'CLEAR_CACHE'
+    });
+
+    // Also clear any local storage cache
+    chrome.storage.local.get(null, (items) => {
+      const keysToRemove = Object.keys(items).filter(key =>
+        key.startsWith('smiles_') ||
+        key.startsWith('cid_') ||
+        key.startsWith('cache_') ||
+        key.startsWith('search_') ||
+        key === 'chemtex_smiles_cache'  // CRITICAL: The persistent SMILES cache
+      );
+      if (keysToRemove.length > 0) {
+        chrome.storage.local.remove(keysToRemove, () => {
+          console.log('[Popup] Cleared', keysToRemove.length, 'cached items from storage:', keysToRemove);
+        });
+      } else {
+        // Even if no prefix matches, ALWAYS try to clear the main cache
+        chrome.storage.local.remove('chemtex_smiles_cache', () => {
+          console.log('[Popup] Cleared chemtex_smiles_cache');
+        });
+      }
+    });
+
+    showStatus('Cache cleared! Reload images to fetch fresh data.', 'success');
   });
 }
 
@@ -495,16 +525,46 @@ if (sdAtomNumbersToggle) {
   });
 }
 
-if (sdShowHydrogensToggle) {
-  sdShowHydrogensToggle.addEventListener('change', (e) => {
+if (sdShowExplicitHydrogensToggle) {
+  sdShowExplicitHydrogensToggle.addEventListener('change', (e) => {
     const value = e.target.checked;
-    saveSettingWithVerification('sdShowHydrogens', value, (success, error) => {
+    saveSettingWithVerification('sdShowExplicitHydrogens', value, (success, error) => {
       if (success) {
-        broadcastSettingsChange({ sdShowHydrogens: value });
-        showStatus('Show hydrogens ' + (value ? 'enabled' : 'disabled'), 'success');
+        broadcastSettingsChange({ sdShowExplicitHydrogens: value });
+        showStatus('Explicit hydrogens ' + (value ? 'enabled' : 'disabled'), 'success');
       } else {
         showStatus('Error saving setting: ' + (error || 'Unknown error'), 'error');
-        sdShowHydrogensToggle.checked = !value;
+        sdShowExplicitHydrogensToggle.checked = !value;
+      }
+    });
+  });
+}
+
+if (sdShowImplicitHydrogensToggle) {
+  sdShowImplicitHydrogensToggle.addEventListener('change', (e) => {
+    const value = e.target.checked;
+    saveSettingWithVerification('sdShowImplicitHydrogens', value, (success, error) => {
+      if (success) {
+        broadcastSettingsChange({ sdShowImplicitHydrogens: value });
+        showStatus('Implicit hydrogens ' + (value ? 'shown' : 'hidden'), 'success');
+      } else {
+        showStatus('Error saving setting: ' + (error || 'Unknown error'), 'error');
+        sdShowImplicitHydrogensToggle.checked = !value;
+      }
+    });
+  });
+}
+
+if (sdCompactDrawingToggle) {
+  sdCompactDrawingToggle.addEventListener('change', (e) => {
+    const value = e.target.checked;
+    saveSettingWithVerification('sdCompactDrawing', value, (success, error) => {
+      if (success) {
+        broadcastSettingsChange({ sdCompactDrawing: value });
+        showStatus('Compact drawing ' + (value ? 'enabled' : 'disabled'), 'success');
+      } else {
+        showStatus('Error saving setting: ' + (error || 'Unknown error'), 'error');
+        sdCompactDrawingToggle.checked = !value;
       }
     });
   });
@@ -621,145 +681,6 @@ if (searchCODToggle) {
   });
 }
 
-// 3D Viewer event listeners
-if (enable3DViewerToggle) {
-  enable3DViewerToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ enable3DViewer: e.target.checked }, () => {
-      showStatus('3D Viewer ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (viewer3DSourceSelect) {
-  viewer3DSourceSelect.addEventListener('change', (e) => {
-    const newValue = e.target.value;
-    console.log('Saving viewer3DSource:', newValue);
-    chrome.storage.sync.set({ viewer3DSource: newValue }, () => {
-      if (chrome.runtime.lastError) {
-        console.error('Error saving viewer3DSource:', chrome.runtime.lastError);
-        showStatus('Error saving setting: ' + chrome.runtime.lastError.message, 'error');
-        return;
-      }
-      const sourceNames = {
-        '3dmol': '3Dmol.js',
-        'molview': 'MolView (Local)',
-        'molstar': 'Mol* (MolView.com)',
-        'pubchem': 'PubChem Official'
-      };
-
-      // Show/hide MolView specific options
-      if (molviewOptions) {
-        molviewOptions.style.display = (newValue === 'molview') ? 'block' : 'none';
-      }
-      console.log('Successfully saved viewer3DSource:', newValue);
-      showStatus('3D viewer source set to ' + sourceNames[newValue] + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (default3DViewSelect) {
-  default3DViewSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ default3DView: e.target.value }, () => {
-      showStatus('Default view set to ' + e.target.value + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (viewer3DStyleSelect) {
-  viewer3DStyleSelect.addEventListener('change', (e) => {
-    const newStyle = e.target.value;
-
-    // Load settings for the new style
-    chrome.storage.sync.get(['viewer3DStyleSettings'], (result) => {
-      const styleSettings = result.viewer3DStyleSettings || {};
-      const newStyleSettings = styleSettings[newStyle] || {};
-
-      // Update the UI with the saved settings for this style
-      if (viewer3DStickRadiusSelect) {
-        viewer3DStickRadiusSelect.value = newStyleSettings.stickRadius || '0.15';
-      }
-      if (viewer3DSphereRadiusSelect) {
-        viewer3DSphereRadiusSelect.value = newStyleSettings.sphereRadius || '0.3';
-      }
-
-      // Save the new style selection
-      chrome.storage.sync.set({ viewer3DStyle: newStyle }, () => {
-        showStatus('3D style updated. Reload page to apply.', 'success');
-      });
-    });
-  });
-}
-
-if (viewer3DStickRadiusSelect) {
-  viewer3DStickRadiusSelect.addEventListener('change', (e) => {
-    const newValue = e.target.value;
-
-    // Get current style and update its settings
-    chrome.storage.sync.get(['viewer3DStyle', 'viewer3DStyleSettings'], (result) => {
-      const currentStyle = result.viewer3DStyle || 'stick:sphere';
-      const styleSettings = result.viewer3DStyleSettings || {};
-
-      // Update the settings for the current style
-      if (!styleSettings[currentStyle]) {
-        styleSettings[currentStyle] = {};
-      }
-      styleSettings[currentStyle].stickRadius = newValue;
-
-      // Save back to storage
-      chrome.storage.sync.set({ viewer3DStyleSettings: styleSettings }, () => {
-        showStatus('Stick thickness updated. Reload page to apply.', 'success');
-      });
-    });
-  });
-}
-
-if (viewer3DSphereRadiusSelect) {
-  viewer3DSphereRadiusSelect.addEventListener('change', (e) => {
-    const newValue = e.target.value;
-
-    // Get current style and update its settings
-    chrome.storage.sync.get(['viewer3DStyle', 'viewer3DStyleSettings'], (result) => {
-      const currentStyle = result.viewer3DStyle || 'stick:sphere';
-      const styleSettings = result.viewer3DStyleSettings || {};
-
-      // Update the settings for the current style
-      if (!styleSettings[currentStyle]) {
-        styleSettings[currentStyle] = {};
-      }
-      styleSettings[currentStyle].sphereRadius = newValue;
-
-      // Save back to storage
-      chrome.storage.sync.set({ viewer3DStyleSettings: styleSettings }, () => {
-        showStatus('Sphere size updated. Reload page to apply.', 'success');
-      });
-    });
-  });
-}
-
-if (viewer3DAutoRotateToggle) {
-  viewer3DAutoRotateToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ viewer3DAutoRotate: e.target.checked }, () => {
-      showStatus('Auto-rotate ' + (e.target.checked ? 'enabled' : 'disabled') + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (viewer3DSizeSelect) {
-  viewer3DSizeSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ viewer3DSize: e.target.value }, () => {
-      showStatus('3D viewer size set to ' + e.target.value + '. Reload page to apply.', 'success');
-    });
-  });
-}
-
-if (viewer3DBgColorSelect) {
-  viewer3DBgColorSelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ viewer3DBgColor: e.target.value }, () => {
-      const colorName = e.target.options[e.target.selectedIndex].text;
-      showStatus('3D background color set to ' + colorName + '. Reload page to apply.', 'success');
-    });
-  });
-}
 
 // MolView specific options event listeners (compound)
 if (molviewRepresentationSelect) {
@@ -789,16 +710,9 @@ if (molviewEngineSelect) {
   });
 }
 
-if (molviewCrystallographySelect) {
-  molviewCrystallographySelect.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ molviewCrystallography: e.target.value }, () => {
-      broadcastSettingsChange({ molviewCrystallography: e.target.value });
-      showStatus('Crystallography set to ' + e.target.options[e.target.selectedIndex].text, 'success');
-    });
-  });
-}
 
-// Protein Options event listeners - ALL broadcast changes for instant updates
+
+// Biomolecule Options event listeners - ALL broadcast changes for instant updates
 if (proteinRemoveWhiteBgToggle) {
   proteinRemoveWhiteBgToggle.addEventListener('change', (e) => {
     chrome.storage.sync.set({ proteinRemoveWhiteBg: e.target.checked }, () => {
@@ -903,7 +817,7 @@ engineRadios.forEach(radio => {
 /**
  * Update engine info display
  */
-const molviewProteinOptions = document.getElementById('molviewProteinOptions');
+const biomoleculeOptions = document.getElementById('biomoleculeOptions');
 const mineralOptions = document.getElementById('mineralOptions');
 
 function updateEngineInfo(engine) {
@@ -918,9 +832,9 @@ function updateEngineInfo(engine) {
     if (cdkDepictOptions) cdkDepictOptions.style.display = 'none';
   }
 
-  // Always show 3D Viewer Settings, Protein Options, and Mineral Options (independent of compound renderer)
-  if (viewer3DSettings) viewer3DSettings.style.display = 'block';
-  if (molviewProteinOptions) molviewProteinOptions.style.display = 'block';
+  // Always show Compound, Biomolecule, and Mineral Options (independent of renderer)
+  if (compoundOptions) compoundOptions.style.display = 'block';
+  if (biomoleculeOptions) biomoleculeOptions.style.display = 'block';
   if (mineralOptions) mineralOptions.style.display = 'block';
 }
 

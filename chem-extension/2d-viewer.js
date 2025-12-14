@@ -20,8 +20,10 @@ const useSvg = params.get('svg') !== 'false'; // Default to SVG
 // - Atom numbering
 
 const showMethyl = params.get('showMethyl') === 'true';          // Maps to terminalCarbons
-const addHydrogens = params.get('addHydrogens') === 'true';       // Maps to explicitHydrogens
-const showCarbons = params.get('showCarbons') === 'true';        // Will disable compactDrawing
+const addHydrogens = params.get('addHydrogens') === 'true';       // Maps to explicitHydrogens (branched H atoms)
+const showImplicitH = params.get('showImplicitHydrogens') !== 'false'; // Default true - show H counts in labels (CH3, OH, NH2)
+const showCarbons = params.get('showCarbons') === 'true';        // Display C labels
+const compactDrawing = params.get('compactDrawing') === 'true';  // Compact mode (linear text strings) - default false
 const atomVisualization = params.get('atomVisualization') || 'default'; // 'default', 'balls', 'none'
 
 // Apply theme
@@ -58,8 +60,10 @@ function renderWithSmilesDrawer() {
         isomeric: true,
         debug: false,
         terminalCarbons: showMethyl || showCarbons,
-        explicitHydrogens: addHydrogens,
-        compactDrawing: !showCarbons,
+        explicitHydrogens: addHydrogens,              // Legacy option (may not be used)
+        showHydrogens: addHydrogens,                  // Show H atoms as separate nodes with bonds (branching)
+        showImplicitHydrogens: showImplicitH,         // Show H counts in labels (H₂O, CH₃, OH, NH₂)
+        compactDrawing: compactDrawing,           // Compact mode (linear text strings)
         overlapSensitivity: 0.42,
         overlapResolutionIterations: 1,
         fontSizeLarge: 10,
@@ -106,7 +110,7 @@ function renderWithSmilesDrawer() {
 
         const svgDrawer = new SmilesDrawer.SvgDrawer(options);
 
-        SmilesDrawer.parse(smiles, function(tree) {
+        SmilesDrawer.parse(smiles, function (tree) {
             svgDrawer.draw(tree, 'molecule-svg', theme);
             hideLoading();
             console.log('✅ SVG molecule rendered successfully');
@@ -152,7 +156,7 @@ function renderWithSmilesDrawer() {
             if (window.parent !== window) {
                 window.parent.postMessage({ type: '2d-viewer-ready', name: name }, '*');
             }
-        }, function(err) {
+        }, function (err) {
             console.error('❌ SMILES parse error:', err);
             showError('Failed to parse SMILES: ' + (err.message || err));
         });
@@ -164,7 +168,7 @@ function renderWithSmilesDrawer() {
 
         const canvasDrawer = new SmilesDrawer.Drawer(options);
 
-        SmilesDrawer.parse(smiles, function(tree) {
+        SmilesDrawer.parse(smiles, function (tree) {
             canvasDrawer.draw(tree, 'molecule-canvas', theme);
             hideLoading();
             console.log('✅ Canvas molecule rendered successfully');
@@ -179,7 +183,7 @@ function renderWithSmilesDrawer() {
                 }, '*');
                 window.parent.postMessage({ type: '2d-viewer-ready', name: name }, '*');
             }
-        }, function(err) {
+        }, function (err) {
             console.error('❌ SMILES parse error:', err);
             showError('Failed to parse SMILES: ' + (err.message || err));
         });
@@ -198,6 +202,7 @@ function renderMolecule() {
     console.log('⚙️ Options:', {
         terminalCarbons: showMethyl || showCarbons,
         explicitHydrogens: addHydrogens,
+        showHydrogens: showImplicitH,
         compactDrawing: !showCarbons,
         atomVisualization
     });

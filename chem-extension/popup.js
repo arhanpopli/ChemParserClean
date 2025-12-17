@@ -52,6 +52,12 @@ const molviewChainBondsToggle = document.getElementById('molviewChainBondsToggle
 const molviewChainColorSelect = document.getElementById('molviewChainColorSelect');
 const proteinMolviewBgColorSelect = document.getElementById('proteinMolviewBgColorSelect');
 
+// Bio Assembly Settings
+const bioAssemblySettings = document.getElementById('bioAssemblySettings');
+const bioAssemblyViewerSelect = document.getElementById('bioAssemblyViewerSelect');
+const bioAssemblyGraphicsSelect = document.getElementById('bioAssemblyGraphicsSelect');
+const bioAssemblyPdbProviderSelect = document.getElementById('bioAssemblyPdbProviderSelect');
+
 // Mineral Options
 const mineralRepresentationSelect = document.getElementById('mineralRepresentationSelect');
 const mineralMolviewBgColorSelect = document.getElementById('mineralMolviewBgColorSelect');
@@ -61,12 +67,23 @@ const mineralCrystallographySelect = document.getElementById('mineralCrystallogr
 const saveSizePerImageToggle = document.getElementById('saveSizePerImageToggle');
 const saveSizeBySMILESToggle = document.getElementById('saveSizeBySMILESToggle');
 
+// 3D Viewer options
+const enable3DViewerToggle = document.getElementById('enable3DViewerToggle');
+const default3DViewSelect = document.getElementById('default3DViewSelect');
+const viewer3DSourceSelect = document.getElementById('viewer3DSourceSelect');
+const viewer3DStyleSelect = document.getElementById('viewer3DStyleSelect');
+const viewer3DAutoRotateToggle = document.getElementById('viewer3DAutoRotateToggle');
+const viewer3DSizeSelect = document.getElementById('viewer3DSizeSelect');
+const viewer3DBgColorSelect = document.getElementById('viewer3DBgColorSelect');
 
 // MolView-Only Mode toggle
 const molSearchModeToggle = document.getElementById('molSearchModeToggle');
 
 // Disable Formula Fallback toggle
 const disableFormulaFallbackToggle = document.getElementById('disableFormulaFallbackToggle');
+
+// Enable AI Flag Control toggle
+const enableAIFlagControlToggle = document.getElementById('enableAIFlagControlToggle');
 
 // Safe selector function
 function safeGetElement(id) {
@@ -154,6 +171,9 @@ chrome.storage.sync.get(null, (storedSettings) => {
 
     proteinRemoveWhiteBg: false,
     molviewBioAssembly: false,
+    bioAssemblyViewer: 'molstar',        // 'molstar', 'molstar-me', 'molview'
+    bioAssemblyGraphics: 'balanced',     // 'quality', 'balanced', 'performance'
+    bioAssemblyPdbProvider: 'rcsb',      // 'rcsb', 'pdbe', 'pdbj'
     molviewChainType: 'ribbon',
     molviewChainBonds: false,
     molviewChainColor: 'ss',
@@ -172,6 +192,7 @@ chrome.storage.sync.get(null, (storedSettings) => {
     enableAIMolecularControl: false,
     molSearchMode: false,
     showTags: false,
+    enableAIFlagControl: false,  // When true, flags in chem:...+d: override settings
     // UI settings
     uiBlur: 7,
     uiOpacity: 23,
@@ -211,6 +232,7 @@ chrome.storage.sync.get(null, (storedSettings) => {
   if (perfModeToggle) perfModeToggle.checked = settings.performanceMode;
   if (devModeToggle) devModeToggle.checked = settings.devMode;
   if (showTagsToggle) showTagsToggle.checked = settings.showTags;
+  if (enableAIFlagControlToggle) enableAIFlagControlToggle.checked = settings.enableAIFlagControl === true;
 
   console.log('[Popup] ========== TOGGLE ELEMENT CHECK ==========');
   console.log('[Popup] sdShowCarbonsToggle exists?', !!sdShowCarbonsToggle);
@@ -310,6 +332,23 @@ chrome.storage.sync.get(null, (storedSettings) => {
   // Load Biomolecule Options
   if (proteinRemoveWhiteBgToggle) proteinRemoveWhiteBgToggle.checked = settings.proteinRemoveWhiteBg;
   if (molviewBioAssemblyToggle) molviewBioAssemblyToggle.checked = settings.molviewBioAssembly;
+
+  // Load Bio Assembly sub-settings
+  if (bioAssemblyViewerSelect) bioAssemblyViewerSelect.value = settings.bioAssemblyViewer || 'molstar';
+  if (bioAssemblyGraphicsSelect) bioAssemblyGraphicsSelect.value = settings.bioAssemblyGraphics || 'balanced';
+  if (bioAssemblyPdbProviderSelect) bioAssemblyPdbProviderSelect.value = settings.bioAssemblyPdbProvider || 'rcsb';
+
+  // Enable/disable bio assembly sub-settings based on toggle state
+  if (bioAssemblySettings) {
+    if (settings.molviewBioAssembly) {
+      bioAssemblySettings.style.opacity = '1';
+      bioAssemblySettings.style.pointerEvents = 'auto';
+    } else {
+      bioAssemblySettings.style.opacity = '0.5';
+      bioAssemblySettings.style.pointerEvents = 'none';
+    }
+  }
+
   if (molviewChainTypeSelect) molviewChainTypeSelect.value = settings.molviewChainType || 'ribbon';
   if (molviewChainBondsToggle) molviewChainBondsToggle.checked = settings.molviewChainBonds;
   if (molviewChainColorSelect) molviewChainColorSelect.value = settings.molviewChainColor || 'ss';
@@ -424,23 +463,44 @@ if (showTagsToggle) {
   });
 }
 
+// Enable AI Flag Control toggle - when disabled, flags in chem: tags are ignored
+if (enableAIFlagControlToggle) {
+  enableAIFlagControlToggle.addEventListener('change', (e) => {
+    const value = e.target.checked;
+    chrome.storage.sync.set({ enableAIFlagControl: value }, () => {
+      broadcastSettingsChange({ enableAIFlagControl: value });
+      showStatus('AI flag control ' + (value ? 'enabled' : 'disabled'), 'success');
+    });
+  });
+}
+
 // Reload All button - re-render all molecules without page reload
+console.log('[Popup] reloadAllBtn:', reloadAllBtn);
 if (reloadAllBtn) {
   reloadAllBtn.addEventListener('click', () => {
+    console.log('[Popup] Reload All button clicked!');
     chrome.runtime.sendMessage({
       type: 'RELOAD_ALL_IMAGES'
+    }, (response) => {
+      console.log('[Popup] Reload message sent, response:', response);
     });
     showStatus('Reloading all images...', 'success');
   });
+} else {
+  console.warn('[Popup] reloadAllBtn not found in DOM!');
 }
 
 // Clear Cache button - clear all cached SMILES lookups
 const clearCacheBtn = document.getElementById('clearCacheBtn');
+console.log('[Popup] clearCacheBtn:', clearCacheBtn);
 if (clearCacheBtn) {
   clearCacheBtn.addEventListener('click', () => {
+    console.log('[Popup] Clear Cache button clicked!');
     // Send message to content script to clear cache
     chrome.runtime.sendMessage({
       type: 'CLEAR_CACHE'
+    }, (response) => {
+      console.log('[Popup] Clear cache message sent, response:', response);
     });
 
     // Also clear any local storage cache
@@ -466,6 +526,8 @@ if (clearCacheBtn) {
 
     showStatus('Cache cleared! Reload images to fetch fresh data.', 'success');
   });
+} else {
+  console.warn('[Popup] clearCacheBtn not found in DOM!');
 }
 
 // Image size control toggles
@@ -774,9 +836,52 @@ if (proteinRemoveWhiteBgToggle) {
 
 if (molviewBioAssemblyToggle) {
   molviewBioAssemblyToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ molviewBioAssembly: e.target.checked }, () => {
-      broadcastSettingsChange({ molviewBioAssembly: e.target.checked });
-      showStatus('Bio Assembly ' + (e.target.checked ? 'shown' : 'hidden'), 'success');
+    const enabled = e.target.checked;
+    chrome.storage.sync.set({ molviewBioAssembly: enabled }, () => {
+      broadcastSettingsChange({ molviewBioAssembly: enabled });
+      showStatus('Bio Assembly ' + (enabled ? 'shown' : 'hidden'), 'success');
+
+      // Enable/disable the sub-settings panel
+      if (bioAssemblySettings) {
+        if (enabled) {
+          bioAssemblySettings.style.opacity = '1';
+          bioAssemblySettings.style.pointerEvents = 'auto';
+        } else {
+          bioAssemblySettings.style.opacity = '0.5';
+          bioAssemblySettings.style.pointerEvents = 'none';
+        }
+      }
+    });
+  });
+}
+
+// Bio Assembly sub-settings event listeners
+if (bioAssemblyViewerSelect) {
+  bioAssemblyViewerSelect.addEventListener('change', (e) => {
+    const value = e.target.value;
+    chrome.storage.sync.set({ bioAssemblyViewer: value }, () => {
+      broadcastSettingsChange({ bioAssemblyViewer: value });
+      showStatus('Bio Viewer set to ' + e.target.options[e.target.selectedIndex].text, 'success');
+    });
+  });
+}
+
+if (bioAssemblyGraphicsSelect) {
+  bioAssemblyGraphicsSelect.addEventListener('change', (e) => {
+    const value = e.target.value;
+    chrome.storage.sync.set({ bioAssemblyGraphics: value }, () => {
+      broadcastSettingsChange({ bioAssemblyGraphics: value });
+      showStatus('Graphics mode set to ' + e.target.options[e.target.selectedIndex].text, 'success');
+    });
+  });
+}
+
+if (bioAssemblyPdbProviderSelect) {
+  bioAssemblyPdbProviderSelect.addEventListener('change', (e) => {
+    const value = e.target.value;
+    chrome.storage.sync.set({ bioAssemblyPdbProvider: value }, () => {
+      broadcastSettingsChange({ bioAssemblyPdbProvider: value });
+      showStatus('PDB Provider set to ' + e.target.options[e.target.selectedIndex].text, 'success');
     });
   });
 }
@@ -1180,80 +1285,160 @@ if (initialVelocitySlider) {
 })();
 
 // MetaMask Donate Button Handler
-const metamaskDonateBtn = document.getElementById('metamaskDonate');
-if (metamaskDonateBtn) {
-  metamaskDonateBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-
-    // Your Ethereum wallet address for donations
-    const donationAddress = '0xYOUR_WALLET_ADDRESS_HERE'; // Replace with your actual wallet
-
-    // Check if MetaMask is installed
-    if (typeof window.ethereum !== 'undefined') {
-      try {
-        // Request account access
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const fromAddress = accounts[0];
-
-        // Send transaction (0.001 ETH default donation)
-        const txHash = await window.ethereum.request({
-          method: 'eth_sendTransaction',
-          params: [{
-            from: fromAddress,
-            to: donationAddress,
-            value: '0x38D7EA4C68000' // 0.001 ETH in hex
-          }]
-        });
-
-        alert('Thank you for your donation! 🎉\nTransaction: ' + txHash);
-      } catch (error) {
-        if (error.code === 4001) {
-          // User rejected
-          console.log('User cancelled donation');
-        } else {
-          alert('Donation failed: ' + error.message);
-        }
-      }
-    } else {
-      // No MetaMask - show address to copy
-      const copyAddress = confirm(
-        'MetaMask not detected!\n\n' +
-        'Would you like to copy the donation address?\n\n' +
-        donationAddress
-      );
-      if (copyAddress) {
-        navigator.clipboard.writeText(donationAddress);
-        alert('Address copied to clipboard! 📋');
-      }
+// Copy ChatGPT Prompt button
+const copyChatGPTPromptBtn = document.getElementById('copyChatGPTPrompt');
+if (copyChatGPTPromptBtn) {
+  copyChatGPTPromptBtn.addEventListener('click', async () => {
+    try {
+      // Fetch the USAGE.md content
+      const response = await fetch(chrome.runtime.getURL('USAGE.md'));
+      const usageText = await response.text();
+      
+      // Copy to clipboard
+      await navigator.clipboard.writeText(usageText);
+      
+      // Show success feedback
+      const originalText = copyChatGPTPromptBtn.innerHTML;
+      const originalBg = copyChatGPTPromptBtn.style.background;
+      copyChatGPTPromptBtn.innerHTML = 'Copied';
+      copyChatGPTPromptBtn.style.background = '#22c55e';
+      
+      // Reset after 2 seconds
+      setTimeout(() => {
+        copyChatGPTPromptBtn.innerHTML = originalText;
+        copyChatGPTPromptBtn.style.background = originalBg;
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to copy prompt:', error);
+      copyChatGPTPromptBtn.innerHTML = 'Failed';
+      setTimeout(() => {
+        copyChatGPTPromptBtn.innerHTML = 'Copy';
+      }, 2000);
     }
   });
 }
 
-// Icon button listeners (same functions as main buttons)
-const clearCacheIconBtn = document.getElementById('clearCacheIconBtn');
-if (clearCacheIconBtn) {
-  clearCacheIconBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'CLEAR_CACHE' });
-    chrome.storage.local.get(null, (items) => {
-      const keysToRemove = Object.keys(items).filter(key =>
-        key.startsWith('smiles_') || key.startsWith('cid_') ||
-        key.startsWith('cache_') || key.startsWith('search_') ||
-        key === 'chemtex_smiles_cache'
-      );
-      if (keysToRemove.length > 0) {
-        chrome.storage.local.remove(keysToRemove);
-      } else {
-        chrome.storage.local.remove('chemtex_smiles_cache');
+// Donation wallet display
+const donationWalletBtn = document.getElementById('donationWallet');
+if (donationWalletBtn) {
+  donationWalletBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    // Your wallet addresses (replace with your actual addresses)
+    const ethAddress = '0xYOUR_ETH_ADDRESS_HERE';
+    const solAddress = 'YOUR_SOLANA_ADDRESS_HERE';
+
+    // Create a modal-style overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    `;
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 25px;
+      border-radius: 15px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      color: white;
+    `;
+
+    modal.innerHTML = `
+      <h3 style="margin: 0 0 20px 0; text-align: center; font-size: 20px;">💝 Support Development</h3>
+      
+      <div style="background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+        <div style="font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+          <span>🔷</span> Ethereum (ETH)
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.9); color: #333; padding: 10px; border-radius: 5px; word-break: break-all; font-size: 12px; margin-bottom: 8px;">
+          ${ethAddress}
+        </div>
+        <button id="copyEthBtn" style="width: 100%; padding: 8px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 5px; color: white; cursor: pointer; font-weight: bold;">
+          📋 Copy ETH Address
+        </button>
+      </div>
+
+      <div style="background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+        <div style="font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+          <span>◆</span> Solana (SOL)
+        </div>
+        <div style="background: rgba(255, 255, 255, 0.9); color: #333; padding: 10px; border-radius: 5px; word-break: break-all; font-size: 12px; margin-bottom: 8px;">
+          ${solAddress}
+        </div>
+        <button id="copySolBtn" style="width: 100%; padding: 8px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 5px; color: white; cursor: pointer; font-weight: bold;">
+          📋 Copy SOL Address
+        </button>
+      </div>
+
+      <button id="closeWalletModal" style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.3); border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; font-size: 14px;">
+        ✖ Close
+      </button>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    // Copy ETH address
+    document.getElementById('copyEthBtn').addEventListener('click', async () => {
+      await navigator.clipboard.writeText(ethAddress);
+      const btn = document.getElementById('copyEthBtn');
+      btn.innerHTML = '✅ Copied!';
+      btn.style.background = 'rgba(56, 239, 125, 0.3)';
+      setTimeout(() => {
+        btn.innerHTML = '📋 Copy ETH Address';
+        btn.style.background = 'rgba(255, 255, 255, 0.2)';
+      }, 2000);
+    });
+
+    // Copy SOL address
+    document.getElementById('copySolBtn').addEventListener('click', async () => {
+      await navigator.clipboard.writeText(solAddress);
+      const btn = document.getElementById('copySolBtn');
+      btn.innerHTML = '✅ Copied!';
+      btn.style.background = 'rgba(56, 239, 125, 0.3)';
+      setTimeout(() => {
+        btn.innerHTML = '📋 Copy SOL Address';
+        btn.style.background = 'rgba(255, 255, 255, 0.2)';
+      }, 2000);
+    });
+
+    // Close modal
+    document.getElementById('closeWalletModal').addEventListener('click', () => {
+      overlay.remove();
+    });
+
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.remove();
       }
     });
-    showStatus('Cache cleared!', 'success');
   });
 }
 
-const reloadAllIconBtn = document.getElementById('reloadAllIconBtn');
-if (reloadAllIconBtn) {
-  reloadAllIconBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'RELOAD_ALL_IMAGES' });
-    showStatus('Reloading...', 'success');
+// Wallet icon hover effect
+const walletIcon = document.getElementById('walletIcon');
+if (walletIcon) {
+  console.log('[Popup] Setting up wallet icon hover effect');
+  walletIcon.addEventListener('mouseenter', () => {
+    console.log('[Popup] Wallet hover - switching to mUSD icon');
+    walletIcon.src = 'MetaMask-mUSD-Icon.svg';
   });
+  walletIcon.addEventListener('mouseleave', () => {
+    console.log('[Popup] Wallet unhover - switching to fox icon');
+    walletIcon.src = 'MetaMask-icon-fox.svg';
+  });
+} else {
+  console.warn('[Popup] walletIcon not found!');
 }

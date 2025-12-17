@@ -11,6 +11,38 @@
  */
 
 // ============================================
+// GLOBAL ERROR HANDLING - Prevent crashes
+// ============================================
+// These handlers catch unhandled errors that could cause "Aw, Snap!" crashes
+
+window.addEventListener('error', function (event) {
+  // Check if error is from our extension
+  if (event.filename && event.filename.includes('chrome-extension://')) {
+    console.error('[ChemRenderer] 🛡️ Caught unhandled error:', event.message);
+    // Prevent the error from propagating and crashing the page
+    event.preventDefault();
+    return true;
+  }
+});
+
+window.addEventListener('unhandledrejection', function (event) {
+  // Catch unhandled promise rejections
+  const reason = event.reason;
+  if (reason && reason.stack && reason.stack.includes('ChemRenderer')) {
+    console.error('[ChemRenderer] 🛡️ Caught unhandled promise rejection:', reason);
+    // Prevent the rejection from propagating
+    event.preventDefault();
+    return true;
+  }
+  // Also catch extension context invalidated errors
+  if (reason && reason.message && reason.message.includes('Extension context invalidated')) {
+    console.warn('[ChemRenderer] Extension context invalidated, ignoring...');
+    event.preventDefault();
+    return true;
+  }
+});
+
+// ============================================
 // LOGGING UTILITIES
 // ============================================
 const LOG_PREFIX = '[ChemRenderer]';
@@ -81,7 +113,9 @@ function logToStorage(type, msg, data) {
 // 🧠 SMART CACHING SYSTEM
 // ============================================
 // Two-layer caching for performance:
-// 1. SMILES Cache (persistent): compound name → { smiles, cid, pdbid, codid, compoundType }
+// 1. SMILES Cache (persistent): compound name → { canonicalSmiles, isomericSmiles, cid, pdbid, codid, compoundType }
+//    - canonicalSmiles: SMILES without stereochemistry (used when stereochemistry is OFF)
+//    - isomericSmiles: SMILES with stereochemistry markers (used when stereochemistry is ON)
 // 2. Image Cache (session): smiles + options hash → SVG/image data
 
 /**
@@ -182,7 +216,7 @@ async function saveSmilesCache() {
 /**
  * Get cached SMILES data for a compound name
  * @param {string} name - Compound name (case-insensitive)
- * @returns {object|null} - { smiles, cid, pdbid, codid, compoundType } or null
+ * @returns {object|null} - { canonicalSmiles, isomericSmiles, cid, pdbid, codid, compoundType } or null
  */
 async function getCachedSmiles(name) {
   await loadSmilesCache();
@@ -190,6 +224,18 @@ async function getCachedSmiles(name) {
   const cached = smilesCache[key];
   if (cached) {
     log.debug(`🎯 SMILES cache HIT: ${name}`);
+    // Migrate old cache format (single 'smiles' field) to new format
+    if (cached.smiles && !cached.canonicalSmiles && !cached.isomericSmiles) {
+      log.debug(`🔄 Migrating old cache format for: ${name}`);
+      // Old format had isomeric SMILES stored in 'smiles' field
+      cached.isomericSmiles = cached.smiles;
+      cached.canonicalSmiles = stripStereochemistry(cached.smiles);
+      delete cached.smiles;
+      // Save the migrated data
+      smilesCache[key] = cached;
+      clearTimeout(setCachedSmiles._saveTimeout);
+      setCachedSmiles._saveTimeout = setTimeout(() => saveSmilesCache(), 1000);
+    }
     return cached;
   }
   return null;
@@ -198,7 +244,7 @@ async function getCachedSmiles(name) {
 /**
  * Store SMILES data in cache
  * @param {string} name - Compound name
- * @param {object} data - { smiles, cid, pdbid, codid, compoundType }
+ * @param {object} data - { canonicalSmiles, isomericSmiles, cid, pdbid, codid, compoundType }
  */
 async function setCachedSmiles(name, data) {
   await loadSmilesCache();
@@ -210,7 +256,8 @@ async function setCachedSmiles(name, data) {
   // Debounce save to avoid excessive writes
   clearTimeout(setCachedSmiles._saveTimeout);
   setCachedSmiles._saveTimeout = setTimeout(() => saveSmilesCache(), 1000);
-  log.debug(`📦 Cached SMILES: ${name} → ${data.smiles?.substring(0, 30) || 'N/A'}...`);
+  const displaySmiles = data.isomericSmiles || data.canonicalSmiles || 'N/A';
+  log.debug(`📦 Cached SMILES: ${name} → canonical: ${data.canonicalSmiles?.substring(0, 25) || 'N/A'}, isomeric: ${data.isomericSmiles?.substring(0, 25) || 'N/A'}`);
 }
 
 /**
@@ -219,6 +266,7 @@ async function setCachedSmiles(name, data) {
  * Key: compound name (lowercase), Value: Promise that resolves to search result
  */
 const pendingSearches = new Map();
+const MAX_PENDING_SEARCHES = 50;  // Safety limit to prevent memory bloat
 
 /**
  * Get or create a pending search for a compound name
@@ -234,6 +282,14 @@ async function getOrCreatePendingSearch(name, searchFn) {
   if (pendingSearches.has(key)) {
     log.debug(`🔄 Reusing pending search for: ${name}`);
     return pendingSearches.get(key);
+  }
+
+  // SAFETY: Limit pending searches to prevent memory issues
+  if (pendingSearches.size >= MAX_PENDING_SEARCHES) {
+    log.warn(`⚠️ Too many pending searches (${pendingSearches.size}), clearing old ones...`);
+    // Clear the oldest entries (first half)
+    const keysToRemove = Array.from(pendingSearches.keys()).slice(0, Math.floor(MAX_PENDING_SEARCHES / 2));
+    keysToRemove.forEach(k => pendingSearches.delete(k));
   }
 
   // Create new search promise
@@ -258,6 +314,20 @@ function clearAllCaches() {
   chrome.storage.local.remove(SMILES_CACHE_KEY);
   log.info('🗑️ All caches cleared');
 }
+
+/**
+ * Strip stereochemistry markers from SMILES
+ * Removes @ and @@ (chiral centers) and / \ (double bond geometry)
+ * @param {string} smiles - The SMILES string (may contain stereochemistry)
+ * @returns {string} - SMILES without stereochemistry markers
+ */
+function stripStereochemistry(smiles) {
+  if (!smiles) return smiles;
+  // Remove chiral center markers: @ and @@
+  // Remove double bond geometry: / and \
+  return smiles.replace(/@@|@|\/|\\/g, '');
+}
+
 
 // ============================================
 // 🔄 INSTANT SETTINGS APPLICATION
@@ -306,7 +376,7 @@ function getAffectedImageTypes(changedSettings) {
   ];
 
   // Settings that affect ALL types
-  const universalSettings = ['showTags', 'performanceMode'];
+  const universalSettings = ['showTags', 'performanceMode', 'enableAIFlagControl'];
 
   // Check what's changed
   const changedKeys = Object.keys(changedSettings);
@@ -471,6 +541,15 @@ async function lazyReRenderMolecules(newSettings) {
   if (newSettings.sdFlipHorizontal !== undefined) settings.m2cfFlipHorizontal = newSettings.sdFlipHorizontal;
   if (newSettings.sdFlipVertical !== undefined) settings.m2cfFlipVertical = newSettings.sdFlipVertical;
   if (newSettings.sdGradientColors !== undefined) settings.sdGradientColors = newSettings.sdGradientColors;
+  // Theme and bond thickness
+  if (newSettings.sdTheme !== undefined) settings.sdTheme = newSettings.sdTheme;
+  if (newSettings.sdBondThickness !== undefined) settings.sdBondThickness = newSettings.sdBondThickness;
+  if (newSettings.sdRotate !== undefined) settings.m2cfRotate = newSettings.sdRotate;
+  // Stereochemistry toggle - affects which SMILES type is fetched
+  if (newSettings.useStereochemistry !== undefined) {
+    settings.m2cfUse3DSmiles = newSettings.useStereochemistry;
+    console.log('[ChemRenderer] Stereochemistry setting updated:', settings.m2cfUse3DSmiles);
+  }
 
   // Handle showTags setting
   if (newSettings.showTags !== undefined) {
@@ -676,17 +755,16 @@ async function lazyReRenderMolecules(newSettings) {
  */
 let lazyReRenderObserver = null;
 const imagesBeingRendered = new Set(); // Track images currently being processed
+const MAX_IMAGES_BEING_RENDERED = 20;  // Safety limit to prevent memory bloat
 
 function setupLazyReRenderObserver() {
-  // If observer exists, don't create a new one - just make sure all images are observed
+  // Disconnect any existing observer first to prevent memory leaks
   if (lazyReRenderObserver) {
-    // Re-observe all molecule images to catch any new ones
-    document.querySelectorAll('img[data-molecule-viewer]').forEach(img => {
-      lazyReRenderObserver.observe(img);
-    });
-    // Check for already-visible images that need re-render
-    triggerVisibleImagesReRender();
-    return;
+    try {
+      lazyReRenderObserver.disconnect();
+    } catch (e) {
+      // Ignore disconnect errors
+    }
   }
 
   lazyReRenderObserver = new IntersectionObserver((entries) => {
@@ -731,6 +809,12 @@ function processImageIfNeeded(img) {
     console.log('[ChemRenderer] ⏭️ Image already being processed');
     log.debug(`⏭️ Image already being processed: ${compoundName}`);
     return; // Already being processed
+  }
+
+  // SAFETY: Limit concurrent rendering to prevent memory issues
+  if (imagesBeingRendered.size >= MAX_IMAGES_BEING_RENDERED) {
+    console.log('[ChemRenderer] ⚠️ Too many images being rendered, skipping:', compoundName);
+    return;
   }
 
   console.log('[ChemRenderer] ✅ Image will be processed:', compoundName);
@@ -916,6 +1000,8 @@ async function reRenderSingleMolecule(img, newSettings) {
 
 /**
  * Apply tag visibility setting to all molecules
+ * When showTags is false: tags are hidden by default but visible on hover
+ * When showTags is true: tags are always visible
  */
 function applyTagVisibility(showTags) {
   const styleId = 'chemtex-tag-visibility';
@@ -928,13 +1014,25 @@ function applyTagVisibility(showTags) {
   }
 
   if (showTags) {
+    // Tags always visible
     styleEl.textContent = `
-      .chem-controls-container .chem-name-label {
+      .molecule-name-overlay {
+        opacity: 0.7 !important;
+      }
+      .molecule-container:hover .molecule-name-overlay {
         opacity: 1 !important;
       }
     `;
   } else {
-    styleEl.textContent = '';
+    // Tags hidden by default, visible on hover
+    styleEl.textContent = `
+      .molecule-name-overlay {
+        opacity: 0 !important;
+      }
+      .molecule-container:hover .molecule-name-overlay {
+        opacity: 0.7 !important;
+      }
+    `;
   }
 }
 
@@ -971,118 +1069,141 @@ async function reloadAllImages() {
 
 // Listen for messages from popup via background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.warn('[ChemRenderer] 📩📩📩 MESSAGE RECEIVED:', request.type);
-  console.log('%c[ChemRenderer] Message details:', 'background: yellow; color: black; font-weight: bold;', request);
+  // SAFETY: Wrap in try-catch to prevent crashes from message handling
+  try {
+    console.warn('[ChemRenderer] 📩📩📩 MESSAGE RECEIVED:', request.type);
+    console.log('%c[ChemRenderer] Message details:', 'background: yellow; color: black; font-weight: bold;', request);
 
-  if (request.type === 'APPLY_SETTINGS') {
-    console.warn('[ChemRenderer] ⚙️⚙️⚙️ APPLY_SETTINGS - STARTING UPDATE');
-    console.log('%c[ChemRenderer] Settings to apply:', 'background: green; color: white; font-weight: bold;', request.settings);
-    log.info('📬 Received settings update from popup:', request.settings);
+    if (request.type === 'APPLY_SETTINGS') {
+      console.warn('[ChemRenderer] ⚙️⚙️⚙️ APPLY_SETTINGS - STARTING UPDATE');
+      console.log('%c[ChemRenderer] Settings to apply:', 'background: green; color: white; font-weight: bold;', request.settings);
+      log.info('📬 Received settings update from popup:', request.settings);
 
-    // Always use lazy re-render: old images stay visible with loading indicator
-    // Images only re-render when scrolled into view (IntersectionObserver)
-    console.warn('[ChemRenderer] 🔄🔄🔄 CALLING lazyReRenderMolecules NOW...');
-    lazyReRenderMolecules(request.settings);
-    console.warn('[ChemRenderer] ✅✅✅ lazyReRenderMolecules FINISHED');
-
-    sendResponse({ success: true });
-    return true;
-  }
-
-  if (request.type === 'RELOAD_ALL_IMAGES') {
-    console.warn('[ChemRenderer] 🔄 RELOAD_ALL_IMAGES received');
-    log.info('📬 Received reload all images command');
-    reloadAllImages();
-    sendResponse({ success: true });
-    return true;
-  }
-
-  if (request.type === 'CLEAR_CACHE') {
-    console.warn('[ChemRenderer] 🗑️ CLEAR_CACHE received');
-    log.info('📬 Clearing all caches...');
-
-    // Wrap in async IIFE to use await
-    (async () => {
-      // Clear the in-memory SMILES cache
-      if (window.smilesCache) {
-        window.smilesCache.clear();
-        console.log('[ChemRenderer] Cleared window.smilesCache');
-      }
-
-      // Clear any image cache maps
-      if (typeof imageCache !== 'undefined') {
-        imageCache.clear();
-        console.log('[ChemRenderer] Cleared imageCache');
-      }
-
-      // Clear pending search cache (to prevent stale lookups)
-      if (typeof pendingSearches !== 'undefined') {
-        pendingSearches.clear();
-        console.log('[ChemRenderer] Cleared pendingSearches');
-      }
-
-      // Try to clear IntegratedSearch cache if available
-      if (window.IntegratedSearch && window.IntegratedSearch.clearCache) {
-        window.IntegratedSearch.clearCache();
-        console.log('[ChemRenderer] Cleared IntegratedSearch cache');
-      }
-
-      // CRITICAL: Clear the PERSISTENT SMILES cache from chrome.storage.local
-      // This is where rhinovirus with wrong SMILES was stored!
+      // Always use lazy re-render: old images stay visible with loading indicator
+      // Images only re-render when scrolled into view (IntersectionObserver)
       try {
-        await chrome.storage.local.remove(SMILES_CACHE_KEY);
-        smilesCache = {};  // Reset in-memory cache
-        smilesCacheLoaded = false;  // Force reload on next access
-        console.log(`[ChemRenderer] 🗑️ Cleared PERSISTENT SMILES cache (${SMILES_CACHE_KEY})`);
+        console.warn('[ChemRenderer] 🔄🔄🔄 CALLING lazyReRenderMolecules NOW...');
+        lazyReRenderMolecules(request.settings);
+        console.warn('[ChemRenderer] ✅✅✅ lazyReRenderMolecules FINISHED');
       } catch (e) {
-        console.error('[ChemRenderer] Failed to clear persistent cache:', e);
+        console.error('[ChemRenderer] Error in lazyReRenderMolecules:', e);
       }
 
-      // CRITICAL: Remove cached data from all rendered images so fresh lookup happens
-      // This is where rhinovirus with wrong SMILES was stored!
-      const allMoleculeImages = document.querySelectorAll('img.molecule-diagram, img.molecule-viewer, img[data-molecule-viewer]');
-      let clearedCount = 0;
-      allMoleculeImages.forEach(img => {
-        // Remove cached SMILES data
-        if (img.dataset.smiles) {
-          delete img.dataset.smiles;
-          clearedCount++;
+      sendResponse({ success: true });
+      return true;
+    }
+
+    if (request.type === 'RELOAD_ALL_IMAGES') {
+      console.warn('[ChemRenderer] 🔄 RELOAD_ALL_IMAGES received');
+      log.info('📬 Received reload all images command');
+      try {
+        reloadAllImages();
+      } catch (e) {
+        console.error('[ChemRenderer] Error in reloadAllImages:', e);
+      }
+      sendResponse({ success: true });
+      return true;
+    }
+
+    if (request.type === 'CLEAR_CACHE') {
+      console.warn('[ChemRenderer] 🗑️ CLEAR_CACHE received');
+      log.info('📬 Clearing all caches...');
+
+      // Wrap in async IIFE to use await
+      (async () => {
+        try {
+          // Clear the in-memory SMILES cache
+          if (window.smilesCache) {
+            window.smilesCache.clear();
+            console.log('[ChemRenderer] Cleared window.smilesCache');
+          }
+
+          // Clear any image cache maps
+          if (typeof imageCache !== 'undefined') {
+            imageCache.clear();
+            console.log('[ChemRenderer] Cleared imageCache');
+          }
+
+          // Clear pending search cache (to prevent stale lookups)
+          if (typeof pendingSearches !== 'undefined') {
+            pendingSearches.clear();
+            console.log('[ChemRenderer] Cleared pendingSearches');
+          }
+
+          // Try to clear IntegratedSearch cache if available
+          if (window.IntegratedSearch && window.IntegratedSearch.clearCache) {
+            window.IntegratedSearch.clearCache();
+            console.log('[ChemRenderer] Cleared IntegratedSearch cache');
+          }
+
+          // CRITICAL: Clear the PERSISTENT SMILES cache from chrome.storage.local
+          // This is where rhinovirus with wrong SMILES was stored!
+          try {
+            await chrome.storage.local.remove(SMILES_CACHE_KEY);
+            smilesCache = {};  // Reset in-memory cache
+            smilesCacheLoaded = false;  // Force reload on next access
+            console.log(`[ChemRenderer] 🗑️ Cleared PERSISTENT SMILES cache (${SMILES_CACHE_KEY})`);
+          } catch (e) {
+            console.error('[ChemRenderer] Failed to clear persistent cache:', e);
+          }
+
+          // CRITICAL: Remove cached data from all rendered images so fresh lookup happens
+          // This is where rhinovirus with wrong SMILES was stored!
+          const allMoleculeImages = document.querySelectorAll('img.molecule-diagram, img.molecule-viewer, img[data-molecule-viewer]');
+          let clearedCount = 0;
+          allMoleculeImages.forEach(img => {
+            // Remove cached SMILES data
+            if (img.dataset.smiles) {
+              delete img.dataset.smiles;
+              clearedCount++;
+            }
+            // Remove compound type so it gets re-detected
+            if (img.dataset.compoundType) {
+              delete img.dataset.compoundType;
+            }
+            // Mark as not loaded so it will be re-rendered
+            img.dataset.loaded = 'false';
+            // Remove any cached CID/PDBID/CODID
+            if (img.dataset.cid) delete img.dataset.cid;
+            if (img.dataset.pdbid) delete img.dataset.pdbid;
+            if (img.dataset.codid) delete img.dataset.codid;
+          });
+          console.log(`[ChemRenderer] Cleared cached data from ${clearedCount} rendered images`);
+
+          // Also remove all molecule wrappers and replace with fresh placeholders
+          const moleculeWrappers = document.querySelectorAll('.molecule-container');
+          moleculeWrappers.forEach(wrapper => {
+            try {
+              const img = wrapper.querySelector('img');
+              if (img && wrapper.parentNode) {
+                // Keep the original nomenclature
+                const nomenclature = img.dataset.nomenclature || img.alt || 'molecule';
+
+                // Create a fresh placeholder that will trigger a new lookup
+                const newPlaceholder = document.createElement('span');
+                newPlaceholder.textContent = `chem:${nomenclature}:`;
+                newPlaceholder.className = 'chem-molecule-placeholder';
+
+                // Replace wrapper with placeholder text
+                wrapper.parentNode.replaceChild(newPlaceholder, wrapper);
+              }
+            } catch (wrapperError) {
+              console.warn('[ChemRenderer] Error processing wrapper:', wrapperError);
+            }
+          });
+
+          log.success('✅ All caches cleared! Click "Reload All Images" to re-render with fresh data.');
+        } catch (e) {
+          console.error('[ChemRenderer] Error clearing caches:', e);
         }
-        // Remove compound type so it gets re-detected
-        if (img.dataset.compoundType) {
-          delete img.dataset.compoundType;
-        }
-        // Mark as not loaded so it will be re-rendered
-        img.dataset.loaded = 'false';
-        // Remove any cached CID/PDBID/CODID
-        if (img.dataset.cid) delete img.dataset.cid;
-        if (img.dataset.pdbid) delete img.dataset.pdbid;
-        if (img.dataset.codid) delete img.dataset.codid;
-      });
-      console.log(`[ChemRenderer] Cleared cached data from ${clearedCount} rendered images`);
+      })();  // End async IIFE
 
-      // Also remove all molecule wrappers and replace with fresh placeholders
-      const moleculeWrappers = document.querySelectorAll('.molecule-container');
-      moleculeWrappers.forEach(wrapper => {
-        const img = wrapper.querySelector('img');
-        if (img) {
-          // Keep the original nomenclature
-          const nomenclature = img.dataset.nomenclature || img.alt || 'molecule';
-
-          // Create a fresh placeholder that will trigger a new lookup
-          const newPlaceholder = document.createElement('span');
-          newPlaceholder.textContent = `chem:${nomenclature}:`;
-          newPlaceholder.className = 'chem-molecule-placeholder';
-
-          // Replace wrapper with placeholder text
-          wrapper.parentNode.replaceChild(newPlaceholder, wrapper);
-        }
-      });
-
-      log.success('✅ All caches cleared! Click "Reload All Images" to re-render with fresh data.');
-    })();  // End async IIFE
-
-    sendResponse({ success: true });
+      sendResponse({ success: true });
+      return true;
+    }
+  } catch (e) {
+    console.error('[ChemRenderer] Error handling message:', e);
+    sendResponse({ success: false, error: e.message });
     return true;
   }
 });
@@ -1093,8 +1214,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Check if dark mode is enabled for appropriate theming of SmilesDrawer SVGs
 
 /**
- * Check if the user prefers dark mode
- * Uses multiple detection methods for better compatibility
+ * Detect if the page is in dark mode
+ * Returns true only if background is genuinely dark, false for light backgrounds
  */
 function isDarkModeEnabled() {
   // Method 1: Check prefers-color-scheme media query
@@ -1103,14 +1224,21 @@ function isDarkModeEnabled() {
   }
 
   // Method 2: Check body background color (detect dark backgrounds)
+  // This is critical to avoid white bonds on white backgrounds
   try {
     const bodyBg = window.getComputedStyle(document.body).backgroundColor;
     if (bodyBg) {
       const rgb = bodyBg.match(/\d+/g);
       if (rgb && rgb.length >= 3) {
         const luminance = (0.299 * parseInt(rgb[0]) + 0.587 * parseInt(rgb[1]) + 0.114 * parseInt(rgb[2]));
-        if (luminance < 128) {
+        // Only consider dark if luminance is below 100 (stricter threshold)
+        // This prevents light gray backgrounds from being treated as dark
+        if (luminance < 100) {
           return true;
+        }
+        // Explicitly return false for light backgrounds (luminance > 180)
+        if (luminance > 180) {
+          return false;
         }
       }
     }
@@ -1127,8 +1255,10 @@ function isDarkModeEnabled() {
     }
   }
 
+  // Default to light mode (false) to avoid white bonds on white backgrounds
   return false;
 }
+
 
 
 // ============================================
@@ -1172,11 +1302,30 @@ async function backgroundFetchJSON(url, options = {}) {
       // console.warn('[ChemRenderer] chrome.runtime.sendMessage not available');
     }
   } catch (e) {
+    // Check for extension context invalidated
+    if (e.message && e.message.includes('Extension context invalidated')) {
+      extensionContextInvalid = true;
+      console.warn('[ChemRenderer] Extension context invalidated, using direct fetch');
+    }
     // console.warn('[ChemRenderer] Background unavailable, using direct fetch:', e.message);
   }
   // Fall back to direct fetch
   // console.log('%c[ChemRenderer] Falling back to direct fetch', 'color: #FFAA00;');
   return directFetchJSON(url, options);
+}
+
+/**
+ * Check if chrome.runtime is available (extension context valid)
+ */
+function isExtensionContextValid() {
+  try {
+    // Check if extension context is still valid
+    if (extensionContextInvalid) return false;
+    if (!chrome.runtime || !chrome.runtime.id) return false;
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
@@ -1196,12 +1345,19 @@ async function directFetchJSON(url, options = {}) {
  */
 async function backgroundFetchBlob(url) {
   try {
+    if (!isExtensionContextValid()) {
+      return directFetchBlob(url);
+    }
     if (chrome.runtime && chrome.runtime.sendMessage) {
       return new Promise((resolve, reject) => {
         chrome.runtime.sendMessage(
           { type: 'FETCH_BLOB', url: url },
           (response) => {
             if (chrome.runtime.lastError) {
+              // Check for extension context invalidated
+              if (chrome.runtime.lastError.message && chrome.runtime.lastError.message.includes('Extension context invalidated')) {
+                extensionContextInvalid = true;
+              }
               // console.warn('[ChemRenderer] Background blob fetch failed, trying direct:', chrome.runtime.lastError.message);
               directFetchBlob(url).then(resolve).catch(reject);
               return;
@@ -1216,6 +1372,10 @@ async function backgroundFetchBlob(url) {
       });
     }
   } catch (e) {
+    // Check for extension context invalidated
+    if (e.message && e.message.includes('Extension context invalidated')) {
+      extensionContextInvalid = true;
+    }
     // console.warn('[ChemRenderer] Background unavailable for blob, using direct fetch');
   }
   return directFetchBlob(url);
@@ -1809,14 +1969,22 @@ async function wrapImageWithSizeControls(svgImg, originalImg, moleculeData, sett
     originalImg.remove();
 
     // Add hover controls (name + 3D viewer button) after container is created
-    const moleculeName = moleculeData.nomenclature || moleculeData.smiles || 'Unknown';
+    // Prioritize displayName from flags, then nomenclature, then smiles
+    const moleculeName = moleculeData.flags?.displayName || moleculeData.nomenclature || moleculeData.smiles || 'Unknown';
     addHoverControls(container, moleculeName, moleculeData);
 
     console.log('✅ Size controls wrapper created successfully with scale:', scale);
     return container;
   } catch (error) {
     console.error('❌ Error wrapping image with size controls:', error);
-    originalImg.parentNode.replaceChild(svgImg, originalImg);
+    // Safe fallback - check all parent nodes before replaceChild
+    if (originalImg && originalImg.parentNode && svgImg) {
+      try {
+        originalImg.parentNode.replaceChild(svgImg, originalImg);
+      } catch (e) {
+        console.error('❌ Failed to replace element:', e);
+      }
+    }
     return svgImg;
   }
 }
@@ -2204,7 +2372,7 @@ let settings = {
   sdTheme: 'light',
   // 3D Viewer settings
   enable3DViewer: false,
-  viewer3DSource: 'molview',  // Uses embed.molview.org (no local server)
+  viewer3DSource: 'molview',  // Uses embed.molview.org
   viewer3DSize: 'normal',
   viewer3DStyle: 'stick',
   // Compound MolView options
@@ -2219,6 +2387,9 @@ let settings = {
   molviewChainColor: 'ss',
   proteinMolviewBgColor: 'black',
   molviewBioAssembly: false,
+  bioAssemblyViewer: 'molstar',       // 'molstar', 'molstar-me', 'molview'
+  bioAssemblyGraphics: 'balanced',    // 'quality', 'balanced', 'performance'
+  bioAssemblyPdbProvider: 'rcsb',     // 'rcsb', 'pdbe', 'pdbj'
   // Mineral MolView options
   mineralRepresentation: 'ballAndStick',
   mineralMolviewBgColor: 'black',
@@ -2250,6 +2421,13 @@ chrome.storage.sync.get(null, (result) => {
   settings.m2cfRotate = result.sdRotate || 0;
   // Gradient colors for bonds
   settings.sdGradientColors = result.sdGradientColors === true;
+  // Stereochemistry - map useStereochemistry to m2cfUse3DSmiles for isomeric SMILES
+  // When enabled, always prefer IsomericSMILES over CanonicalSMILES
+  settings.m2cfUse3DSmiles = result.useStereochemistry !== false; // Default to TRUE
+  console.log('[Content] Stereochemistry setting:', {
+    useStereochemistry: result.useStereochemistry,
+    m2cfUse3DSmiles: settings.m2cfUse3DSmiles
+  });
 
   console.log('[Content] Raw storage values:', {
     sdShowCarbons: result.sdShowCarbons,
@@ -2560,6 +2738,10 @@ function injectStyles() {
 //   chem:mol=benzene:          → Uses PubChem for SMILES (compound)
 //   chem:biomol=rhinovirus:    → Uses RCSB for pdbid
 //   chem:mineral=quartz:       → Uses COD for codid/smiles
+//   chem:pbdid=4RHV:           → Direct PDB ID lookup (for biomolecules)
+//   chem:cid=1234:             → Direct PubChem CID lookup (for compounds)
+//   chem:codid=1234567:        → Direct COD ID lookup (for minerals)
+//   chem:<name>smiles=CCO:     → Custom name + SMILES (name appears in tag)
 //   chem:mol=benzene+c+n-o:    → Flags without +d (completely overrides settings)
 //   chem:mol=benzene+d+c+n-o:  → Flags with +d (applies to default settings)
 // FLAGS:
@@ -2568,7 +2750,8 @@ function injectStyles() {
 //   h = show hydrogens, p = flip horizontal, q = flip vertical
 //   +flag to enable, -flag to disable
 //   +d = use defaults then apply flags (vs completely override)
-function parseChemFlags(chemFormula) {
+// NOTE: pbdid does not support flags (biomolecules have different rendering)
+function parseChemFlags(chemFormula, enableAIFlagControl = true) {
   const result = {
     useDefaults: false,           // +d flag: Whether to use the user's defaults as base
     flagsLocked: false,           // Whether flags are explicitly set (prevents popup from overriding)
@@ -2585,7 +2768,12 @@ function parseChemFlags(chemFormula) {
     isPubchem: false,
     compoundType: undefined,      // 'compound', 'biomolecule', 'mineral', or 'smiles'
     isDirectSmiles: false,
-    moleculeName: null            // The extracted molecule name/value
+    moleculeName: null,           // The extracted molecule name/value
+    isDirectID: false,            // Whether this is a direct ID lookup (pbdid, cid, codid)
+    idType: undefined,            // 'pdbid', 'cid', or 'codid'
+    idValue: undefined,           // The actual ID value
+    smilesValue: undefined,       // The actual SMILES string (for named syntax)
+    displayName: undefined        // Custom display name for the molecule tag
   };
 
   if (!chemFormula) return result;
@@ -2594,15 +2782,19 @@ function parseChemFlags(chemFormula) {
   // Match: chem:smiles=CCO:, chem:mol=benzene+c+n:, chem:biomol=hemoglobin:, chem:mineral=quartz:
   // ALSO: chem:<name>smiles=CCO: where <name> becomes the molecule tag
   // Example: chem:ethanolsmiles=CCO: → name="ethanol", type="smiles", value="CCO"
+  // NEW AI-FRIENDLY FORMATS:
+  // chem:pbdid=4RHV: → Direct PDB ID lookup (for biomolecules)
+  // chem:cid=1234: → Direct PubChem CID lookup (for compounds)
+  // chem:codid=1234567: → Direct COD ID lookup (for minerals)
 
   // First try the standard format: chem:type=value: (check this FIRST to avoid false named matches)
-  const newSyntaxMatch = chemFormula.match(/chem:(smiles|mol|biomol|mineral)=([^:]+):/i);
+  const newSyntaxMatch = chemFormula.match(/chem:(smiles|mol|biomol|mineral|pbdid|cid|codid)=([^:]+):/i);
 
   // Only try named format if standard didn't match
   // Named format: chem:<name>type=value: where name must start with a letter and be 2+ chars
-  // Examples: chem:ethanolsmiles=CCO:, chem:Aspirinmol=aspirin:
+  // Examples: chem:ethanolsmiles=CCO:, chem:Aspirinmol=aspirin:, chem:Aspirincid=2244:
   const namedSyntaxMatch = !newSyntaxMatch ?
-    chemFormula.match(/chem:([a-zA-Z][a-zA-Z0-9\s]{1,}?)(smiles|mol|biomol|mineral)=([^:]+):/i) : null;
+    chemFormula.match(/chem:([a-zA-Z][a-zA-Z0-9\s]{1,}?)(smiles|mol|biomol|mineral|pbdid|cid|codid)=([^:]+):/i) : null;
 
   // Handle standard syntax first (chem:type=value:)
   if (newSyntaxMatch) {
@@ -2625,17 +2817,39 @@ function parseChemFlags(chemFormula) {
       case 'mineral':
         result.compoundType = 'mineral';
         break;
+      case 'pbdid':
+        result.compoundType = 'biomolecule';
+        result.isDirectID = true;
+        result.idType = 'pdbid';
+        break;
+      case 'cid':
+        result.compoundType = 'compound';
+        result.isDirectID = true;
+        result.idType = 'cid';
+        result.isPubchem = true;
+        break;
+      case 'codid':
+        result.compoundType = 'mineral';
+        result.isDirectID = true;
+        result.idType = 'codid';
+        break;
     }
 
-    // Extract molecule name (everything before flags)
+    // Extract molecule name/ID (everything before flags)
     // CRITICAL: Don't split on hyphens that are part of compound names like "butan-2-ol"
     // Flags are: +c, +n, -c, -o, etc. (single letter after +/-)
     // But "butan-2-ol" has "-2" and "-ol" which are NOT flags
     let moleculeName = valueWithFlags;
 
+    // For direct ID types (pbdid, cid, codid), don't parse flags for pbdid
+    // pbdid doesn't support flags (biomolecules use different rendering)
+    // cid and codid support flags like normal molecules
+    const isBiomoleculeID = type === 'pbdid';
+    
     // Find the first ACTUAL flag: +letter or -letter where it's NOT part of the name
     // Look for patterns like +c, +n, -c, -o at the end, separated from the name
-    const flagMatch = valueWithFlags.match(/^(.+?)([+\-][a-zA-Z](?:[+\-][a-zA-Z])*)$/);
+    // Skip flag parsing for biomolecule IDs
+    const flagMatch = !isBiomoleculeID ? valueWithFlags.match(/^(.+?)([+\-][a-zA-Z](?:[+\-][a-zA-Z])*)$/) : null;
     if (flagMatch) {
       moleculeName = flagMatch[1];
       result.flagsLocked = true;
@@ -2646,9 +2860,20 @@ function parseChemFlags(chemFormula) {
     if (type === 'smiles') {
       result.smilesValue = moleculeName.trim();
     }
+    
+    // For direct IDs, store the ID value
+    if (type === 'pbdid' || type === 'cid' || type === 'codid') {
+      result.idValue = moleculeName.trim();
+    }
 
-    // Parse flags (if any were found)
+    // Parse flags (if any were found and not a biomolecule ID)
+    // SKIP flag parsing if AI Flag Control is disabled
     const flagsPart = flagMatch ? flagMatch[2] : '';
+    if (!enableAIFlagControl) {
+      // AI Flag Control is disabled - don't parse flags, just return basic info
+      console.log('%c🚫 AI Flag Control DISABLED - ignoring flags in text', 'color: #FF9800; font-weight: bold;');
+      return result;
+    }
     if (flagsPart.includes('+d')) result.useDefaults = true;
 
     const plusFlags = flagsPart.match(/\+([a-zA-Z0-9]+)/g);
@@ -2712,24 +2937,54 @@ function parseChemFlags(chemFormula) {
       case 'mineral':
         result.compoundType = 'mineral';
         break;
+      case 'pbdid':
+        result.compoundType = 'biomolecule';
+        result.isDirectID = true;
+        result.idType = 'pdbid';
+        break;
+      case 'cid':
+        result.compoundType = 'compound';
+        result.isDirectID = true;
+        result.idType = 'cid';
+        result.isPubchem = true;
+        break;
+      case 'codid':
+        result.compoundType = 'mineral';
+        result.isDirectID = true;
+        result.idType = 'codid';
+        break;
     }
 
     // Use the display name for the tag (not the SMILES/value string)
     result.moleculeName = displayName;
 
-    // For SMILES, store the actual SMILES separately (before flags)
-    const firstFlagIndex = valueWithFlags.search(/[+-]/);
+    // For SMILES, IDs: store the actual value separately (before flags)
+    const isBiomoleculeID = type === 'pbdid';
+    const firstFlagIndex = !isBiomoleculeID ? valueWithFlags.search(/[+-]/) : -1;
     const actualValue = firstFlagIndex !== -1 ? valueWithFlags.substring(0, firstFlagIndex).trim() : valueWithFlags.trim();
+    
     if (type === 'smiles') {
       result.smilesValue = actualValue;
+    } else if (type === 'pbdid' || type === 'cid' || type === 'codid') {
+      result.idValue = actualValue;
     }
 
     if (firstFlagIndex !== -1) {
       result.flagsLocked = true;
     }
 
-    // Parse flags from the value part
+    // Store the custom display name for tag rendering
+    result.displayName = displayName;
+
+    // Parse flags from the value part (skip for biomolecule IDs)
+    // SKIP flag parsing if AI Flag Control is disabled
     const flagsPart = firstFlagIndex !== -1 ? valueWithFlags.substring(firstFlagIndex) : '';
+
+    if (!enableAIFlagControl) {
+      // AI Flag Control is disabled - don't parse flags, just return basic info
+      console.log('%c🚫 AI Flag Control DISABLED - ignoring flags in text', 'color: #FF9800; font-weight: bold;');
+      return result;
+    }
 
     // Check for +d flag (use defaults as base)
     if (flagsPart.includes('+d')) {
@@ -3222,6 +3477,23 @@ function applyLayoutMode() {
 }
 
 /**
+ * Build RCSB structure image URL
+ * Returns either asymmetric unit (_model-1) or biological assembly (_assembly-1) based on settings
+ * 
+ * @param {string} pdbid - The PDB ID
+ * @returns {string} RCSB image URL
+ */
+function buildRCSBImageUrl(pdbid) {
+  const pdbLower = pdbid.toLowerCase();
+  // Use biological assembly image if setting is enabled
+  if (settings.molviewBioAssembly) {
+    return `https://cdn.rcsb.org/images/structures/${pdbLower}_assembly-1.jpeg`;
+  }
+  // Default: asymmetric unit
+  return `https://cdn.rcsb.org/images/structures/${pdbLower}_model-1.jpeg`;
+}
+
+/**
  * Build a MolView embed URL with all settings parameters
  * Uses current settings for chain type, chain color, background, etc.
  * 
@@ -3258,6 +3530,9 @@ function buildMolViewEmbedUrl(baseIdentifier, identifierType, moleculeType = 'co
     if (settings.proteinMolviewBgColor) {
       params.set('bg', settings.proteinMolviewBgColor);
     }
+
+    // Note: Biological assembly is not supported by embed.molview.org
+    // The bioassembly setting only affects the 2D RCSB image (assembly vs model)
   }
 
   // For minerals, add mineral-specific settings
@@ -3318,11 +3593,126 @@ window.buildMolViewEmbedUrl = buildMolViewEmbedUrl;
  * Only renders visible SVGs, defers off-screen ones to save performance
  */
 function setupLazyLoading() {
+  // Disconnect any existing observer first to prevent memory leaks
+  if (window._lazyLoadObserver) {
+    try {
+      window._lazyLoadObserver.disconnect();
+    } catch (e) {
+      // Ignore disconnect errors
+    }
+    window._lazyLoadObserver = null;
+  }
+
   log.inject('🚀 Setting up Intersection Observer for lazy-loading with performance optimization');
 
   // Track loading count to prevent too many simultaneous loads
   let activeLoads = 0;
   const maxConcurrentLoads = 3;  // Reduced from 5 to prevent lag
+
+  // Helper to decrement activeLoads and trigger queue processing
+  // Use this instead of direct activeLoads-- to ensure queue is processed
+  function decrementActiveLoads() {
+    activeLoads--;
+    // Trigger queue processing if there are waiting items
+    if (typeof processLoadQueue === 'function') {
+      setTimeout(processLoadQueue, 50);
+    }
+  }
+
+  // ============================================
+  // GLOBAL SMILESDRAWER INSTANCE REUSE
+  // ============================================
+  // Reuse a single SvgDrawer instance instead of creating new ones for each molecule
+  // This significantly reduces memory usage and prevents crashes with many molecules
+  let _globalSvgDrawerOptions = null;
+  let _globalSvgDrawer = null;
+
+  function getOrCreateSvgDrawer(options) {
+    // Check if we need to create a new instance (first time or options changed significantly)
+    // We compare key options that affect rendering, not dimensions (those change per molecule)
+    const optionsKey = JSON.stringify({
+      showCarbons: options.showCarbons,
+      terminalCarbons: options.terminalCarbons,
+      showHydrogens: options.showHydrogens,
+      showImplicitHydrogens: options.showImplicitHydrogens,
+      showAromaticRings: options.showAromaticRings,
+      atomNumbering: options.atomNumbering,
+      solidBondColors: options.solidBondColors,
+      compactDrawing: options.compactDrawing,
+      bondThickness: options.bondThickness
+    });
+
+    if (!_globalSvgDrawer || _globalSvgDrawerOptions !== optionsKey) {
+      console.log('%c🔧 Creating/updating global SvgDrawer instance', 'color: #9C27B0; font-weight: bold;');
+      _globalSvgDrawer = new SmilesDrawer.SvgDrawer(options);
+      _globalSvgDrawerOptions = optionsKey;
+    }
+
+    // Return a drawer with updated dimensions (dimensions don't require new instance)
+    // Actually, SmilesDrawer uses options at draw time, so we can reuse the instance
+    return _globalSvgDrawer;
+  }
+
+  // Queue for limiting concurrent SmilesDrawer.parse() calls
+  // This prevents browser overload when many molecules are visible at once
+  const PARSE_QUEUE_MAX = 3;  // Max concurrent parse operations
+  let parseQueueActive = 0;
+  const parseQueue = [];
+
+  function queueSmilesDrawerParse(smiles, successCallback, errorCallback) {
+    return new Promise((resolve, reject) => {
+      const task = { smiles, successCallback, errorCallback, resolve, reject };
+
+      if (parseQueueActive < PARSE_QUEUE_MAX) {
+        executeParseTask(task);
+      } else {
+        parseQueue.push(task);
+      }
+    });
+  }
+
+  function executeParseTask(task) {
+    parseQueueActive++;
+
+    try {
+      SmilesDrawer.parse(task.smiles,
+        function (tree) {
+          parseQueueActive--;
+          processNextParseTask();
+          try {
+            task.successCallback(tree);
+            task.resolve(tree);
+          } catch (e) {
+            console.error('[ChemRenderer] Error in parse success callback:', e);
+            task.reject(e);
+          }
+        },
+        function (err) {
+          parseQueueActive--;
+          processNextParseTask();
+          try {
+            task.errorCallback(err);
+            task.reject(err);
+          } catch (e) {
+            console.error('[ChemRenderer] Error in parse error callback:', e);
+            task.reject(e);
+          }
+        }
+      );
+    } catch (e) {
+      parseQueueActive--;
+      processNextParseTask();
+      console.error('[ChemRenderer] Error calling SmilesDrawer.parse:', e);
+      task.reject(e);
+    }
+  }
+
+  function processNextParseTask() {
+    if (parseQueue.length > 0 && parseQueueActive < PARSE_QUEUE_MAX) {
+      const nextTask = parseQueue.shift();
+      executeParseTask(nextTask);
+    }
+  }
 
   // Intersection Observer for lazy-loading
   const observer = new IntersectionObserver((entries) => {
@@ -3368,11 +3758,11 @@ function setupLazyLoading() {
       img.src = img.dataset.src;
       img.dataset.loaded = 'true';
       observer.unobserve(img);
-      activeLoads--;
+      decrementActiveLoads();
       log.debug(`✅ SVG loaded (${activeLoads} active loads remaining)`);
     };
     preloadImg.onerror = () => {
-      activeLoads--;
+      decrementActiveLoads();
       log.debug(`❌ SVG failed to load (${activeLoads} active loads remaining)`);
     };
     preloadImg.src = img.dataset.src;
@@ -3519,12 +3909,18 @@ function setupLazyLoading() {
           targetForViewer = placeholder;
         }
         await show3DViewerInline(moleculeData, targetForViewer);
-        activeLoads--;
+        decrementActiveLoads();
         return;
       }
 
       let smiles = moleculeData.smiles;
-      const compoundName = moleculeData.nomenclature || moleculeData.name || 'molecule';
+      // Track both canonical and isomeric SMILES for proper dual-cache storage
+      let fetchedCanonicalSmiles = null;
+      let fetchedIsomericSmiles = null;
+      
+      // Use displayName from flags if available (for named syntax like chem:Benzenesmiles=c1ccccc1:)
+      // Otherwise fall back to nomenclature, name, or 'molecule'
+      const compoundName = moleculeData.flags?.displayName || moleculeData.nomenclature || moleculeData.name || 'molecule';
 
       // If no SMILES, get it using Search API (MolView-Only) or PubChem
       if (!smiles && moleculeData.nomenclature) {
@@ -3543,7 +3939,7 @@ function setupLazyLoading() {
 
         // ===== CHECK SMILES CACHE FIRST =====
         // This avoids redundant API calls for previously looked up compounds
-        // Cache stores: { smiles, pdbid, codid, compoundType }
+        // Cache stores: { canonicalSmiles, isomericSmiles, pdbid, codid, compoundType }
         if (!smiles && !moleculeData.flags?.isDirectSmiles) {
           const cachedData = await getCachedSmiles(cleanName);
           if (cachedData) {
@@ -3555,13 +3951,13 @@ function setupLazyLoading() {
               const biomoleculeData = {
                 nomenclature: cleanName,
                 compoundType: 'biomolecule',
-                embedUrl: `https://embed.molview.org/v1/?pdbid=${cachedData.pdbid}`,
-                imageUrl: `https://cdn.rcsb.org/images/structures/${cachedData.pdbid.toLowerCase()}_model-1.jpeg`,
+                embedUrl: buildMolViewEmbedUrl(cachedData.pdbid, 'pdbid', 'biomolecule'),
+                imageUrl: buildRCSBImageUrl(cachedData.pdbid),
                 pdbid: cachedData.pdbid,
                 is3D: false
               };
               await renderBiomolecule2D(biomoleculeData, img);
-              activeLoads--;
+              decrementActiveLoads();
               return;
             }
 
@@ -3578,25 +3974,34 @@ function setupLazyLoading() {
                 is3D: true
               };
               await show3DViewerInline(mineralData, img);
-              activeLoads--;
+              decrementActiveLoads();
               return;
             }
 
-            // ===== CACHED COMPOUND (has smiles) =====
-            if (cachedData.smiles) {
+            // ===== CACHED COMPOUND (has canonicalSmiles or isomericSmiles) =====
+            if (cachedData.canonicalSmiles || cachedData.isomericSmiles) {
+              // Select the appropriate SMILES based on stereochemistry setting
+              const selectedSmiles = use3DSmiles
+                ? (cachedData.isomericSmiles || cachedData.canonicalSmiles)  // Prefer isomeric when stereo ON
+                : (cachedData.canonicalSmiles || cachedData.isomericSmiles); // Prefer canonical when stereo OFF
+
               // Validate cached SMILES - if it looks like a compound name, skip it (bad cache entry)
-              const cachedSmiles = cachedData.smiles;
-              const looksLikeName = /\b(acid|ol|ene|ane|ine|one|ide|ate|ose|yl|methyl|ethyl|propyl|butyl|amino|hydroxy|tartaric|butanol|ethanol)\b/i.test(cachedSmiles);
-              const hasNomenclaturePattern = /^\(?[RSrs],?[RSrs]?\)?-?\d*-?[a-zA-Z]{4,}/i.test(cachedSmiles);
+              const looksLikeName = /\b(acid|ol|ene|ane|ine|one|ide|ate|ose|yl|methyl|ethyl|propyl|butyl|amino|hydroxy|tartaric|butanol|ethanol)\b/i.test(selectedSmiles);
+              const hasNomenclaturePattern = /^\(?[RSrs],?[RSrs]?\)?-?\d*-?[a-zA-Z]{4,}/i.test(selectedSmiles);
 
               if (looksLikeName || hasNomenclaturePattern) {
                 console.warn('%c⚠️ [Client] BAD CACHE ENTRY DETECTED - cached value looks like a name, not SMILES!', 'background: #ff9800; color: black; font-weight: bold; padding: 4px;');
-                console.warn('Cached value:', cachedSmiles);
+                console.warn('Cached value:', selectedSmiles);
                 console.warn('Will re-fetch SMILES for:', cleanName);
                 // Don't use this cached value, let it fall through to API lookup
               } else {
                 console.log('%c🎯 [Client] SMILES CACHE HIT!', 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;', cleanName);
-                smiles = cachedSmiles;
+                smiles = selectedSmiles;
+                if (use3DSmiles) {
+                  console.log('%c🔬 [Client] Using cached IsomericSMILES (stereochemistry ON):', 'color: #4CAF50;', smiles);
+                } else {
+                  console.log('%c🔬 [Client] Using cached CanonicalSMILES (stereochemistry OFF):', 'color: #FF9800;', smiles);
+                }
                 // Skip all API lookups, fall through to rendering
               }
             }
@@ -3627,13 +4032,13 @@ function setupLazyLoading() {
                   const biomoleculeData = {
                     nomenclature: cleanName,
                     compoundType: 'biomolecule',
-                    embedUrl: `https://embed.molview.org/v1/?pdbid=${pdbid}`,
-                    imageUrl: `https://cdn.rcsb.org/images/structures/${pdbid.toLowerCase()}_model-1.jpeg`,
+                    embedUrl: buildMolViewEmbedUrl(pdbid, 'pdbid', 'biomolecule'),
+                    imageUrl: buildRCSBImageUrl(pdbid),
                     pdbid: pdbid,
                     is3D: false
                   };
                   await renderBiomolecule2D(biomoleculeData, img);
-                  activeLoads--;
+                  decrementActiveLoads();
                   return;
                 }
               }
@@ -3655,7 +4060,7 @@ function setupLazyLoading() {
                     is3D: true
                   };
                   await show3DViewerInline(mineralData, img);
-                  activeLoads--;
+                  decrementActiveLoads();
                   return;
                 }
               }
@@ -3729,26 +4134,36 @@ function setupLazyLoading() {
                 const biomoleculeData = {
                   nomenclature: searchResult.name || cleanName,
                   compoundType: 'biomolecule',
-                  embedUrl: `https://embed.molview.org/v1/?pdbid=${searchResult.pdbid}`,
-                  imageUrl: searchResult.image_url || `https://cdn.rcsb.org/images/structures/${searchResult.pdbid.toLowerCase()}_model-1.jpeg`,
+                  embedUrl: buildMolViewEmbedUrl(searchResult.pdbid, 'pdbid', 'biomolecule'),
+                  imageUrl: searchResult.image_url || buildRCSBImageUrl(searchResult.pdbid),
                   pdbid: searchResult.pdbid,
                   is3D: false  // Show 2D first, 3D via button
                 };
 
                 // Render the 2D RCSB image
                 await renderBiomolecule2D(biomoleculeData, img);
-                activeLoads--;
+                decrementActiveLoads();
                 return;
               }
 
               // ============ GET SMILES FROM RESULT ============
-              // Prefer isomeric SMILES when stereochemistry is enabled (for stereochemical accuracy)
-              if (searchResult.canonical_smiles) {
-                const useStereochemistry = settings.useStereochemistry !== false;
-                smiles = useStereochemistry && searchResult.isomeric_smiles ?
-                  searchResult.isomeric_smiles :
-                  searchResult.canonical_smiles;
-                console.log(`%c🧬 Using ${useStereochemistry && searchResult.isomeric_smiles ? 'isomeric' : 'canonical'} SMILES`, 'color: #9C27B0;');
+              // Extract BOTH canonical and isomeric SMILES for caching
+              if (searchResult.canonical_smiles || searchResult.isomeric_smiles) {
+                // Store both for caching
+                if (!fetchedCanonicalSmiles && searchResult.canonical_smiles) {
+                  fetchedCanonicalSmiles = searchResult.canonical_smiles.replace(/\s+/g, '');
+                }
+                if (!fetchedIsomericSmiles && searchResult.isomeric_smiles) {
+                  fetchedIsomericSmiles = searchResult.isomeric_smiles.replace(/\s+/g, '');
+                }
+
+                // Select based on stereochemistry setting
+                smiles = use3DSmiles
+                  ? (fetchedIsomericSmiles || fetchedCanonicalSmiles)
+                  : (fetchedCanonicalSmiles || fetchedIsomericSmiles);
+
+                console.log(`%c🧬 IntegratedSearch SMILES: using ${use3DSmiles ? 'isomeric' : 'canonical'}`, 'color: #9C27B0;',
+                  { canonical: fetchedCanonicalSmiles?.substring(0, 25), isomeric: fetchedIsomericSmiles?.substring(0, 25) });
               }
 
               // ============ HANDLE MINERAL WITHOUT SMILES (use existing 3D viewer pipeline) ============
@@ -3774,7 +4189,7 @@ function setupLazyLoading() {
 
                 // Use the existing 3D viewer pipeline which handles sizing, settings, buttons, etc.
                 await show3DViewerInline(mineralData, img);
-                activeLoads--;
+                decrementActiveLoads();
                 return;
               }
 
@@ -3794,6 +4209,7 @@ function setupLazyLoading() {
 
         // ===== PRIORITY 1: PubChem direct API (FALLBACK) =====
         // Only used when MolView Search fails, unless molviewOnlyMode is enabled
+        // Uses fetchedCanonicalSmiles and fetchedIsomericSmiles declared at parent scope
         if (!smiles && !settings.molviewOnlyMode) {
           // Works for common names, trade names, drug names, and most molecules
           // console.log('%c🌐 [Client] Priority 1: Trying PubChem direct lookup (via background)...', 'color: #0088FF; font-weight: bold;');
@@ -3803,38 +4219,37 @@ function setupLazyLoading() {
             const data = await backgroundFetchJSON(pubchemUrl);
 
             // console.log('%c📦 [Client] PubChem raw response:', 'color: #FF00FF; font-weight: bold;', JSON.stringify(data));
-            // console.log('%c📦 [Client] data type:', 'color: #FF00FF;', typeof data);
-            // console.log('%c📦 [Client] data.PropertyTable:', 'color: #FF00FF;', data?.PropertyTable);
-            // console.log('%c📦 [Client] data.PropertyTable?.Properties:', 'color: #FF00FF;', data?.PropertyTable?.Properties);
 
             if (data && data.PropertyTable && data.PropertyTable.Properties && data.PropertyTable.Properties[0]) {
               const props = data.PropertyTable.Properties[0];
               console.log('%c📦 [Client] props:', 'color: #00FFFF;', props);
-              // PubChem can return different property names: CanonicalSMILES, IsomericSMILES, SMILES, ConnectivitySMILES
-              smiles = use3DSmiles ?
-                (props.IsomericSMILES || props.SMILES || props.CanonicalSMILES || props.ConnectivitySMILES) :
-                (props.CanonicalSMILES || props.SMILES || props.ConnectivitySMILES);
+
+              // Extract BOTH canonical and isomeric SMILES for proper caching
+              fetchedCanonicalSmiles = props.CanonicalSMILES || props.ConnectivitySMILES;
+              fetchedIsomericSmiles = props.IsomericSMILES || props.SMILES;
 
               // Remove any spaces from SMILES (PubChem sometimes adds them for readability)
-              if (smiles) {
-                smiles = smiles.replace(/\s+/g, '');
+              if (fetchedCanonicalSmiles) {
+                fetchedCanonicalSmiles = fetchedCanonicalSmiles.replace(/\s+/g, '');
+              }
+              if (fetchedIsomericSmiles) {
+                fetchedIsomericSmiles = fetchedIsomericSmiles.replace(/\s+/g, '');
               }
 
-              // console.log('%c✅ [Client] PubChem direct SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
-              if (smiles) {
-                // console.log('%c📏 SMILES length:', 'color: #9c88ff;', smiles.length, 'characters');
+              // Select the appropriate SMILES based on stereochemistry setting
+              if (use3DSmiles) {
+                smiles = fetchedIsomericSmiles || fetchedCanonicalSmiles;
+                console.log('%c🔬 [Client] Using IsomericSMILES (stereochemistry ON):', 'color: #4CAF50;', smiles);
+              } else {
+                smiles = fetchedCanonicalSmiles || fetchedIsomericSmiles;
+                console.log('%c🔬 [Client] Using CanonicalSMILES (stereochemistry OFF):', 'color: #FF9800;', smiles);
               }
-            } else {
-              // console.warn('%c⚠️ [Client] PubChem data structure invalid:', 'color: #FF8800;', {
-              //   hasData: !!data,
-              //   hasPropertyTable: !!(data?.PropertyTable),
-              //   hasProperties: !!(data?.PropertyTable?.Properties),
-              //   hasFirst: !!(data?.PropertyTable?.Properties?.[0])
-              // });
+
+              console.log('%c✅ [Client] PubChem direct SUCCESS - got both SMILES:', 'color: #00FF00; font-weight: bold;',
+                { canonical: fetchedCanonicalSmiles?.substring(0, 30), isomeric: fetchedIsomericSmiles?.substring(0, 30) });
             }
           } catch (pubchemError) {
             // console.warn('⚠️ [Client] PubChem direct failed:', pubchemError.message);
-            // console.error('⚠️ [Client] Full error:', pubchemError);
           }
 
           // ===== PRIORITY 2: PubChem Autocomplete (for generic/class names like "sphingomyelin") =====
@@ -3850,26 +4265,28 @@ function setupLazyLoading() {
                 const bestMatch = autocompleteData.dictionary_terms.compound[0];
                 // console.log('%c🔗 [Client] Found related compound:', 'color: #FF8800;', bestMatch);
 
-                // Now lookup SMILES for the best match
+                // Now lookup SMILES for the best match - get BOTH types
                 const matchUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(bestMatch)}/property/CanonicalSMILES,IsomericSMILES/JSON`;
                 const matchData = await backgroundFetchJSON(matchUrl);
 
                 if (matchData && matchData.PropertyTable && matchData.PropertyTable.Properties && matchData.PropertyTable.Properties[0]) {
                   const props = matchData.PropertyTable.Properties[0];
-                  // Accept any SMILES property name
-                  smiles = use3DSmiles ?
-                    (props.IsomericSMILES || props.SMILES || props.CanonicalSMILES || props.ConnectivitySMILES) :
-                    (props.CanonicalSMILES || props.SMILES || props.ConnectivitySMILES);
 
-                  // Remove spaces
-                  if (smiles) {
-                    smiles = smiles.replace(/\s+/g, '');
+                  // Extract both SMILES types for caching
+                  if (!fetchedCanonicalSmiles) {
+                    fetchedCanonicalSmiles = (props.CanonicalSMILES || props.ConnectivitySMILES)?.replace(/\s+/g, '');
+                  }
+                  if (!fetchedIsomericSmiles) {
+                    fetchedIsomericSmiles = (props.IsomericSMILES || props.SMILES)?.replace(/\s+/g, '');
                   }
 
-                  // console.log('%c✅ [Client] PubChem autocomplete SUCCESS:', 'color: #00FF00; font-weight: bold;', smiles);
-                  if (smiles) {
-                    // console.log('%c📏 SMILES length:', 'color: #9c88ff;', smiles.length, 'characters');
-                  }
+                  // Select based on setting
+                  smiles = use3DSmiles
+                    ? (fetchedIsomericSmiles || fetchedCanonicalSmiles)
+                    : (fetchedCanonicalSmiles || fetchedIsomericSmiles);
+
+                  console.log('%c✅ [Client] PubChem autocomplete SUCCESS:', 'color: #00FF00; font-weight: bold;',
+                    { canonical: fetchedCanonicalSmiles?.substring(0, 25), isomeric: fetchedIsomericSmiles?.substring(0, 25) });
                 }
               }
             } catch (autocompleteError) {
@@ -3885,25 +4302,28 @@ function setupLazyLoading() {
               if (cid) {
                 // console.log('%c✅ [Client] Found CID:', 'color: #9c27b0;', cid);
 
-                // Get SMILES from CID
+                // Get SMILES from CID - extract BOTH types
                 const cidUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/${cid}/property/CanonicalSMILES,IsomericSMILES/JSON`;
                 const cidData = await backgroundFetchJSON(cidUrl);
 
                 if (cidData && cidData.PropertyTable && cidData.PropertyTable.Properties && cidData.PropertyTable.Properties[0]) {
                   const props = cidData.PropertyTable.Properties[0];
-                  smiles = use3DSmiles ?
-                    (props.IsomericSMILES || props.SMILES || props.CanonicalSMILES || props.ConnectivitySMILES) :
-                    (props.CanonicalSMILES || props.SMILES || props.ConnectivitySMILES);
 
-                  // Remove spaces
-                  if (smiles) {
-                    smiles = smiles.replace(/\s+/g, '');
+                  // Extract both SMILES types for caching
+                  if (!fetchedCanonicalSmiles) {
+                    fetchedCanonicalSmiles = (props.CanonicalSMILES || props.ConnectivitySMILES)?.replace(/\s+/g, '');
+                  }
+                  if (!fetchedIsomericSmiles) {
+                    fetchedIsomericSmiles = (props.IsomericSMILES || props.SMILES)?.replace(/\s+/g, '');
                   }
 
-                  // console.log('%c✅ [Client] CID lookup SUCCESS:', 'color: #9c27b0; font-weight: bold;', smiles);
-                  if (smiles) {
-                    // console.log('%c📏 SMILES length:', 'color: #9c88ff;', smiles.length, 'characters');
-                  }
+                  // Select based on setting
+                  smiles = use3DSmiles
+                    ? (fetchedIsomericSmiles || fetchedCanonicalSmiles)
+                    : (fetchedCanonicalSmiles || fetchedIsomericSmiles);
+
+                  console.log('%c✅ [Client] CID lookup SUCCESS:', 'color: #9c27b0; font-weight: bold;',
+                    { canonical: fetchedCanonicalSmiles?.substring(0, 25), isomeric: fetchedIsomericSmiles?.substring(0, 25) });
                 }
               }
             } catch (cidError) {
@@ -3935,14 +4355,22 @@ function setupLazyLoading() {
       }
 
       // ===== CACHE THE SMILES FOR FUTURE USE =====
-      // Only cache if we got it from API (not from cache hit or direct flag)
+      // Store BOTH canonical and isomeric SMILES for consistent switching
       if (moleculeData.nomenclature && !moleculeData.flags?.isDirectSmiles) {
         const existingCache = await getCachedSmiles(moleculeData.nomenclature);
-        if (!existingCache) {
+        // Only cache if we don't have existing data OR if we have new data from PubChem fetch
+        if (!existingCache || (!existingCache.canonicalSmiles && fetchedCanonicalSmiles)) {
+          // Use fetched SMILES if available (from PubChem direct), otherwise derive from current smiles
+          const canonicalToCache = fetchedCanonicalSmiles || stripStereochemistry(smiles);
+          const isomericToCache = fetchedIsomericSmiles || smiles;
+
           await setCachedSmiles(moleculeData.nomenclature, {
-            smiles: smiles,
+            canonicalSmiles: canonicalToCache,
+            isomericSmiles: isomericToCache,
             compoundType: moleculeData.flags?.compoundType || 'compound'
           });
+          console.log('%c💾 [Client] Cached both SMILES:', 'color: #9C27B0;',
+            { canonical: canonicalToCache?.substring(0, 25), isomeric: isomericToCache?.substring(0, 25) });
         }
       }
 
@@ -3953,18 +4381,36 @@ function setupLazyLoading() {
       // Get flags from molecule data
       const flags = moleculeData.flags || moleculeData.options || {};
 
-      // Determine rendering options based on flagsLocked:
+      // Check if AI Flag Control is enabled
+      const enableAIFlagControl = settings.enableAIFlagControl === true;
+      console.log('%c🔧 AI Flag Control in renderClientSide:', 'color: #FF6B00; font-weight: bold;', enableAIFlagControl, 'raw value:', settings.enableAIFlagControl);
+
+      // Determine rendering options based on flagsLocked and enableAIFlagControl:
+      // - If enableAIFlagControl is FALSE: Ignore all flags, only use popup settings
       // - If flagsLocked && !useDefaults: ONLY use explicit flags (start from false/off)
       // - If flagsLocked && useDefaults: Start with popup settings, then apply flags
       // - If !flagsLocked: Start with popup settings, then apply flags
-      const useOnlyFlags = flags.flagsLocked && !flags.useDefaults;
+      const useOnlyFlags = enableAIFlagControl && flags.flagsLocked && !flags.useDefaults;
+      const shouldApplyFlags = enableAIFlagControl && (flags.flagsLocked || Object.keys(flags).length > 0);
 
       let showCarbons, aromaticCircles, showMethyl, showAtomNumbers;
       let flipVertical, flipHorizontal, addHydrogens, showImplicitH, compactDrawing;
       let customSize = null;
       let customRotation = null;
 
-      if (useOnlyFlags) {
+      if (!enableAIFlagControl) {
+        // AI Flag Control is disabled - ignore all flags, use only popup settings
+        console.log('%c🚫 AI Flag Control DISABLED - using popup settings only', 'color: #FF9800; font-weight: bold;');
+        showCarbons = settings.m2cfShowCarbons === true;
+        aromaticCircles = settings.m2cfAromaticCircles === true;
+        showMethyl = settings.m2cfShowMethyls === true;
+        showAtomNumbers = settings.m2cfAtomNumbers === true;
+        flipVertical = settings.m2cfFlipVertical === true;
+        flipHorizontal = settings.m2cfFlipHorizontal === true;
+        addHydrogens = settings.m2cfAddH2 === true;
+        showImplicitH = settings.m2cfShowImplicitH !== false;
+        compactDrawing = settings.m2cfCompactDrawing === true;
+      } else if (useOnlyFlags) {
         // Flags are locked without +d: start with all OFF, only apply explicit flags
         console.log('%c🔒 Flags locked (no defaults) - using explicit flags only', 'color: #FF5722; font-weight: bold;');
         showCarbons = flags.showCarbons === true;
@@ -3977,7 +4423,7 @@ function setupLazyLoading() {
         showImplicitH = flags.showImplicitHydrogens !== false && flags.showImplicitH !== false;
         compactDrawing = settings.m2cfCompactDrawing === true;  // Keep compact from settings (not a flag)
       } else {
-        // Use popup settings as base, then apply flags on top
+        // Use popup settings as base, then apply flags on top (if enableAIFlagControl is true)
         showCarbons = settings.m2cfShowCarbons === true;
         aromaticCircles = settings.m2cfAromaticCircles === true;
         showMethyl = settings.m2cfShowMethyls === true;
@@ -3988,20 +4434,22 @@ function setupLazyLoading() {
         showImplicitH = settings.m2cfShowImplicitH !== false;
         compactDrawing = settings.m2cfCompactDrawing === true;
 
-        // Apply per-molecule flag overrides if present
-        if (flags.showCarbons !== undefined) showCarbons = flags.showCarbons;
-        if (flags.aromaticCircles !== undefined) aromaticCircles = flags.aromaticCircles;
-        if (flags.showMethyls !== undefined) showMethyl = flags.showMethyls;
-        if (flags.atomNumbers !== undefined) showAtomNumbers = flags.atomNumbers;
-        if (flags.addHydrogens !== undefined) addHydrogens = flags.addHydrogens;
-        if (flags.addH2 !== undefined) addHydrogens = flags.addH2;
-        if (flags.showImplicitHydrogens !== undefined) showImplicitH = flags.showImplicitHydrogens;
-        if (flags.showImplicitH !== undefined) showImplicitH = flags.showImplicitH;
-        if (flags.flipHorizontal !== undefined) flipHorizontal = flags.flipHorizontal;
-        if (flags.flipVertical !== undefined) flipVertical = flags.flipVertical;
+        // Apply per-molecule flag overrides if present and AI Flag Control is enabled
+        if (shouldApplyFlags) {
+          if (flags.showCarbons !== undefined) showCarbons = flags.showCarbons;
+          if (flags.aromaticCircles !== undefined) aromaticCircles = flags.aromaticCircles;
+          if (flags.showMethyls !== undefined) showMethyl = flags.showMethyls;
+          if (flags.atomNumbers !== undefined) showAtomNumbers = flags.atomNumbers;
+          if (flags.addHydrogens !== undefined) addHydrogens = flags.addHydrogens;
+          if (flags.addH2 !== undefined) addHydrogens = flags.addH2;
+          if (flags.showImplicitHydrogens !== undefined) showImplicitH = flags.showImplicitHydrogens;
+          if (flags.showImplicitH !== undefined) showImplicitH = flags.showImplicitH;
+          if (flags.flipHorizontal !== undefined) flipHorizontal = flags.flipHorizontal;
+          if (flags.flipVertical !== undefined) flipVertical = flags.flipVertical;
+        }
       }
 
-      // Size and rotation always from flags if specified
+      // Size and rotation always from flags if specified (even when AI Flag Control is disabled for visual adjustments)
       if (flags.size !== undefined) customSize = flags.size;
       if (flags.rotation !== undefined) customRotation = flags.rotation;
 
@@ -4038,10 +4486,14 @@ function setupLazyLoading() {
       const renderWidth = Math.round(baseWidth * sizeMultiplier);
       const renderHeight = Math.round(baseHeight * sizeMultiplier);
 
-      const theme = isDarkModeEnabled() ? 'dark' : 'light';
+      // Get theme from settings (user selection) or auto-detect
+      const theme = settings.sdTheme || (isDarkModeEnabled() ? 'dark' : 'light');
 
       // Get gradient colors setting (solidBondColors: false = gradient, true = solid)
       const useGradientColors = settings.sdGradientColors === true;
+
+      // Get bond thickness from settings (default 1.0)
+      const bondThicknessMultiplier = settings.sdBondThickness || 1.0;
 
       // Configure SmilesDrawer options
       // These match YOUR CUSTOM smiles-drawer.min.js options:
@@ -4049,7 +4501,7 @@ function setupLazyLoading() {
       const smilesDrawerOptions = {
         width: renderWidth,
         height: renderHeight,
-        bondThickness: 2.0,
+        bondThickness: 2.0 * bondThicknessMultiplier,
         bondLength: 25,
         shortBondLength: 0.85,
         bondSpacing: 6,
@@ -4077,12 +4529,14 @@ function setupLazyLoading() {
             C: '#ffffff', O: '#ff6b6b', N: '#4dabf7', F: '#51cf66',
             CL: '#20c997', BR: '#fd7e14', I: '#be4bdb', P: '#fd7e14',
             S: '#fcc419', B: '#f59f00', SI: '#f59f00', H: '#aaaaaa',
+            ATOM_NUMBER: '#ffd700',  // Yellow for dark theme (good contrast)
             BACKGROUND: 'transparent'
           },
           light: {
             C: '#222222', O: '#e74c3c', N: '#3498db', F: '#27ae60',
             CL: '#16a085', BR: '#d35400', I: '#8e44ad', P: '#d35400',
             S: '#f1c40f', B: '#e67e22', SI: '#e67e22', H: '#666666',
+            ATOM_NUMBER: '#2196F3',  // Blue for light theme (good contrast)
             BACKGROUND: 'transparent'
           }
         }
@@ -4100,135 +4554,159 @@ function setupLazyLoading() {
 
       console.log('%c🎨 Rendering SVG directly with SmilesDrawer', 'color: #9c88ff;');
 
-      // Render the molecule directly using SmilesDrawer
-      const svgDrawer = new SmilesDrawer.SvgDrawer(smilesDrawerOptions);
+      // Use queued parsing to limit concurrent operations (prevents crashes with many molecules)
+      // Also reuse SvgDrawer instance to reduce memory usage
+      queueSmilesDrawerParse(smiles, function (tree) {
+        // Track tempDiv for cleanup - MUST always be cleaned up even on errors
+        let tempDiv = null;
+        let tempId = null;
 
-      SmilesDrawer.parse(smiles, function (tree) {
-        // Count atoms to determine molecule complexity
-        const atomCount = smiles.replace(/[^A-Z]/g, '').length; // Rough estimate
-        console.log(`Molecule has approximately ${atomCount} atoms`);
+        try {
+          // Count atoms to determine molecule complexity
+          const atomCount = smiles.replace(/[^A-Z]/g, '').length; // Rough estimate
+          console.log(`Molecule has approximately ${atomCount} atoms`);
 
-        // Adjust canvas size based on complexity
-        let adjustedWidth = renderWidth;
-        let adjustedHeight = renderHeight;
+          // Adjust canvas size based on complexity
+          let adjustedWidth = renderWidth;
+          let adjustedHeight = renderHeight;
 
-        if (atomCount > 100) {
-          // Large molecule like insulin - use bigger canvas
-          // Use square root for sub-linear scaling (parabolic curve - rate of increase decreases)
-          // This prevents molecules from becoming excessively large
-          const complexityFactor = Math.min(Math.sqrt(atomCount / 50) * 1.5, 3); // Max 3x with sqrt scaling
-          adjustedWidth = Math.ceil(renderWidth * complexityFactor);
-          adjustedHeight = Math.ceil(renderHeight * complexityFactor);
-          console.log(`Large molecule detected, expanding canvas to ${adjustedWidth}x${adjustedHeight} (factor: ${complexityFactor.toFixed(2)}x)`);
+          if (atomCount > 100) {
+            // Large molecule like insulin - use bigger canvas
+            // Use square root for sub-linear scaling (parabolic curve - rate of increase decreases)
+            // This prevents molecules from becoming excessively large
+            const complexityFactor = Math.min(Math.sqrt(atomCount / 50) * 1.5, 3); // Max 3x with sqrt scaling
+            adjustedWidth = Math.ceil(renderWidth * complexityFactor);
+            adjustedHeight = Math.ceil(renderHeight * complexityFactor);
+            console.log(`Large molecule detected, expanding canvas to ${adjustedWidth}x${adjustedHeight} (factor: ${complexityFactor.toFixed(2)}x)`);
 
-          // Update options
-          smilesDrawerOptions.width = adjustedWidth;
-          smilesDrawerOptions.height = adjustedHeight;
-        }
-
-        // Draw to a temporary container first
-        const tempId = `temp-${Date.now()}`;
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = `<svg id="${tempId}"></svg>`;
-        document.body.appendChild(tempDiv);
-
-        const finalDrawer = new SmilesDrawer.SvgDrawer(smilesDrawerOptions);
-        finalDrawer.draw(tree, tempId, theme);
-
-        // Get the rendered SVG
-        const renderedSvg = document.getElementById(tempId);
-        if (renderedSvg) {
-          // Get the actual bounding box of the content
-          try {
-            const bbox = renderedSvg.getBBox();
-            const padding = 10; // Small padding around content
-            let actualWidth = Math.ceil(bbox.width + padding * 2);
-            let actualHeight = Math.ceil(bbox.height + padding * 2);
-
-            // Smart scaling for display
-            const maxDisplayWidth = 600;   // Max display width
-            const maxDisplayHeight = 500;  // Max display height (matches hard limits)
-            const minDisplayWidth = 180;   // Min display width
-            const minDisplayHeight = 120;  // Min display height
-
-            let displayWidth = actualWidth;
-            let displayHeight = actualHeight;
-
-            // Scale down if too large (insulin case)
-            if (displayWidth > maxDisplayWidth || displayHeight > maxDisplayHeight) {
-              const scale = Math.min(maxDisplayWidth / displayWidth, maxDisplayHeight / displayHeight);
-              displayWidth = Math.ceil(displayWidth * scale);
-              displayHeight = Math.ceil(displayHeight * scale);
-              console.log(`Scaling down to ${displayWidth}x${displayHeight} for display`);
-            }
-
-            // Scale up if too small (benzene case)
-            if (displayWidth < minDisplayWidth && displayHeight < minDisplayHeight) {
-              const scale = Math.min(minDisplayWidth / displayWidth, minDisplayHeight / displayHeight, 2.5);
-              displayWidth = Math.ceil(displayWidth * scale);
-              displayHeight = Math.ceil(displayHeight * scale);
-              console.log(`Scaling up to ${displayWidth}x${displayHeight} for visibility`);
-            }
-
-            actualWidth = displayWidth;
-            actualHeight = displayHeight;
-
-            // Update SVG to fit content with smart scaling
-            renderedSvg.setAttribute('width', actualWidth);
-            renderedSvg.setAttribute('height', actualHeight);
-            renderedSvg.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
-
-            console.log('Final SVG size:', actualWidth, 'x', actualHeight);
-          } catch (e) {
-            console.warn('Could not get bbox:', e);
+            // Update options
+            smilesDrawerOptions.width = adjustedWidth;
+            smilesDrawerOptions.height = adjustedHeight;
           }
 
-          // Convert SVG to string and create data URL
-          const svgString = new XMLSerializer().serializeToString(renderedSvg);
-
-          // Use URL encoding instead of base64 to avoid UTF-8 issues
-          const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
-
-          // Clean up temp
-          document.body.removeChild(tempDiv);
-
-          // Create img element just like moleculeviewer/mol2chemfig does
-          const svgImg = document.createElement('img');
-          svgImg.src = svgDataUrl;
-          svgImg.alt = compoundName;
-          svgImg.className = 'molecule-diagram';
-
-          // Store data attributes for instant re-rendering
-          svgImg.dataset.moleculeViewer = 'true';
-          svgImg.dataset.smiles = smiles;
-          svgImg.dataset.nomenclature = compoundName;
-          svgImg.dataset.renderWidth = String(renderWidth);
-          svgImg.dataset.renderHeight = String(renderHeight);
-          svgImg.dataset.compoundType = moleculeData.flags?.compoundType || 'compound';
-
-          // Style to ensure no extra space
-          svgImg.style.display = 'block';
-          svgImg.style.margin = '0';
-          svgImg.style.padding = '0';
-          svgImg.style.border = 'none';
-
-          // Apply transforms if needed
-          if (flipVertical || flipHorizontal || customRotation) {
-            let transformParts = [];
-            if (flipVertical) transformParts.push('scaleY(-1)');
-            if (flipHorizontal) transformParts.push('scaleX(-1)');
-            if (customRotation) transformParts.push(`rotate(${customRotation}deg)`);
-            svgImg.style.transform = transformParts.join(' ');
+          // Safety check - ensure document.body exists
+          if (!document.body) {
+            console.error('[ChemRenderer] document.body not available');
+            decrementActiveLoads();
+            return;
           }
 
-          // Use the same wrapper function as mol2chemfig and moleculeviewer!
-          const wrapper = wrapImageWithRotationContainer(svgImg, customRotation, compoundName, moleculeData);
+          // Draw to a temporary container first (offscreen to avoid layout thrashing)
+          tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          tempDiv = document.createElement('div');
+          tempDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;visibility:hidden;';
+          tempDiv.innerHTML = `<svg id="${tempId}"></svg>`;
+          document.body.appendChild(tempDiv);
 
-          // Replace original img element
-          const parent = img.parentNode;
-          if (parent) {
-            parent.replaceChild(wrapper, img);
-            // console.log('%c✅ SVG rendered as img with standard wrapper', 'color: green; font-weight: bold;');
+          // Reuse global SvgDrawer instance (memory optimization)
+          const finalDrawer = getOrCreateSvgDrawer(smilesDrawerOptions);
+          finalDrawer.draw(tree, tempId, theme);
+
+          // Get the rendered SVG
+          const renderedSvg = document.getElementById(tempId);
+          if (renderedSvg) {
+            // Get the actual bounding box of the content
+            try {
+              const bbox = renderedSvg.getBBox();
+              const padding = 10; // Small padding around content
+              let actualWidth = Math.ceil(bbox.width + padding * 2);
+              let actualHeight = Math.ceil(bbox.height + padding * 2);
+
+              // Smart scaling for display
+              const maxDisplayWidth = 600;   // Max display width
+              const maxDisplayHeight = 500;  // Max display height (matches hard limits)
+              const minDisplayWidth = 180;   // Min display width
+              const minDisplayHeight = 120;  // Min display height
+
+              let displayWidth = actualWidth;
+              let displayHeight = actualHeight;
+
+              // Scale down if too large (insulin case)
+              if (displayWidth > maxDisplayWidth || displayHeight > maxDisplayHeight) {
+                const scale = Math.min(maxDisplayWidth / displayWidth, maxDisplayHeight / displayHeight);
+                displayWidth = Math.ceil(displayWidth * scale);
+                displayHeight = Math.ceil(displayHeight * scale);
+                console.log(`Scaling down to ${displayWidth}x${displayHeight} for display`);
+              }
+
+              // Scale up if too small (benzene case)
+              if (displayWidth < minDisplayWidth && displayHeight < minDisplayHeight) {
+                const scale = Math.min(minDisplayWidth / displayWidth, minDisplayHeight / displayHeight, 2.5);
+                displayWidth = Math.ceil(displayWidth * scale);
+                displayHeight = Math.ceil(displayHeight * scale);
+                console.log(`Scaling up to ${displayWidth}x${displayHeight} for visibility`);
+              }
+
+              actualWidth = displayWidth;
+              actualHeight = displayHeight;
+
+              // Update SVG to fit content with smart scaling
+              renderedSvg.setAttribute('width', actualWidth);
+              renderedSvg.setAttribute('height', actualHeight);
+              renderedSvg.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
+
+              console.log('Final SVG size:', actualWidth, 'x', actualHeight);
+            } catch (e) {
+              console.warn('Could not get bbox:', e);
+            }
+
+            // Convert SVG to string and create data URL
+            const svgString = new XMLSerializer().serializeToString(renderedSvg);
+
+            // Use URL encoding instead of base64 to avoid UTF-8 issues
+            const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+
+            // Note: tempDiv cleanup is handled in finally block to ensure it always happens
+
+            // Create img element just like moleculeviewer/mol2chemfig does
+            const svgImg = document.createElement('img');
+            svgImg.src = svgDataUrl;
+            svgImg.alt = compoundName;
+            svgImg.className = 'molecule-diagram';
+
+            // Store data attributes for instant re-rendering
+            svgImg.dataset.moleculeViewer = 'true';
+            svgImg.dataset.smiles = smiles;
+            svgImg.dataset.nomenclature = compoundName;
+            svgImg.dataset.renderWidth = String(renderWidth);
+            svgImg.dataset.renderHeight = String(renderHeight);
+            svgImg.dataset.compoundType = moleculeData.flags?.compoundType || 'compound';
+
+            // Style to ensure no extra space
+            svgImg.style.display = 'block';
+            svgImg.style.margin = '0';
+            svgImg.style.padding = '0';
+            svgImg.style.border = 'none';
+
+            // Apply transforms if needed
+            if (flipVertical || flipHorizontal || customRotation) {
+              let transformParts = [];
+              if (flipVertical) transformParts.push('scaleY(-1)');
+              if (flipHorizontal) transformParts.push('scaleX(-1)');
+              if (customRotation) transformParts.push(`rotate(${customRotation}deg)`);
+              svgImg.style.transform = transformParts.join(' ');
+            }
+
+            // Use the same wrapper function as mol2chemfig and moleculeviewer!
+            const wrapper = wrapImageWithRotationContainer(svgImg, customRotation, compoundName, moleculeData);
+
+            // Replace original img element
+            const parent = img.parentNode;
+            if (parent) {
+              parent.replaceChild(wrapper, img);
+              // console.log('%c✅ SVG rendered as img with standard wrapper', 'color: green; font-weight: bold;');
+            }
+          }
+        } catch (renderError) {
+          console.error('%c❌ Error during SVG rendering:', 'color: red;', renderError);
+        } finally {
+          // CRITICAL: Always clean up tempDiv from document.body to prevent memory leaks
+          if (tempDiv && tempDiv.parentNode) {
+            try {
+              tempDiv.parentNode.removeChild(tempDiv);
+            } catch (cleanupError) {
+              // Ignore cleanup errors
+            }
           }
         }
       }, function (err) {
@@ -4242,18 +4720,22 @@ function setupLazyLoading() {
         errorImg.alt = `Error: ${err.message || 'Failed to parse SMILES'}`;
         errorImg.className = 'molecule-diagram';
 
-        const parent = img.parentNode;
-        if (parent) {
-          parent.replaceChild(errorImg, img);
+        try {
+          const parent = img.parentNode;
+          if (parent) {
+            parent.replaceChild(errorImg, img);
+          }
+        } catch (replaceError) {
+          console.error('%c❌ Error replacing element:', 'color: red;', replaceError);
         }
       });
 
-      activeLoads--;
+      decrementActiveLoads();
       return;
     } catch (error) {
       console.error('%c❌ Client-side rendering error:', 'color: red; font-weight: bold;', error);
       img.alt = `Error: ${error.message}`;
-      activeLoads--;
+      decrementActiveLoads();
     }
   }
 
@@ -4263,8 +4745,8 @@ function setupLazyLoading() {
     // console.log('moleculeData:', moleculeData);
     // console.log('targetElement:', targetElement);
 
-    // Extract compound name from moleculeData
-    const compoundName = moleculeData.nomenclature || moleculeData.smiles || '';
+    // Extract compound name from moleculeData, prioritizing displayName from flags
+    const compoundName = moleculeData.flags?.displayName || moleculeData.nomenclature || moleculeData.smiles || '';
 
     // Find the container - could be the element itself or a wrapper
     let container = targetElement;
@@ -4366,9 +4848,40 @@ function setupLazyLoading() {
         const moleculeType = moleculeData.compoundType || 'compound';
 
         if (moleculeData.pdbid) {
-          // Protein/biomolecule - use buildMolViewEmbedUrl with current settings
-          viewerUrl = buildMolViewEmbedUrl(moleculeData.pdbid, 'pdbid', 'biomolecule');
-          console.log('%c🧬 Built MolView URL for protein with settings:', 'color: #9C27B0; font-weight: bold;', viewerUrl);
+          // Protein/biomolecule - check if bioassembly is enabled
+          if (settings.molviewBioAssembly) {
+            // Build URL based on user's selected bio assembly viewer
+            const pdbId = moleculeData.pdbid.toLowerCase();
+            const viewer = settings.bioAssemblyViewer || 'molstar';
+            const graphics = settings.bioAssemblyGraphics || 'balanced';
+            const provider = settings.bioAssemblyPdbProvider || 'rcsb';
+
+            switch (viewer) {
+              case 'molstar-me':
+                // Mol* Mesoscale Explorer - for very large structures, simplified representation
+                viewerUrl = `https://molstar.org/me/viewer/?pdb=${pdbId}&hide-controls=1&graphics-mode=${graphics}&pdb-provider=${provider}`;
+                console.log('%c🧬 Using Mol* Mesoscale Explorer:', 'color: #FF5722; font-weight: bold;', viewerUrl);
+                break;
+
+              case 'molview':
+                // MolView - falls back to asymmetric unit (no true bio assembly support)
+                viewerUrl = buildMolViewEmbedUrl(moleculeData.pdbid, 'pdbid', 'biomolecule');
+                console.log('%c🧬 Using MolView (asymmetric unit):', 'color: #9C27B0; font-weight: bold;', viewerUrl);
+                break;
+
+              case 'molstar':
+              default:
+                // Mol* Standard Viewer - best chain coloring, loads bio assembly
+                viewerUrl = `https://molstar.org/viewer/?pdb=${pdbId}&assembly-id=1&hide-controls=1`;
+                console.log('%c🧬 Using Mol* Standard Viewer:', 'color: #E91E63; font-weight: bold;', viewerUrl);
+                break;
+            }
+          } else {
+            // Use MolView embed for asymmetric unit (default behavior)
+            // MolView is our default - Mol* is only used if MolView fails (via timeout fallback)
+            viewerUrl = buildMolViewEmbedUrl(moleculeData.pdbid, 'pdbid', 'biomolecule');
+            console.log('%c🧬 Built MolView URL for protein (asymmetric unit):', 'color: #9C27B0; font-weight: bold;', viewerUrl);
+          }
         } else if (moleculeData.codid) {
           // Mineral - use buildMolViewEmbedUrl with current settings
           viewerUrl = buildMolViewEmbedUrl(moleculeData.codid, 'codid', 'mineral');
@@ -4557,6 +5070,69 @@ function setupLazyLoading() {
       viewer3DIframe.src = viewerUrl;
       console.log('%c🚀 3D Viewer Loaded directly', 'color: #00FF00; font-weight: bold');
 
+      // Add fallback for MolView failures on biomolecules
+      // MolView sometimes can't load large structures like adenovirus
+      if (moleculeData.pdbid && viewerUrl.includes('embed.molview.org')) {
+        const pdbId = moleculeData.pdbid.toUpperCase();
+        let fallbackTriggered = false;
+
+        // Build fallback URL - use direct Mol* (same as bio assembly mode, but without assembly-id)
+        // No assembly-id = asymmetric unit
+        const fallbackUrl = `https://molstar.org/viewer/?pdb=${pdbId.toLowerCase()}&hide-controls=1`;
+
+        // Function to replace iframe with new Mol* iframe (avoids CSP issues with src change)
+        const switchToMolstar = () => {
+          if (fallbackTriggered) return;
+          fallbackTriggered = true;
+
+          console.log('%c⚠️ MolView failed - switching to Mol* viewer', 'color: orange; font-weight: bold;');
+
+          // Create a NEW iframe instead of changing src (avoids CSP block)
+          const newIframe = document.createElement('iframe');
+          newIframe.src = fallbackUrl;
+          newIframe.style.cssText = viewer3DIframe.style.cssText;
+          newIframe.setAttribute('allow', viewer3DIframe.getAttribute('allow') || '');
+          newIframe.setAttribute('allowfullscreen', 'true');
+          newIframe.setAttribute('frameborder', '0');
+          newIframe.title = `Mol* Viewer: ${pdbId}`;
+
+          // Replace old iframe with new one
+          if (viewer3DIframe.parentNode) {
+            viewer3DIframe.parentNode.replaceChild(newIframe, viewer3DIframe);
+            console.log('%c🔄 Switched to Mol* viewer:', 'color: #4CAF50; font-weight: bold;', fallbackUrl);
+          }
+        };
+
+        // Set a timeout - if MolView doesn't seem to work within 8 seconds, fallback to Mol*
+        const molviewTimeout = setTimeout(switchToMolstar, 8000);
+
+        // Listen for MolView error messages (postMessage)
+        const errorHandler = (event) => {
+          // Check if message is from MolView and indicates an error
+          if (event.origin === 'https://embed.molview.org' && !fallbackTriggered) {
+            const data = event.data;
+            if (data && (data.error || data.type === 'error' ||
+              (typeof data === 'string' && data.toLowerCase().includes('error')) ||
+              (typeof data === 'string' && data.toLowerCase().includes('failed')))) {
+              clearTimeout(molviewTimeout);
+              console.log('%c❌ MolView error detected', 'color: red; font-weight: bold;', data);
+              switchToMolstar();
+              window.removeEventListener('message', errorHandler);
+            }
+          }
+        };
+        window.addEventListener('message', errorHandler);
+
+        // NOTE: We do NOT clear the timeout on 'load' event anymore
+        // because MolView fires 'load' even when it fails to load the structure
+        // The timeout will run for the full 8 seconds unless an error message is detected
+
+        // Clean up error listener after timeout period
+        setTimeout(() => {
+          window.removeEventListener('message', errorHandler);
+        }, 10000); // Clean up after 10 seconds
+      }
+
       // Replace original element with 3D viewer
       if (container.parentNode) {
         container.parentNode.replaceChild(viewer3DContainer, container);
@@ -4575,7 +5151,7 @@ function setupLazyLoading() {
         }
         img.style.display = 'none';
       }
-      activeLoads--;
+      decrementActiveLoads();
 
     } catch (error) {
       console.error('%c❌ Error showing 3D viewer inline:', 'color: red; font-weight: bold;', error);
@@ -4596,7 +5172,7 @@ function setupLazyLoading() {
       img.src = fallbackUrl;
       img.classList.add('molecule-fadein');
       img.classList.remove('molecule-loading');
-      activeLoads--;
+      decrementActiveLoads();
     }
   }
 
@@ -4769,6 +5345,32 @@ function setupLazyLoading() {
     }
   }
 
+  // Queue for molecules waiting to be loaded (when activeLoads is at max)
+  const moleculeLoadQueue = [];
+  let isProcessingQueue = false;
+
+  function processLoadQueue() {
+    if (isProcessingQueue || moleculeLoadQueue.length === 0) return;
+
+    isProcessingQueue = true;
+
+    // Process one item from queue if we have capacity
+    while (moleculeLoadQueue.length > 0 && activeLoads < maxConcurrentLoads) {
+      const img = moleculeLoadQueue.shift();
+      // Double-check it's not already loaded (could have been loaded by another path)
+      if (img.dataset.loaded !== 'true' && img.dataset.loaded !== 'loading') {
+        img.dataset.loaded = 'loading';
+        loadMoleculeImage(img);
+      }
+    }
+
+    isProcessingQueue = false;
+
+    // If still items in queue, schedule next check
+    if (moleculeLoadQueue.length > 0) {
+      setTimeout(processLoadQueue, 200);  // Check again after 200ms
+    }
+  }
 
   // Override observer callback to handle both types
   const originalObserver = observer;
@@ -4782,26 +5384,19 @@ function setupLazyLoading() {
         if (img.classList.contains('molecule-viewer') || img.classList.contains('molecule-pubchem') || img.classList.contains('molecule-legacy')) {
           console.log(`%c🧪 Molecule image entered viewport: ${img.alt || 'unknown'}`, 'background: #0088FF; color: #FFF; padding: 4px;');
 
-          // IMMEDIATELY mark as loading so it won't be re-triggered
-          // This ensures loading continues even if user scrolls away
-          img.dataset.loaded = 'loading';
-
-          // UNOBSERVE immediately - we've seen it, now load it
+          // UNOBSERVE immediately - we've seen it, will load it
           newObserver.unobserve(img);
 
           if (activeLoads < maxConcurrentLoads) {
+            // Load immediately
+            img.dataset.loaded = 'loading';
             loadMoleculeImage(img);
           } else {
-            // Queue it for when a slot opens up
-            if (typeof requestIdleCallback !== 'undefined') {
-              requestIdleCallback(() => {
-                loadMoleculeImage(img);
-              });
-            } else {
-              setTimeout(() => {
-                loadMoleculeImage(img);
-              }, 50);
-            }
+            // Queue for later - don't mark as loading yet so we can track pending
+            console.log(`%c⏳ Queuing molecule (${activeLoads}/${maxConcurrentLoads} active): ${img.alt || 'unknown'}`, 'background: #FFA500; color: white; padding: 2px;');
+            moleculeLoadQueue.push(img);
+            // Trigger queue processing
+            setTimeout(processLoadQueue, 100);
           }
         } else {
           // Standard image loading
@@ -4835,8 +5430,85 @@ function setupLazyLoading() {
   // Expose loading function globally for immediate loading when performance mode is off
   window._loadMoleculeImage = loadMoleculeImage;
 
+  // Expose queue function for chunk-based loading
+  window._queueMoleculeLoad = function (img) {
+    if (img.dataset.loaded === 'true' || img.dataset.loaded === 'loading') return;
+
+    if (activeLoads < maxConcurrentLoads) {
+      img.dataset.loaded = 'loading';
+      loadMoleculeImage(img);
+    } else {
+      console.log(`%c⏳ Queuing molecule: ${img.alt || 'unknown'}`, 'background: #FFA500; color: white; padding: 2px;');
+      moleculeLoadQueue.push(img);
+      setTimeout(processLoadQueue, 100);
+    }
+  };
+
   // Export show3DViewerInline for hover controls
   window.show3DViewerInline = show3DViewerInline;
+
+  // ============================================
+  // CHUNK-BASED SCROLL PRELOADER
+  // ============================================
+  // Pre-loads molecules in chunks as you scroll (10 molecules at a time)
+  // This helps load molecules above/below viewport without having to see every single one
+
+  const CHUNK_SIZE = 10;  // Load 10 molecules at a time
+  const PRELOAD_DISTANCE = 1500;  // Preload molecules within 1500px of viewport
+  let lastScrollChunkTime = 0;
+  const SCROLL_CHUNK_INTERVAL = 500;  // Check every 500ms during scroll
+
+  function preloadNearbyMolecules() {
+    const now = Date.now();
+    if (now - lastScrollChunkTime < SCROLL_CHUNK_INTERVAL) return;
+    lastScrollChunkTime = now;
+
+    // Find all unloaded molecules
+    const unloadedMolecules = document.querySelectorAll('img.molecule-diagram[data-loaded="false"], img.molecule-diagram:not([data-loaded])');
+    if (unloadedMolecules.length === 0) return;
+
+    const viewportTop = window.scrollY - PRELOAD_DISTANCE;
+    const viewportBottom = window.scrollY + window.innerHeight + PRELOAD_DISTANCE;
+
+    // Find molecules within preload distance
+    const nearbyMolecules = [];
+    unloadedMolecules.forEach(img => {
+      const rect = img.getBoundingClientRect();
+      const absoluteTop = window.scrollY + rect.top;
+
+      if (absoluteTop >= viewportTop && absoluteTop <= viewportBottom) {
+        nearbyMolecules.push({
+          img,
+          distance: Math.abs(absoluteTop - (window.scrollY + window.innerHeight / 2))
+        });
+      }
+    });
+
+    if (nearbyMolecules.length === 0) return;
+
+    // Sort by distance and take a chunk
+    nearbyMolecules.sort((a, b) => a.distance - b.distance);
+    const chunk = nearbyMolecules.slice(0, CHUNK_SIZE);
+
+    console.log(`%c📦 Preloading chunk of ${chunk.length} molecules (${nearbyMolecules.length} nearby, ${unloadedMolecules.length} total unloaded)`, 'background: #9C27B0; color: white; padding: 2px;');
+
+    // Queue the chunk for loading
+    chunk.forEach(({ img }) => {
+      if (window._queueMoleculeLoad) {
+        window._queueMoleculeLoad(img);
+      }
+    });
+  }
+
+  // Set up scroll-based chunk preloading
+  let scrollPreloadTimeout = null;
+  window.addEventListener('scroll', () => {
+    if (scrollPreloadTimeout) clearTimeout(scrollPreloadTimeout);
+    scrollPreloadTimeout = setTimeout(preloadNearbyMolecules, 150);
+  }, { passive: true });
+
+  // Also preload on initial load after a short delay
+  setTimeout(preloadNearbyMolecules, 1000);
 
   log.success('✅ Lazy-loading observer initialized (max 3 concurrent loads)');
 }
@@ -4888,9 +5560,12 @@ function scanAndRenderImmediate() {
   let textNodesFound = 0;
   let chemistryTextFound = [];
 
+  // SAFETY: Limit total elements scanned per pass to prevent crashes on huge pages
+  const MAX_ELEMENTS_PER_SCAN = 10000;
+
   log.debug(`Total elements in DOM: ${elements.length}`);
 
-  for (let i = 0; i < elements.length; i++) {
+  for (let i = 0; i < elements.length && elementsScanned < MAX_ELEMENTS_PER_SCAN; i++) {
     const element = elements[i];
     elementsScanned++;
 
@@ -4966,28 +5641,45 @@ function scanAndRenderImmediate() {
               window._lazyLoadObserver.observe(img);
             });
             log.debug(`📊 Setup lazy-loading for ${images.length} SVGs`);
-          } else if (window._loadMoleculeImage) {
-            // Performance mode OFF: load ALL images immediately (no lazy loading)
-            // Stagger loads to prevent system overload
-            console.log(`%c[ChemRenderer] 🚀 Loading ALL ${images.length} images immediately (lazy loading disabled)`, 'color: #00FF00; font-weight: bold;');
+          } else if (window._loadMoleculeImage && window._queueMoleculeLoad) {
+            // Performance mode OFF: Use chunk-based loading to prevent memory spikes
+            // Load nearby molecules first, queue distant ones
+            console.log(`%c[ChemRenderer] 🚀 Chunk-loading ${images.length} images (lazy loading disabled)`, 'color: #00FF00; font-weight: bold;');
 
-            let delay = 0;
-            const staggerInterval = 100; // 100ms between each load start
-
-            images.forEach((img, index) => {
-              // Mark as loading immediately so observer doesn't pick it up
-              img.dataset.loaded = 'loading';
-
-              // Stagger the actual load calls
-              setTimeout(() => {
-                console.log(`%c[ChemRenderer] Loading image ${index + 1}/${images.length}: ${img.alt || 'unknown'}`, 'color: #00FF00;');
-                window._loadMoleculeImage(img);
-              }, delay);
-
-              delay += staggerInterval;
+            // Sort images by distance from current viewport
+            const viewportCenter = window.scrollY + (window.innerHeight / 2);
+            const imagesWithDistance = Array.from(images).map(img => {
+              const rect = img.getBoundingClientRect();
+              const imgCenter = window.scrollY + rect.top + (rect.height / 2);
+              const distance = Math.abs(imgCenter - viewportCenter);
+              return { img, distance };
             });
 
-            log.debug(`📊 Triggered immediate loading for ${images.length} SVGs (staggered ${staggerInterval}ms apart)`);
+            // Sort by distance (closest first)
+            imagesWithDistance.sort((a, b) => a.distance - b.distance);
+
+            // Queue all images - the queue system handles throttling
+            imagesWithDistance.forEach(({ img }, index) => {
+              // Use the queue system which respects maxConcurrentLoads
+              window._queueMoleculeLoad(img);
+            });
+
+            log.debug(`📊 Queued ${images.length} SVGs for chunk-based loading`);
+          } else if (window._loadMoleculeImage) {
+            // Fallback: stagger loads but respect the queue
+            console.log(`%c[ChemRenderer] 🚀 Fallback loading ${images.length} images`, 'color: #FFAA00; font-weight: bold;');
+
+            images.forEach((img, index) => {
+              img.dataset.loaded = 'pending';
+              setTimeout(() => {
+                if (img.dataset.loaded === 'pending') {
+                  img.dataset.loaded = 'loading';
+                  window._loadMoleculeImage(img);
+                }
+              }, index * 300); // 300ms stagger as fallback
+            });
+
+            log.debug(`📊 Triggered fallback loading for ${images.length} SVGs`);
           } else {
             console.error('%c[ChemRenderer] ERROR: No loader available!', 'color: #FF0000; font-weight: bold;');
           }
@@ -5115,7 +5807,11 @@ function wrapChemicalFormulas(text) {
 
         if (hasNewSyntax || hasFlags) {
           try {
-            flagOverrides = window.parseChemFlags('chem:' + content_trimmed + ':');
+            // Check if AI Flag Control is enabled
+            const enableAIFlagControl = settings.enableAIFlagControl === true;
+            console.log('%c🔧 AI Flag Control setting:', 'color: #FF6B00; font-weight: bold;', enableAIFlagControl, 'raw value:', settings.enableAIFlagControl);
+            
+            flagOverrides = window.parseChemFlags('chem:' + content_trimmed + ':', enableAIFlagControl);
             console.log('%c🏴 Parsed flags:', 'color: #FF6B00; font-weight: bold;', flagOverrides);
 
             // Use moleculeName from new syntax if available
@@ -5215,6 +5911,62 @@ function wrapChemicalFormulas(text) {
 
         // For named SMILES syntax, use smilesValue as the SMILES and moleculeName for display
         const actualSmiles = flagOverrides.smilesValue || (isDirectSmiles ? compoundName : null);
+
+        // =============== DIRECT ID LOOKUPS ===============
+        // Handle chem:pbdid=4RHV:, chem:cid=1234:, chem:codid=1234567:
+        if (flagOverrides.isDirectID && flagOverrides.idValue) {
+          const idValue = flagOverrides.idValue;
+          const displayName = flagOverrides.moleculeName || idValue;
+          
+          if (flagOverrides.idType === 'pdbid') {
+            // Direct PDB ID lookup for biomolecules
+            console.log('%c🧬 DIRECT PDB ID LOOKUP:', 'background: #E91E63; color: white; font-weight: bold; padding: 4px;', idValue);
+            const biomolData = {
+              pdbid: idValue,
+              name: displayName,
+              type: 'pdbid',
+              compoundType: 'biomolecule',
+              flags: flagsForRender
+            };
+            const encoded = btoa(JSON.stringify(biomolData));
+            const converted = `<img src="" alt="chem" class="molecule-diagram molecule-biomolecule" data-molecule-viewer="${encoded}" data-loaded="false" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
+            log.debug(`  📤 Sending PDB ID to biomolecule viewer: ${idValue}`);
+            return converted;
+          } else if (flagOverrides.idType === 'cid') {
+            // Direct PubChem CID lookup for compounds
+            console.log('%c🧪 DIRECT CID LOOKUP:', 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;', idValue);
+            const pubchemData = {
+              cid: idValue,
+              name: displayName,
+              type: 'cid',
+              isPubChem: true,
+              directLookup: true,
+              flags: {
+                ...flagsForRender,
+                compoundType: 'compound',
+                skipIntegratedSearch: true
+              }
+            };
+            const encoded = btoa(JSON.stringify(pubchemData));
+            const converted = `<img src="" alt="chem" class="molecule-diagram molecule-pubchem" data-molecule-viewer="${encoded}" data-loaded="false" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
+            log.debug(`  📤 Sending CID to PubChem: ${idValue}`);
+            return converted;
+          } else if (flagOverrides.idType === 'codid') {
+            // Direct COD ID lookup for minerals
+            console.log('%c💎 DIRECT COD ID LOOKUP:', 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;', idValue);
+            const mineralData = {
+              codid: idValue,
+              name: displayName,
+              type: 'codid',
+              compoundType: 'mineral',
+              flags: flagsForRender
+            };
+            const encoded = btoa(JSON.stringify(mineralData));
+            const converted = `<img src="" alt="chem" class="molecule-diagram molecule-mineral" data-molecule-viewer="${encoded}" data-loaded="false" style="display: inline-block; height: auto; margin: 0 12px 8px 0; vertical-align: middle; padding: 4px; border-radius: 4px; background-color: transparent;">`;
+            log.debug(`  📤 Sending COD ID to mineral viewer: ${idValue}`);
+            return converted;
+          }
+        }
 
 
         // Check for special flags that override renderer selection
@@ -5388,18 +6140,104 @@ function wrapChemicalFormulas(text) {
  * Watches for DOM mutations and re-scans if content changes
  */
 function observePageChanges() {
+  // Disconnect any existing observer first to prevent memory leaks
+  if (window._chemRendererObserver) {
+    try {
+      window._chemRendererObserver.disconnect();
+      clearTimeout(window._chemRendererObserver.timer);
+    } catch (e) {
+      // Ignore disconnect errors
+    }
+    window._chemRendererObserver = null;
+  }
+
   log.inject('🔄 Setting up mutation observer for dynamic content detection');
 
   let mutationCount = 0;
+  let isProcessing = false;  // Prevent re-entrant scanning
+  let pendingMutations = 0;  // Track pending mutations
+  let throttleWarningShown = false;  // Only show warning once per throttle period
+  let lastThrottleTime = 0;  // Track when we last throttled
+  const MAX_PENDING_MUTATIONS = 1000;  // Increased safety limit
+  const THROTTLE_COOLDOWN = 2000;  // 2 seconds between throttle resets
+
   const observer = new MutationObserver((mutations) => {
-    mutationCount++;
-    // Only log every 50 mutations to avoid spamming
-    if (mutationCount % 50 === 0) {
-      log.debug(`Detected ${mutationCount} total mutations, re-scanning...`);
+    // SAFETY: Skip if already processing to prevent recursive loops
+    if (isProcessing) {
+      return;
     }
+
+    // SAFETY: Skip mutations from our own DOM changes (check first few only for performance)
+    const samplesToCheck = Math.min(mutations.length, 5);
+    for (let i = 0; i < samplesToCheck; i++) {
+      const target = mutations[i].target;
+      if (!target) continue;
+      // Check if mutation is inside our rendered elements
+      if (target.classList && (
+        target.classList.contains('molecule-diagram') ||
+        target.classList.contains('molecule-container') ||
+        target.classList.contains('molecule-viewer') ||
+        target.classList.contains('chem-size-controls') ||
+        target.classList.contains('chemtex-image-loading-indicator')
+      )) {
+        return;  // Skip our own changes
+      }
+      // Check parent
+      if (target.closest && target.closest('.molecule-container, .chem-image-container, .molecule-viewer-container')) {
+        return;  // Skip our own changes
+      }
+    }
+
+    pendingMutations += mutations.length;
+    mutationCount++;
+
+    // SAFETY: If too many pending mutations, throttle aggressively
+    if (pendingMutations > MAX_PENDING_MUTATIONS) {
+      const now = Date.now();
+
+      // Only show warning once per throttle period
+      if (!throttleWarningShown || (now - lastThrottleTime > THROTTLE_COOLDOWN)) {
+        log.warn(`⚠️ High mutation rate detected (${pendingMutations}), throttling to prevent crashes...`);
+        throttleWarningShown = true;
+        lastThrottleTime = now;
+      }
+
+      // Reset counter but still schedule a delayed scan
+      pendingMutations = 0;
+
+      // Clear existing timer and set a longer delay for high-mutation scenarios
+      clearTimeout(observer.timer);
+      observer.timer = setTimeout(() => {
+        throttleWarningShown = false;
+        pendingMutations = 0;
+
+        if (settings.enabled && !isProcessing && !isUpdatingImages) {
+          isProcessing = true;
+          try {
+            log.inject('⚡ Delayed re-scan after high mutation period');
+            scanAndRender();
+          } catch (e) {
+            log.error('Error during page scan:', e);
+          } finally {
+            setTimeout(() => { isProcessing = false; }, 200);
+          }
+        }
+      }, 1500);  // Longer delay when throttling
+
+      return;
+    }
+
+    // Only log every 100 mutations to avoid spamming
+    if (mutationCount % 100 === 0) {
+      log.debug(`Detected ${mutationCount} total mutations`);
+    }
+
     clearTimeout(observer.timer);
     // Use shorter timeout for faster detection (especially for ChatGPT streaming)
     observer.timer = setTimeout(() => {
+      // Reset pending count
+      pendingMutations = 0;
+
       // CRITICAL: Skip re-scan if we're currently updating images
       // This prevents images from disappearing when settings change
       if (isUpdatingImages) {
@@ -5408,8 +6246,18 @@ function observePageChanges() {
       }
 
       if (settings.enabled) {
-        log.inject('⚡ Re-scanning page after dynamic content detected');
-        scanAndRender();
+        isProcessing = true;  // Set flag to prevent re-entrant calls
+        try {
+          log.inject('⚡ Re-scanning page after dynamic content detected');
+          scanAndRender();
+        } catch (e) {
+          log.error('Error during page scan:', e);
+        } finally {
+          // Reset flag after a delay to allow DOM to settle
+          setTimeout(() => {
+            isProcessing = false;
+          }, 100);
+        }
       }
     }, 500); // Reduced from 1000ms to 500ms for faster response
   });
@@ -5424,6 +6272,36 @@ function observePageChanges() {
   window._chemRendererObserver = observer;
   log.success('✅ Dynamic content observer initialized');
 }
+
+// Cleanup function to disconnect all observers on unload
+function cleanupObservers() {
+  try {
+    if (window._chemRendererObserver) {
+      window._chemRendererObserver.disconnect();
+      clearTimeout(window._chemRendererObserver.timer);
+      window._chemRendererObserver = null;
+    }
+    if (window._lazyLoadObserver) {
+      window._lazyLoadObserver.disconnect();
+      window._lazyLoadObserver = null;
+    }
+    if (lazyReRenderObserver) {
+      lazyReRenderObserver.disconnect();
+      lazyReRenderObserver = null;
+    }
+    // Clear caches to free memory
+    renderedImageCache.clear();
+    pendingSearches.clear();
+    imagesBeingRendered.clear();
+    log.info('🧹 Cleaned up all observers and caches');
+  } catch (e) {
+    // Ignore cleanup errors
+  }
+}
+
+// Register cleanup on page unload
+window.addEventListener('beforeunload', cleanupObservers);
+window.addEventListener('pagehide', cleanupObservers);
 
 // ============================================
 // DARK MODE SUPPORT

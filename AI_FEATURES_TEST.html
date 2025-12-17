@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChemTex AI-Friendly Features Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #666;
+            margin-top: 30px;
+            border-left: 4px solid #2196F3;
+            padding-left: 10px;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .description {
+            background: #E3F2FD;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2196F3;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .example {
+            margin: 10px 0;
+            padding: 10px;
+            background: #fafafa;
+            border-left: 3px solid #FF9800;
+        }
+        .note {
+            background: #FFF3E0;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #FF9800;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 ChemTex AI-Friendly Features Test Page</h1>
+    
+    <div class="note">
+        <strong>Note:</strong> This page tests the new AI-friendly features. Make sure the ChemTex extension is installed and enabled!
+    </div>
+
+    <div class="test-section">
+        <h2>1. Named SMILES Syntax</h2>
+        <div class="description">
+            AI can now provide custom display names for molecules using <code>chem:&lt;name&gt;smiles=...</code>
+        </div>
+        
+        <div class="example">
+            <p><strong>Example 1:</strong> Ethanol with custom name</p>
+            <p>Syntax: <code>chem:Ethanolsmiles=CCO:</code></p>
+            <p>Result: chem:Ethanolsmiles=CCO:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Example 2:</strong> Benzene with custom name and flags</p>
+            <p>Syntax: <code>chem:Benzenesmiles=c1ccccc1+c+o:</code></p>
+            <p>Result: chem:Benzenesmiles=c1ccccc1+c+o:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Example 3:</strong> Methane with all features visible (teaching mode)</p>
+            <p>Syntax: <code>chem:Methanesmiles=C+c+n+h:</code></p>
+            <p>Result: chem:Methanesmiles=C+c+n+h:</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Direct PubChem CID Lookups</h2>
+        <div class="description">
+            Use <code>chem:cid=...</code> for direct PubChem Compound ID lookups (faster and more accurate)
+        </div>
+        
+        <div class="example">
+            <p><strong>Example 1:</strong> Aspirin by CID</p>
+            <p>Syntax: <code>chem:cid=2244:</code></p>
+            <p>Result: chem:cid=2244:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Example 2:</strong> Aspirin by CID with custom name</p>
+            <p>Syntax: <code>chem:Aspirincid=2244:</code></p>
+            <p>Result: chem:Aspirincid=2244:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Example 3:</strong> Caffeine with flags</p>
+            <p>Syntax: <code>chem:Caffeinecid=2519+d+c:</code></p>
+            <p>Result: chem:Caffeinecid=2519+d+c:</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Direct PDB ID Lookups (Biomolecules)</h2>
+        <div class="description">
+            Use <code>chem:pbdid=...</code> for direct Protein Data Bank lookups
+        </div>
+        
+        <div class="example">
+            <p><strong>Example 1:</strong> Insulin by PDB ID</p>
+            <p>Syntax: <code>chem:pbdid=3I40:</code></p>
+            <p>Result: chem:pbdid=3I40:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Example 2:</strong> Hemoglobin with custom name</p>
+            <p>Syntax: <code>chem:Hemoglobinpbdid=4HHB:</code></p>
+            <p>Result: chem:Hemoglobinpbdid=4HHB:</p>
+        </div>
+
+        <div class="note">
+            <strong>Note:</strong> pbdid does NOT support visual flags (biomolecules use 3D rendering)
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Direct COD ID Lookups (Minerals)</h2>
+        <div class="description">
+            Use <code>chem:codid=...</code> for direct Crystallography Open Database lookups
+        </div>
+        
+        <div class="example">
+            <p><strong>Example 1:</strong> Quartz by COD ID</p>
+            <p>Syntax: <code>chem:codid=9000869:</code></p>
+            <p>Result: chem:codid=9000869:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Example 2:</strong> Quartz with custom name</p>
+            <p>Syntax: <code>chem:Quartzcodid=9000869:</code></p>
+            <p>Result: chem:Quartzcodid=9000869:</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Named Molecule Lookups</h2>
+        <div class="description">
+            Custom names work with all lookup types
+        </div>
+        
+        <div class="example">
+            <p><strong>Example 1:</strong> Named PubChem lookup</p>
+            <p>Syntax: <code>chem:Aspirinmol=aspirin:</code></p>
+            <p>Result: chem:Aspirinmol=aspirin:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Example 2:</strong> Named biomolecule lookup</p>
+            <p>Syntax: <code>chem:Insulinbiomol=insulin:</code></p>
+            <p>Result: chem:Insulinbiomol=insulin:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Example 3:</strong> Named mineral lookup</p>
+            <p>Syntax: <code>chem:Quartzmineral=quartz:</code></p>
+            <p>Result: chem:Quartzmineral=quartz:</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>6. Flag Syntax Examples</h2>
+        <div class="description">
+            Flags use <code>+</code> to enable and <code>-</code> to disable features
+        </div>
+        
+        <div class="example">
+            <p><strong>Example 1:</strong> Show carbons and aromatic circles</p>
+            <p>Syntax: <code>chem:mol=benzene+c+o:</code></p>
+            <p>Result: chem:mol=benzene+c+o:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Example 2:</strong> Use defaults + add atom numbers</p>
+            <p>Syntax: <code>chem:smiles=CCO+d+n:</code></p>
+            <p>Result: chem:smiles=CCO+d+n:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Example 3:</strong> Complex flags combination</p>
+            <p>Syntax: <code>chem:Benzenesmiles=c1ccccc1+d+c+o+n-h:</code></p>
+            <p>Result: chem:Benzenesmiles=c1ccccc1+d+c+o+n-h:</p>
+        </div>
+
+        <div class="note">
+            <strong>Flag Reference:</strong>
+            <ul>
+                <li><code>+c</code> / <code>-c</code> - Show/hide carbons</li>
+                <li><code>+o</code> / <code>-o</code> - Show/hide aromatic circles</li>
+                <li><code>+n</code> / <code>-n</code> - Show/hide atom numbers</li>
+                <li><code>+h</code> / <code>-h</code> - Add/remove hydrogens</li>
+                <li><code>+p</code> / <code>-p</code> - Flip horizontal</li>
+                <li><code>+q</code> / <code>-q</code> - Flip vertical</li>
+                <li><code>+d</code> - Use default settings as base</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>7. AI Flag Control Setting</h2>
+        <div class="description">
+            Test the "Enable AI Flag Control" toggle in the extension popup
+        </div>
+        
+        <div class="note">
+            <strong>Testing Instructions:</strong>
+            <ol>
+                <li>Open the ChemTex extension popup (click the extension icon)</li>
+                <li>Find "Enable AI Flag Control" in the Main Controls section</li>
+                <li>Toggle it OFF - all flags should be ignored, molecules should update instantly</li>
+                <li>Toggle it ON - flags should work again</li>
+                <li>Compare these two molecules with the toggle on/off:</li>
+            </ol>
+            <p>With flags: chem:mol=benzene+c+o+n:</p>
+            <p>Without flags: chem:mol=benzene:</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>8. Tag Visibility Control</h2>
+        <div class="description">
+            Test the enhanced "Show Tags" setting
+        </div>
+        
+        <div class="note">
+            <strong>Testing Instructions:</strong>
+            <ol>
+                <li>Open the ChemTex extension popup</li>
+                <li>Find "Show Tags" toggle in the Main Controls section</li>
+                <li>When ON: Tags should always be visible</li>
+                <li>When OFF: Tags should be hidden but appear when you hover over the molecule</li>
+                <li>Test with this molecule: chem:Ethanolsmiles=CCO:</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>9. Mixed Examples (Real-World Use Cases)</h2>
+        
+        <div class="example">
+            <p><strong>Pharmaceutical Example:</strong></p>
+            <p>Common pain reliever: chem:Aspirincid=2244+d+c:</p>
+            <p>Anti-inflammatory: chem:Ibuprofencid=3672+d+c:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Organic Chemistry Teaching:</strong></p>
+            <p>Simple alkane: chem:Methanesmiles=C+c+n+h:</p>
+            <p>Aromatic system: chem:Benzenesmiles=c1ccccc1+c+o+n:</p>
+            <p>Functional group: chem:Ethanolsmiles=CCO+d+c+n:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Biochemistry:</strong></p>
+            <p>Insulin protein: chem:Insulinpbdid=3I40:</p>
+            <p>Hemoglobin: chem:Hemoglobinpbdid=4HHB:</p>
+        </div>
+
+        <div class="example">
+            <p><strong>Mineralogy:</strong></p>
+            <p>Quartz crystal: chem:Quartzcodid=9000869:</p>
+            <p>Diamond structure: chem:Diamondmineral=diamond:</p>
+        </div>
+    </div>
+
+    <div class="note" style="margin-top: 30px; background: #E8F5E9; border-left-color: #4CAF50;">
+        <strong>✅ Testing Complete!</strong>
+        <p>All features have been implemented and should work correctly. If any molecule doesn't render:</p>
+        <ul>
+            <li>Check the browser console for errors</li>
+            <li>Verify the extension is enabled</li>
+            <li>Make sure you're using valid IDs (CID, PDB ID, COD ID)</li>
+            <li>Try toggling "Enable AI Flag Control" on/off</li>
+        </ul>
+    </div>
+</body>
+</html>

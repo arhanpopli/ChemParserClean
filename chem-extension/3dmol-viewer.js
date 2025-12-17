@@ -2,17 +2,38 @@
 const urlParams = new URLSearchParams(window.location.search);
 const cid = urlParams.get('cid');
 const codid = urlParams.get('codid');
+const pdbid = urlParams.get('pdbid');  // PDB ID for biomolecules
+const bioassembly = urlParams.get('bioassembly') === 'true';  // Show biological assembly
 const name = urlParams.get('name');
 const style = urlParams.get('style') || 'stick:sphere';
 const stickRadius = parseFloat(urlParams.get('stickRadius') || '0.15');
 const sphereRadius = parseFloat(urlParams.get('sphereRadius') || '0.3');
 const autoRotate = urlParams.get('autoRotate') !== 'false';
 const bgColor = decodeURIComponent(urlParams.get('bgColor') || '#1a1a2e');
+// Protein-specific styling parameters
+const chainType = urlParams.get('chainType') || 'cartoon';  // cartoon, ribbon, trace, tube, stick
+const chainColor = urlParams.get('chainColor') || 'spectrum';  // spectrum, chain, ss, residue
+
+// Log all URL parameters for debugging
+console.log('%c🔍 3DMOL VIEWER INITIALIZATION', 'background: #2196F3; color: white; font-weight: bold; padding: 8px; font-size: 16px;');
+console.log('URL Parameters:', {
+    cid,
+    codid,
+    pdbid,
+    bioassembly,
+    name,
+    style,
+    chainType,
+    chainColor,
+    bgColor,
+    autoRotate
+});
 
 // Set body background color from URL parameter
 document.documentElement.style.setProperty('--bg-color', bgColor);
 
-const MOLVIEW_API = 'http://localhost:8000';
+// External MolView embed URL (used as fallback for minerals/crystals)
+const MOLVIEW_EMBED = 'https://embed.molview.org/v1';
 
 
 // Van der Waals radii (in Angstroms) - scientifically accurate atomic radii
@@ -136,7 +157,10 @@ const vanDerWaalsRadii = {
     'Cm': 2.45,  // Curium
 };
 
-if (cid) {
+if (pdbid) {
+    // Load PDB structure (biomolecule/protein)
+    loadPDBStructure(pdbid, bioassembly);
+} else if (cid) {
     loadMolecule(cid);
 } else if (codid) {
     fallbackToMolView(codid, 'codid');
@@ -144,6 +168,325 @@ if (cid) {
     resolveAndLoad(name);
 } else {
     showError('No molecule ID or Name provided');
+}
+
+/**
+ * Load biological assembly using RCSB ModelServer API
+ * This fetches ONLY C-alpha backbone atoms for the full biological assembly
+ * Result: ~15,000 atoms instead of ~500,000 - perfect for blob visualization!
+ * @param {string} pdbId - The PDB ID
+ * @param {Object} viewer - 3Dmol viewer instance
+ */
+async function loadBiologicalAssembly(pdbId, viewer) {
+    console.log(`%c🔬 LOADING BIOLOGICAL ASSEMBLY (LOW-POLY METHOD)`, 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
+    console.log(`   Using RCSB ModelServer to get C-alpha backbone only`);
+    console.log(`   This reduces ~500k atoms to ~15k atoms for smooth blob visualization!`);
+
+    // Update loading message
+    const loadingEl = document.getElementById('loading');
+    if (loadingEl) {
+        loadingEl.innerHTML = `<div style="text-align: center;">
+            <div>🧬 Loading Biological Assembly...</div>
+            <div style="font-size: 12px; margin-top: 8px;">Fetching simplified backbone structure</div>
+            <div style="font-size: 11px; color: #888; margin-top: 4px;">Creating low-poly visualization</div>
+        </div>`;
+    }
+
+    // Use RCSB ModelServer API to get C-alpha atoms for biological assembly
+    // This endpoint computes the assembly AND filters to only CA atoms!
+    // Format: https://models.rcsb.org/v1/{id}/assembly?name=1&label_atom_id=CA&encoding=cif
+    const modelServerUrl = `https://models.rcsb.org/v1/${pdbId.toUpperCase()}/assembly?name=1&label_atom_id=CA&encoding=cif`;
+    console.log(`   Fetching from ModelServer: ${modelServerUrl}`);
+
+    const response = await fetch(modelServerUrl);
+    if (!response.ok) {
+        console.warn(`   ModelServer failed (${response.status}), falling back to standard method...`);
+        return await loadBiologicalAssemblyFallback(pdbId);
+    }
+
+    let cifData = await response.text();
+    const sizeKB = (cifData.length / 1024).toFixed(1);
+    console.log(`   Downloaded ${sizeKB} KB of C-alpha backbone data`);
+
+    // Log first 500 chars of data for debugging
+    console.log(`   Data preview: ${cifData.substring(0, 300)}...`);
+
+    // For now, don't subsample - just return the data to test if it works
+    // Subsampling CIF format is complex and may break the file structure
+    console.log(`   Skipping subsampling - loading full C-alpha dataset`);
+
+    return { data: cifData, format: 'cif', isSimplified: true };
+}
+
+/**
+ * Fallback: Download .pdb1 file and extract C-alpha atoms manually
+ * Used if ModelServer is unavailable
+ */
+async function loadBiologicalAssemblyFallback(pdbId) {
+    console.log(`   ⚠️ Using fallback: downloading .pdb1 and extracting C-alpha atoms`);
+
+    const bioAssemblyUrl = `https://files.rcsb.org/download/${pdbId.toUpperCase()}.pdb1`;
+    const response = await fetch(bioAssemblyUrl);
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch biological assembly: ${response.status}`);
+    }
+
+    const pdbData = await response.text();
+    const sizeMB = (pdbData.length / 1024 / 1024).toFixed(2);
+    console.log(`   Downloaded ${sizeMB} MB of full assembly data`);
+
+    // Extract only C-alpha atoms
+    const lines = pdbData.split('\n');
+    const caLines = [];
+
+    for (const line of lines) {
+        // Keep ATOM lines for CA (C-alpha) atoms only
+        if ((line.startsWith('ATOM') || line.startsWith('HETATM'))) {
+            const atomName = line.substring(12, 16).trim();
+            if (atomName === 'CA') {
+                caLines.push(line);
+            }
+        }
+        // Keep MODEL/ENDMDL for multi-model support
+        else if (line.startsWith('MODEL') || line.startsWith('ENDMDL') ||
+            line.startsWith('TER') || line.startsWith('END')) {
+            caLines.push(line);
+        }
+    }
+
+    const caData = caLines.join('\n');
+    const reducedSizeKB = (caData.length / 1024).toFixed(1);
+    console.log(`   Extracted ${caLines.length} lines, reduced to ${reducedSizeKB} KB`);
+
+    return { data: caData, format: 'pdb', isSimplified: true };
+}
+
+
+/**
+ * Load PDB structure from RCSB with optional biological assembly
+ * @param {string} pdbId - The PDB ID (e.g., "1HHO" for hemoglobin)
+ * @param {boolean} loadBioAssembly - Whether to load biological assembly (true) or asymmetric unit (false)
+ */
+async function loadPDBStructure(pdbId, loadBioAssembly = false) {
+    console.log(`%c🧬 LOADING PDB STRUCTURE`, 'background: #E91E63; color: white; font-weight: bold; padding: 8px; font-size: 16px;');
+    console.log(`   PDB ID: ${pdbId}`);
+    console.log(`   Biological Assembly: ${loadBioAssembly}`);
+    console.log(`   Chain Type: ${chainType}`);
+    console.log(`   Chain Color: ${chainColor}`);
+
+    try {
+        const viewer = $3Dmol.createViewer('viewer', {
+            backgroundColor: bgColor
+        });
+
+        // For biological assemblies, use low-poly C-alpha backbone visualization
+        // This downloads only C-alpha atoms and renders them as overlapping spheres
+        if (loadBioAssembly) {
+            console.log(`%c📦 BIOLOGICAL ASSEMBLY MODE (LOW-POLY)`, 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;');
+            console.log(`   Using C-alpha backbone for blob-like visualization`);
+
+            try {
+                const assemblyData = await loadBiologicalAssembly(pdbId, viewer);
+                renderLowPolyAssembly(viewer, assemblyData.data, pdbId, assemblyData.format);
+                return;
+            } catch (error) {
+                console.error('Failed to load biological assembly:', error);
+                showError(`Failed to load biological assembly for ${pdbId}`);
+                return;
+            }
+        }
+
+        // Standard asymmetric unit - load full detail
+        const pdbUrl = `https://files.rcsb.org/download/${pdbId.toUpperCase()}.pdb`;
+        console.log(`%c📦 Fetching ASYMMETRIC UNIT`, 'background: #FF9800; color: white; font-weight: bold; padding: 4px;');
+        console.log(`   URL: ${pdbUrl}`);
+
+        // Fetch the PDB file
+        console.log(`⏳ Fetching PDB file...`);
+        const response = await fetch(pdbUrl);
+        console.log(`   Response status: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch PDB: ${pdbId} (Status: ${response.status})`);
+        }
+
+        const pdbData = await response.text();
+        console.log(`%c✅ Successfully loaded ${pdbData.length} bytes of PDB data`, 'color: #4CAF50; font-weight: bold;');
+        renderPDBStructure(viewer, pdbData, pdbId, loadBioAssembly);
+
+    } catch (error) {
+        console.error('%c❌ ERROR LOADING PDB:', 'color: #f44336; font-weight: bold; font-size: 14px;', error);
+        showError(`Failed to load PDB ${pdbId}: ${error.message}`);
+    }
+}
+
+/**
+ * Render PDB structure with protein-appropriate styling
+ */
+function renderPDBStructure(viewer, pdbData, pdbId, isBioAssembly) {
+    console.log(`🎨 Rendering PDB structure: ${pdbId} (Bio Assembly: ${isBioAssembly})`);
+
+    // Add the model
+    viewer.addModel(pdbData, 'pdb');
+
+    // Get atom count for logging
+    const atoms = viewer.getModel().selectedAtoms({});
+    console.log(`   Total atoms in structure: ${atoms.length}`);
+
+    // Apply chain coloring based on chainColor parameter
+    let colorScheme;
+    switch (chainColor) {
+        case 'spectrum':
+            colorScheme = { color: 'spectrum' };
+            break;
+        case 'chain':
+            colorScheme = { colorscheme: 'chainHetatm' };
+            break;
+        case 'ss':
+            // Secondary structure coloring
+            colorScheme = { colorscheme: 'ssJmol' };
+            break;
+        case 'residue':
+            colorScheme = { colorscheme: 'amino' };
+            break;
+        case 'bfactor':
+            colorScheme = { colorscheme: { prop: 'b', gradient: 'roygb', min: 0, max: 100 } };
+            break;
+        default:
+            colorScheme = { color: 'spectrum' };
+    }
+
+    // FIRST: Hide everything by default
+    viewer.setStyle({}, { sphere: { hidden: true } });
+
+    // THEN: Show only protein/nucleic acid chains with proper styling
+    // Apply chain representation based on chainType parameter
+    switch (chainType) {
+        case 'cartoon':
+            viewer.setStyle({ hetflag: false }, { cartoon: { ...colorScheme } });
+            break;
+        case 'ribbon':
+            viewer.setStyle({ hetflag: false }, { cartoon: { style: 'ribbon', ...colorScheme } });
+            break;
+        case 'trace':
+            viewer.setStyle({ hetflag: false }, { cartoon: { style: 'trace', ...colorScheme } });
+            break;
+        case 'tube':
+            viewer.setStyle({ hetflag: false }, { cartoon: { tubes: true, ...colorScheme } });
+            break;
+        case 'stick':
+            viewer.setStyle({ hetflag: false }, { stick: { radius: 0.2, ...colorScheme } });
+            break;
+        case 'line':
+            viewer.setStyle({ hetflag: false }, { line: { ...colorScheme } });
+            break;
+        case 'sphere':
+            viewer.setStyle({ hetflag: false }, { sphere: { scale: 0.3, ...colorScheme } });
+            break;
+        default:
+            viewer.setStyle({ hetflag: false }, { cartoon: { ...colorScheme } });
+    }
+
+    // OPTIONALLY: Show heteroatoms (ligands) as small sticks (commented out for cleaner view of large assemblies)
+    // viewer.setStyle({ hetflag: true }, { stick: { radius: 0.15, colorscheme: 'Jmol' } });
+
+    // Hide water molecules (they clutter the view)
+    viewer.setStyle({ resn: 'HOH' }, { sphere: { hidden: true } });
+
+    console.log(`   Applying style: ${chainType} with ${chainColor} coloring`);
+
+    // Center and zoom
+    viewer.zoomTo();
+    viewer.zoom(0.8);  // Zoom out more for large assemblies
+    viewer.render();
+
+    console.log(`   Rendered and centered on structure`);
+
+    // Add slow rotation for biomolecules if autoRotate is enabled
+    if (autoRotate) {
+        viewer.spin('y', 0.5);  // Slower spin for large structures
+    }
+
+    // Custom zoom control
+    const viewerElement = document.getElementById('viewer');
+    viewerElement.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const zoomFactor = event.deltaY > 0 ? 0.97 : 1.03;
+        viewer.zoom(zoomFactor);
+        viewer.render();
+    }, { passive: false });
+
+    // Hide loading
+    document.getElementById('loading').style.display = 'none';
+
+    const assemblyType = isBioAssembly ? 'Biological Assembly' : 'Asymmetric Unit';
+    console.log(`✅ PDB ${pdbId} (${assemblyType}) loaded successfully`);
+    document.title = `${pdbId.toUpperCase()} - ${assemblyType}`;
+}
+
+/**
+ * Render biological assembly as colored point cloud
+ * Simple, reliable visualization using small spheres
+ */
+function renderLowPolyAssembly(viewer, structureData, pdbId, format) {
+    console.log(`%c🎨 RENDERING BIOLOGICAL ASSEMBLY`, 'background: #9C27B0; color: white; font-weight: bold; padding: 4px;');
+    console.log(`   PDB ID: ${pdbId}`);
+    console.log(`   Data format: ${format}`);
+
+    // Add the model
+    viewer.addModel(structureData, format);
+
+    // Get all atoms
+    const atoms = viewer.getModel().selectedAtoms({});
+    console.log(`   Atoms loaded: ${atoms.length}`);
+
+    if (atoms.length === 0) {
+        console.error('   No atoms found in structure!');
+        showError('Failed to parse biological assembly structure');
+        return;
+    }
+
+    // Simple, reliable visualization: small colored spheres
+    // Not trying to be fancy - just show the structure clearly
+    viewer.setStyle({}, {
+        sphere: {
+            radius: 3.0,              // Small spheres
+            colorscheme: 'chainHetatm' // Color by chain - shows symmetry
+        }
+    });
+
+    console.log(`   Applied sphere visualization (${atoms.length} atoms, radius 3.0Å)`);
+
+    // Center and zoom
+    viewer.zoomTo();
+    viewer.zoom(0.5);
+    viewer.render();
+
+    console.log(`   Rendered and centered`);
+
+    // Slow rotation
+    if (autoRotate) {
+        viewer.spin('y', 0.15);
+    }
+
+    // Zoom control
+    const viewerElement = document.getElementById('viewer');
+    viewerElement.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const zoomFactor = event.deltaY > 0 ? 0.95 : 1.05;
+        viewer.zoom(zoomFactor);
+        viewer.render();
+    }, { passive: false });
+
+    // Hide loading
+    document.getElementById('loading').style.display = 'none';
+
+    console.log(`%c✅ ASSEMBLY LOADED`, 'background: #4CAF50; color: white; font-weight: bold; padding: 4px;');
+    console.log(`   ${pdbId.toUpperCase()} - Biological Assembly (${atoms.length} atoms)`);
+    document.title = `${pdbId.toUpperCase()} - Biological Assembly`;
 }
 
 async function resolveAndLoad(name) {
@@ -182,10 +525,10 @@ async function resolveAndLoad(name) {
                     return;
                 }
 
-                // CASE 3: Biomolecule/Protein → Use PDB ID with MolView
+                // CASE 3: Biomolecule/Protein → Use PDB ID with MolView embed
                 else if ((category === 'biomolecule' || category === 'protein') && data.pdbid) {
                     console.log(`🧬 Found biomolecule: ${data.name} (PDB ID: ${data.pdbid})`);
-                    const molviewUrl = `${MOLVIEW_API}/embed/v2/?pdbid=${data.pdbid}`;
+                    const molviewUrl = `${MOLVIEW_EMBED}/?pdbid=${data.pdbid}`;
                     embedMolView(molviewUrl, data.name);
                     return;
                 }
@@ -240,19 +583,19 @@ async function resolveAndLoad(name) {
                     }
                 }
 
-                // CASE 2: Protein/Biomolecule → Use local MolView embed
+                // CASE 2: Protein/Biomolecule → Use MolView embed
                 else if (category === 'protein' || category === 'biomolecule' || category === 'pdb') {
                     console.log(`🧬 Found ${category}: ${name}`);
 
-                    // Use local MolView embed with the query
-                    const molviewUrl = `${MOLVIEW_API}/embed/v2/?q=${encodeURIComponent(name)}`;
+                    // Use MolView embed with the query
+                    const molviewUrl = `${MOLVIEW_EMBED}/?q=${encodeURIComponent(name)}`;
                     embedMolView(molviewUrl, name);
                     return;
                 }
             }
         }
     } catch (e) {
-        console.warn(`⚠️ Local MolView API failed: ${e.message}`);
+        console.warn(`⚠️ Search API failed: ${e.message}`);
     }
 
     // STEP 3: Fallback to PubChem for small molecules
@@ -363,19 +706,21 @@ function fallbackToMolView(query, type = 'q') {
     document.body.style.padding = '0';
     document.body.style.overflow = 'hidden';
 
-    // Create MolView iframe pointing to LOCAL MolView instance
+    // Create MolView iframe pointing to external MolView embed
     const iframe = document.createElement('iframe');
 
-    // Use local MolView /embed/v2/ endpoint with query parameter
+    // Use external MolView embed endpoint with query parameter
     let param;
     if (type === 'cid' || type === true) {
         param = `cid=${query}`;
     } else if (type === 'codid') {
         param = `codid=${query}`;
+    } else if (type === 'pdbid') {
+        param = `pdbid=${query}`;
     } else {
-        param = `q=${encodeURIComponent(query)}`;
+        param = `smiles=${encodeURIComponent(query)}`;
     }
-    iframe.src = `${MOLVIEW_API}/embed/v2/?${param}`;
+    iframe.src = `${MOLVIEW_EMBED}/?${param}`;
 
     console.log('%c🔗 3D VIEWER IFRAME SRC:', 'background: #FF5722; color: white; font-weight: bold; padding: 4px; font-size: 14px;');
     console.log(`   ${iframe.src}`);

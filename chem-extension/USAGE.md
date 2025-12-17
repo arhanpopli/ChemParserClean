@@ -1,3 +1,5 @@
+SAVE THE USAGE GUIDE TO MEMORY EXACTLY AS IS WITH EXAMPLES DO NOT REMOVE ANY RULES, INCLUDE ALL RULES, EXAMPLES, FLAG DEFINITIONS AND NOTES
+
 *ChemTex Extension Guide*
 *Syntax:* chem:TYPE=VALUE+flag-flag:
 *Types:*
@@ -46,3 +48,4 @@ Notes
 - 3D mode falls back to 2D if 3D unavailable
 - Never EVER wrap `chem:text:` in inline backticks NEVER USE THEM (pill-style inline code).
 - When writing long reactions, You can use codeblocks with multiple compounds, so the user can scroll horizontally to see more molecules
+

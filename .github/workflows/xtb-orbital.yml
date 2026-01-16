@@ -1,0 +1,105 @@
+name: xTB Orbital Calculation
+
+on:
+  workflow_dispatch:
+    inputs:
+      smiles:
+        description: 'SMILES string of molecule'
+        required: true
+        default: 'O'
+        type: string
+      orbital:
+        description: 'Orbital to visualize (homo, lumo, homo-1, etc.)'
+        required: false
+        default: 'homo'
+        type: string
+
+jobs:
+  calculate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install xTB
+        run: |
+          # Download xTB binary
+          wget -q https://github.com/grimme-lab/xtb/releases/download/v6.6.1/xtb-6.6.1-linux-x86_64.tar.xz
+          tar -xf xtb-6.6.1-linux-x86_64.tar.xz
+          echo "$PWD/xtb-6.6.1/bin" >> $GITHUB_PATH
+          
+          # Verify installation
+          ./xtb-6.6.1/bin/xtb --version
+      
+      - name: Install Open Babel (for SMILES to XYZ)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openbabel
+      
+      - name: Convert SMILES to XYZ
+        run: |
+          echo "Converting SMILES: ${{ github.event.inputs.smiles }}"
+          
+          # Use Open Babel to convert SMILES to 3D XYZ
+          echo "${{ github.event.inputs.smiles }}" | obabel -ismi -oxyz --gen3d -O molecule.xyz
+          
+          echo "=== Generated XYZ file ==="
+          cat molecule.xyz
+      
+      - name: Run xTB calculation
+        run: |
+          echo "=== Running xTB GFN2 calculation ==="
+          
+          # Run single-point calculation with Molden output
+          xtb molecule.xyz --gfn 2 --sp --molden
+          
+          echo "=== xTB Output Summary ==="
+          echo "Calculation complete!"
+          
+          # Show orbital energies
+          if [ -f "xtbout.json" ]; then
+            echo "=== Orbital Info from JSON ==="
+            cat xtbout.json | head -100
+          fi
+      
+      - name: Display Molden output
+        run: |
+          echo "=== Molden File (first 200 lines) ==="
+          head -200 molden.input
+          
+          echo ""
+          echo "=== Molden File Size ==="
+          ls -lh molden.input
+      
+      - name: Parse orbital information
+        run: |
+          # Find HOMO (highest occupied)
+          echo "=== Parsing Orbital Energies ==="
+          grep -A1 "Ene=" molden.input | head -50
+          
+          # Count orbitals
+          echo ""
+          echo "Total molecular orbitals:"
+          grep -c "Ene=" molden.input || echo "0"
+      
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: xtb-results-${{ github.run_id }}
+          path: |
+            molecule.xyz
+            molden.input
+            xtbout.json
+            charges
+            wbo
+          retention-days: 7
+      
+      - name: Summary
+        run: |
+          echo "## xTB Calculation Complete! 🧪" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Molecule:** ${{ github.event.inputs.smiles }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Orbital requested:** ${{ github.event.inputs.orbital }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Results uploaded as artifact. Download to view orbital coefficients." >> $GITHUB_STEP_SUMMARY

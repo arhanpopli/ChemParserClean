@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mol* Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #1a1a2e;
+        }
+
+        #molstar-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        #error {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Loading Mol* Viewer...</div>
+    </div>
+    <div id="error">
+        <h2>❌ Error</h2>
+        <p id="errorMessage"></p>
+    </div>
+    <iframe id="molstar-frame"></iframe>
+
+    <script>
+        // Parse URL parameters
+        const params = new URLSearchParams(window.location.search);
+        const pdbId = params.get('pdbid') || params.get('pdb');
+        const assemblyId = params.get('assembly') || params.get('assembly-id');
+        const hideControls = params.get('hide-controls') !== '0';
+        const graphicsMode = params.get('graphics') || params.get('graphics-mode') || 'balanced';
+        const pdbProvider = params.get('provider') || params.get('pdb-provider') || 'rcsb';
+        const viewer = params.get('viewer') || 'standard'; // 'standard' or 'mesoscale'
+
+        console.log('🧬 Mol* Viewer Wrapper');
+        console.log('   PDB ID:', pdbId);
+        console.log('   Assembly ID:', assemblyId);
+        console.log('   Viewer:', viewer);
+        console.log('   Graphics:', graphicsMode);
+        console.log('   Provider:', pdbProvider);
+
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
+
+        if (!pdbId) {
+            showError('No PDB ID provided');
+        } else {
+            // Build Mol* URL
+            let molstarUrl;
+
+            if (viewer === 'mesoscale') {
+                // Mol* Mesoscale Explorer
+                molstarUrl = `https://molstar.org/me/viewer/?pdb=${pdbId.toLowerCase()}&hide-controls=${hideControls ? '1' : '0'}&graphics-mode=${graphicsMode}&pdb-provider=${pdbProvider}`;
+            } else {
+                // Mol* Standard Viewer
+                molstarUrl = `https://molstar.org/viewer/?pdb=${pdbId.toLowerCase()}`;
+                if (assemblyId) {
+                    molstarUrl += `&assembly-id=${assemblyId}`;
+                }
+                if (hideControls) {
+                    molstarUrl += '&hide-controls=1';
+                }
+            }
+
+            console.log('   Mol* URL:', molstarUrl);
+
+            const iframe = document.getElementById('molstar-frame');
+
+            iframe.onload = () => {
+                document.getElementById('loading').style.display = 'none';
+                console.log('✅ Mol* iframe loaded');
+            };
+
+            iframe.onerror = () => {
+                showError('Failed to load Mol* viewer');
+            };
+
+            iframe.src = molstarUrl;
+            document.title = `Mol* - ${pdbId.toUpperCase()}`;
+        }
+    </script>
+</body>
+
+</html>

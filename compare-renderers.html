@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmilesDrawer Comparison: Independent vs Server</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #00d4ff;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .controls label {
+            font-weight: bold;
+        }
+
+        .controls input[type="text"] {
+            flex: 1;
+            min-width: 300px;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-family: monospace;
+        }
+
+        .controls button {
+            padding: 10px 25px;
+            background: #00d4ff;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .controls button:hover {
+            background: #00a8cc;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel h2 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .panel.independent h2 {
+            color: #51cf66;
+        }
+
+        .panel.server h2 {
+            color: #ff6b6b;
+        }
+
+        .render-area {
+            background: #fff;
+            border-radius: 10px;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .render-area svg {
+            max-width: 100%;
+            max-height: 400px;
+        }
+
+        .render-area img {
+            max-width: 100%;
+            max-height: 400px;
+        }
+
+        .status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .error {
+            color: #ff6b6b;
+        }
+
+        .success {
+            color: #51cf66;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🧪 SmilesDrawer Rendering Comparison</h1>
+
+    <div class="controls">
+        <label for="smiles">SMILES:</label>
+        <input type="text" id="smiles" value="C[C@H](O)C(=O)O" placeholder="Enter SMILES string...">
+        <button onclick="renderBoth()">Render Both</button>
+    </div>
+
+    <div class="comparison">
+        <div class="panel independent">
+            <h2>✅ Independent Variant (Browser)</h2>
+            <div class="render-area" id="independent-render">
+                <svg id="independent-svg"></svg>
+            </div>
+            <div class="status" id="independent-status">Ready</div>
+        </div>
+
+        <div class="panel server">
+            <h2>❓ Server Variant (Node.js + JSDOM)</h2>
+            <div class="render-area" id="server-render">
+                <img id="server-img" alt="Server rendered molecule">
+            </div>
+            <div class="status" id="server-status">Ready</div>
+        </div>
+    </div>
+
+    <!-- Load the REBUILT SmilesDrawer from source -->
+    <script src="smilesDrawer/dist/smiles-drawer.min.js"></script>
+
+    <script>
+        const SERVER_URL = 'http://localhost:3000';
+
+        function renderBoth() {
+            const smiles = document.getElementById('smiles').value.trim();
+            if (!smiles) {
+                alert('Please enter a SMILES string');
+                return;
+            }
+
+            renderIndependent(smiles);
+            renderServer(smiles);
+        }
+
+        function renderIndependent(smiles) {
+            const status = document.getElementById('independent-status');
+            const svgElement = document.getElementById('independent-svg');
+
+            status.className = 'status';
+            status.textContent = 'Rendering...';
+
+            // Clear previous
+            while (svgElement.firstChild) {
+                svgElement.removeChild(svgElement.firstChild);
+            }
+
+            try {
+                const options = {
+                    width: 300,
+                    height: 240,
+                    bondThickness: 2.0,
+                    bondLength: 25,
+                    shortBondLength: 0.85,
+                    bondSpacing: 6,
+                    atomVisualization: 'default',
+                    isomeric: true,
+                    debug: false,
+                    // Custom options matching content.js:
+                    showCarbons: false,
+                    terminalCarbons: false,
+                    explicitHydrogens: false,
+                    showHydrogens: false,
+                    showImplicitHydrogens: false,
+                    showAromaticRings: false,
+                    atomNumbering: false,
+                    solidBondColors: true,
+                    compactDrawing: false,
+                    overlapSensitivity: 0.42,
+                    overlapResolutionIterations: 1,
+                    fontSizeLarge: 11,
+                    fontSizeSmall: 3,
+                    padding: 10,
+                    experimentalSSSR: false,
+                    themes: {
+                        light: {
+                            C: '#222222', O: '#e74c3c', N: '#3498db', F: '#27ae60',
+                            CL: '#16a085', BR: '#d35400', I: '#8e44ad', P: '#d35400',
+                            S: '#f1c40f', B: '#e67e22', SI: '#e67e22', H: '#666666',
+                            BACKGROUND: 'transparent'
+                        }
+                    }
+                };
+
+                const drawer = new SmilesDrawer.SvgDrawer(options);
+
+                SmilesDrawer.parse(smiles, (tree) => {
+                    drawer.draw(tree, 'independent-svg', 'light');
+
+                    // Adjust viewBox
+                    try {
+                        const bbox = svgElement.getBBox();
+                        const padding = 10;
+                        svgElement.setAttribute('viewBox',
+                            `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
+                        svgElement.setAttribute('width', bbox.width + padding * 2);
+                        svgElement.setAttribute('height', bbox.height + padding * 2);
+                    } catch (e) {
+                        console.warn('Could not get bbox:', e);
+                    }
+
+                    status.className = 'status success';
+                    status.textContent = `✅ Rendered successfully at ${new Date().toLocaleTimeString()}`;
+                }, (err) => {
+                    status.className = 'status error';
+                    status.textContent = `❌ Parse error: ${err}`;
+                });
+            } catch (e) {
+                status.className = 'status error';
+                status.textContent = `❌ Error: ${e.message}`;
+            }
+        }
+
+        function renderServer(smiles) {
+            const status = document.getElementById('server-status');
+            const img = document.getElementById('server-img');
+
+            status.className = 'status';
+            status.textContent = 'Fetching from server...';
+
+            // Build URL
+            const url = `${SERVER_URL}/smiles=${encodeURIComponent(smiles)}.svg`;
+
+            // Load as image
+            img.onload = () => {
+                status.className = 'status success';
+                status.textContent = `✅ Rendered successfully at ${new Date().toLocaleTimeString()} - URL: ${url}`;
+            };
+            img.onerror = () => {
+                status.className = 'status error';
+                status.textContent = `❌ Failed to load from server - URL: ${url}`;
+            };
+            img.src = url + '?t=' + Date.now(); // Cache bust
+        }
+
+        // Pre-defined test cases
+        const testCases = [
+            { name: 'L-Lactic Acid', smiles: 'C[C@H](O)C(=O)O' },
+            { name: 'D-Lactic Acid', smiles: 'C[C@@H](O)C(=O)O' },
+            { name: 'Lactic Acid (no stereo)', smiles: 'CC(O)C(=O)O' },
+            { name: 'S-Lactic Acid variant', smiles: 'C[C@H](S)C(=O)O' },
+            { name: 'Benzene', smiles: 'c1ccccc1' },
+            { name: 'Caffeine', smiles: 'Cn1cnc2c1c(=O)n(c(=O)n2C)C' },
+            { name: 'Ethanol', smiles: 'CCO' },
+            { name: 'Aspirin', smiles: 'CC(=O)Oc1ccccc1C(=O)O' }
+        ];
+
+        // Add test case buttons
+        const controlsDiv = document.querySelector('.controls');
+        const testDiv = document.createElement('div');
+        testDiv.style.cssText = 'width: 100%; margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;';
+        testDiv.innerHTML = '<strong style="width:100%">Quick Tests:</strong>';
+        testCases.forEach(tc => {
+            const btn = document.createElement('button');
+            btn.textContent = tc.name;
+            btn.style.cssText = 'padding: 5px 10px; font-size: 12px; background: #4a5568;';
+            btn.onclick = () => {
+                document.getElementById('smiles').value = tc.smiles;
+                renderBoth();
+            };
+            testDiv.appendChild(btn);
+        });
+        controlsDiv.appendChild(testDiv);
+
+        // Render on load
+        window.onload = () => renderBoth();
+    </script>
+</body>
+
+</html>

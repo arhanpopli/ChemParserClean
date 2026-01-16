@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Small Promo Tile Studio (440x280)</title>
+    <script src="html2canvas.min.js"></script>
+    <script src="dom-to-image.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: #222;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #artboard {
+            width: 440px;
+            height: 280px;
+            position: relative;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .artboard-wrapper {
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .molecules-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            /* Low Z-Index */
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .molecule {
+            position: absolute;
+            filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        .molecule svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        /* Style molecule bond paths */
+        .molecule path.bond {
+            stroke: #1a1a2e;
+            stroke-width: 2.5px;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Style molecule atom labels */
+        .molecule path.atom {
+            fill: #1a1a2e;
+            stroke: none;
+        }
+
+        /* Fallback for paths without class - treat as bonds */
+        .molecule path:not([class]) {
+            stroke: #1a1a2e;
+            stroke-width: 2.5px;
+            fill: none;
+        }
+
+        /* Content Layout */
+        .content-container {
+            position: relative;
+            /* REQUIRED for z-index */
+            z-index: 100;
+            /* High Z-index above molecules */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-right: 20px;
+        }
+
+        .logo-container img {
+            width: 110px;
+            height: 110px;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+        }
+
+        .text-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            margin-left: 15px;
+        }
+
+        .latex-text {
+            font-size: 52px;
+            line-height: 0.9;
+            font-weight: 800;
+            color: #2196F3;
+            letter-spacing: -2px;
+            text-transform: uppercase;
+            text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5), 0px 5px 10px rgba(33, 150, 243, 0.3);
+        }
+
+        .chemistry-text {
+            font-size: 38px;
+            line-height: 0.9;
+            font-weight: 800;
+            color: #0d1b2a;
+            /* Really dark blue */
+            letter-spacing: -2px;
+            text-transform: uppercase;
+            text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5), 0px 5px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Molecule Positions */
+        #mol1 {
+            top: -10%;
+            left: -10%;
+            width: 120px;
+            opacity: 0.4;
+            transform: rotate(-25deg);
+        }
+
+        #mol2 {
+            bottom: -10%;
+            right: -10%;
+            width: 130px;
+            opacity: 0.5;
+            transform: rotate(15deg);
+        }
+
+        #mol3 {
+            top: -15%;
+            right: 10%;
+            width: 100px;
+            opacity: 0.3;
+            transform: rotate(45deg);
+        }
+
+        #mol4 {
+            bottom: -5%;
+            left: 20%;
+            width: 90px;
+            opacity: 0.3;
+            transform: rotate(-10deg) scale(0.8);
+        }
+
+        #mol5 {
+            top: 40%;
+            left: 85%;
+            width: 70px;
+            opacity: 0.2;
+            transform: rotate(65deg);
+            filter: blur(1px);
+        }
+
+        #mol6 {
+            top: 60%;
+            left: -5%;
+            width: 80px;
+            opacity: 0.2;
+            transform: rotate(-45deg);
+            filter: blur(1px);
+        }
+
+        #mol7 {
+            top: 10%;
+            left: 45%;
+            width: 60px;
+            opacity: 0.15;
+            transform: rotate(180deg);
+        }
+
+        #mol8 {
+            bottom: 20%;
+            right: 35%;
+            width: 75px;
+            opacity: 0.2;
+            transform: rotate(90deg);
+            filter: blur(0.5px);
+        }
+
+        #mol9 {
+            top: 30%;
+            left: 20%;
+            width: 150px;
+            opacity: 0.05;
+            transform: rotate(0deg);
+        }
+
+        #mol10 {
+            bottom: 10%;
+            right: 10%;
+            width: 140px;
+            opacity: 0.05;
+            transform: rotate(30deg);
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+            min-width: 120px;
+        }
+
+        button.secondary {
+            background: #555;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button.loading {
+            cursor: wait;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="artboard-wrapper">
+        <div id="artboard">
+            <div class="molecules-container">
+                <!-- Molecules SVG Paths (Same as before) -->
+                <div id="mol1" class="molecule"><svg viewBox='0 0 266 228'>
+                        <path d='M 252.3,155.5 L 227.7,124.8' />
+                        <path d='M 223.0,107.1 L 234.0,67.0' />
+                        <path d='M 234.0,67.0 L 198.7,43.9' />
+                        <path d='M 225.2,70.4 L 194.5,50.3' />
+                        <path d='M 184.5,44.9 L 152.0,70.9' />
+                        <path d='M 152.0,70.9 L 170.0,118.3' />
+                        <path d='M 161.1,73.4 L 175.1,110.5' />
+                        <path d='M 170.0,118.3 L 137.9,157.6' />
+                        <path d='M 133.5,156.9 L 148.9,197.4' />
+                        <path d='M 140.6,154.2 L 156.0,194.7' />
+                        <path d='M 137.9,157.6 L 95.0,150.6' />
+                        <path d='M 80.7,158.1 L 55.7,188.6' />
+                        <path d='M 84.5,140.5 L 69.9,102.0' />
+                        <path d='M 72.7,98.6 L 28.8,91.4' />
+                        <path d='M 71.5,106.1 L 27.5,98.9' />
+                        <path d='M 69.9,102.0 L 94.9,71.4' />
+                        <path d='M 98.7,53.9 L 84.1,15.3' />
+                        <path d='M 170.0,118.3 L 213.5,116.3' />
+                        <path d='M 109.1,63.9 L 152.0,70.9' />
+                        <!-- Atom labels (N) -->
+                        <path class='atom'
+                            d='M 217.4 108.8L 222.1 116.4Q 222.6 117.1, 223.3 118.5Q 224.1 119.8, 224.1 119.9L 224.1 108.8L 226.0 108.8L 226.0 123.1L 224.1 123.1L 219.0 114.8Q 218.4 113.8, 217.8 112.7Q 217.2 111.6, 217.0 111.3L 217.0 123.1L 215.2 123.1L 215.2 108.8L 217.4 108.8' />
+                        <path class='atom'
+                            d='M 188.4 32.0L 193.1 39.7Q 193.6 40.4, 194.3 41.8Q 195.1 43.1, 195.1 43.2L 195.1 32.0L 197.0 32.0L 197.0 46.4L 195.1 46.4L 190.0 38.1Q 189.4 37.1, 188.8 36.0Q 188.2 34.9, 188.0 34.5L 188.0 46.4L 186.1 46.4L 186.1 32.0L 188.4 32.0' />
+                        <path class='atom'
+                            d='M 84.7 142.2L 89.4 149.8Q 89.8 150.6, 90.6 151.9Q 91.3 153.3, 91.4 153.4L 91.4 142.2L 93.3 142.2L 93.3 156.6L 91.3 156.6L 86.3 148.3Q 85.7 147.3, 85.1 146.2Q 84.4 145.1, 84.3 144.7L 84.3 156.6L 82.4 156.6L 82.4 142.2L 84.7 142.2' />
+                        <path class='atom'
+                            d='M 98.8 55.6L 103.5 63.2Q 104.0 63.9, 104.8 65.3Q 105.5 66.6, 105.6 66.7L 105.6 55.6L 107.5 55.6L 107.5 69.9L 105.5 69.9L 100.4 61.6Q 99.9 60.6, 99.2 59.5Q 98.6 58.4, 98.4 58.1L 98.4 69.9L 96.6 69.9L 96.6 55.6L 98.8 55.6' />
+                    </svg></div>
+                <div id="mol2" class="molecule"><svg viewBox='0 0 308 165'>
+                        <path d='M 44.9,76.9 L 79.9,66.2' />
+                        <path d='M 79.9,66.2 L 111.2,95.6' />
+                        <path d='M 111.2,95.6 L 152.3,83.1' />
+                        <path d='M 152.3,83.1 L 162.0,41.3' />
+                        <path d='M 159.4,81.0 L 167.4,46.4' />
+                        <path d='M 162.0,41.3 L 203.1,28.9' />
+                        <path d='M 203.1,28.9 L 234.4,58.2' />
+                        <path d='M 201.4,36.1 L 227.3,60.4' />
+                        <path d='M 234.4,58.2 L 268.4,47.9' />
+                        <path d='M 234.4,58.2 L 224.6,100.0' />
+                        <path d='M 224.6,100.0 L 249.0,122.7' />
+                        <path d='M 224.6,100.0 L 183.6,112.4' />
+                        <path d='M 219.2,94.9 L 185.3,105.2' />
+                        <path d='M 183.6,112.4 L 152.3,83.1' />
+                        <!-- Atom labels (NH2, OH) for Dopamine -->
+                        <path class='atom'
+                            d='M 15.4 72.6L 17.0 72.6L 17.0 77.8L 23.3 77.8L 23.3 72.6L 24.9 72.6L 24.9 84.8L 23.3 84.8L 23.3 79.2L 17.0 79.2L 17.0 84.8L 15.4 84.8L 15.4 72.6' />
+                        <path class='atom'
+                            d='M 36.2 72.6L 40.1 79.1Q 40.5 79.7, 41.2 80.8Q 41.8 82.0, 41.8 82.1L 41.8 72.6L 43.5 72.6L 43.5 84.8L 41.8 84.8L 37.5 77.7Q 37.0 76.9, 36.5 76.0Q 36.0 75.0, 35.8 74.7L 35.8 84.8L 34.2 84.8L 34.2 72.6L 36.2 72.6' />
+                        <path class='atom'
+                            d='M 269.8 45.8Q 269.8 42.9, 271.3 41.2Q 272.7 39.6, 275.4 39.6Q 278.1 39.6, 279.6 41.2Q 281.0 42.9, 281.0 45.8Q 281.0 48.7, 279.5 50.4Q 278.1 52.1, 275.4 52.1Q 272.7 52.1, 271.3 50.4Q 269.8 48.7, 269.8 45.8' />
+                    </svg></div>
+                <div id="mol3" class="molecule"><svg viewBox='0 0 305 205'>
+                        <path d='M 44.7,60.0 L 69.1,84.2' />
+                        <path d='M 69.1,84.2 L 110.4,73.0' />
+                        <path d='M 110.4,73.0 L 140.8,103.2' />
+                        <path d='M 140.8,103.2 L 134.2,145.5' />
+                        <path d='M 146.4,108.8 L 141.3,141.9' />
+                        <path d='M 134.2,145.5 L 166.5,161.8' />
+                        <path d='M 178.5,158.8 L 202.7,134.4' />
+                        <path d='M 202.7,134.4 L 245.5,136.5' />
+                        <path d='M 206.7,128.2 L 242.1,129.9' />
+                        <path d='M 245.5,136.5 L 268.7,100.5' />
+                        <path d='M 268.7,100.5 L 249.1,62.4' />
+                        <path d='M 261.3,100.2 L 245.1,68.6' />
+                        <path d='M 249.1,62.4 L 267.3,34.1' />
+                        <path d='M 249.1,62.4 L 206.3,60.3' />
+                        <path d='M 206.3,60.3 L 183.1,96.3' />
+                        <path d='M 209.7,66.9 L 190.5,96.7' />
+                        <path d='M 183.1,96.3 L 140.8,103.2' />
+                        <path d='M 183.1,96.3 L 202.7,134.4' />
+                        <!-- Atom labels (NH, OH) -->
+                        <path class='atom'
+                            d='M 169.8 158.8L 173.8 165.2Q 174.2 165.8, 174.8 167.0Q 175.4 168.1, 175.5 168.2L 175.5 158.8L 177.1 158.8L 177.1 170.9L 175.4 170.9L 171.1 163.9Q 170.7 163.0, 170.1 162.1Q 169.6 161.2, 169.5 160.9L 169.5 170.9L 167.9 170.9L 167.9 158.8L 169.8 158.8' />
+                        <path class='atom'
+                            d='M 266.7 26.4Q 266.7 23.5, 268.2 21.9Q 269.6 20.3, 272.3 20.3Q 275.0 20.3, 276.4 21.9Q 277.9 23.5, 277.9 26.4Q 277.9 29.4, 276.4 31.1Q 275.0 32.7, 272.3 32.7Q 269.6 32.7, 268.2 31.1Q 266.7 29.4, 266.7 26.4M 272.3 31.4Q 274.1 31.4, 275.1 30.1Q 276.2 28.9, 276.2 26.4Q 276.2 24.1, 275.1 22.9Q 274.1 21.6, 272.3 21.6Q 270.4 21.6, 269.4 22.8Q 268.4 24.0, 268.4 26.4Q 268.4 28.9, 269.4 30.1Q 270.4 31.4, 272.3 31.4' />
+                    </svg></div>
+                <div id="mol4" class="molecule"><svg viewBox='0 0 307 236'>
+                        <path d='M 168.8,204.4 L 176.0,170.1' />
+                        <path d='M 171.5,157.3 L 145.7,134.2' />
+                        <path d='M 145.7,134.2 L 105.2,147.5' />
+                        <path d='M 140.2,129.3 L 106.7,140.3' />
+                        <path d='M 105.2,147.5 L 73.4,119.1' />
+                        <path d='M 73.4,119.1 L 39.8,130.2' />
+                        <path d='M 73.4,119.1 L 82.1,77.4' />
+                        <path d='M 80.4,116.8 L 87.6,82.3' />
+                        <path d='M 82.1,77.4 L 57.2,55.1' />
+                        <path d='M 82.1,77.4 L 122.6,64.0' />
+                        <path d='M 122.6,64.0 L 154.4,92.4' />
+                        <path d='M 121.1,71.2 L 147.4,94.7' />
+                        <path d='M 154.4,92.4 L 194.9,79.1' />
+                        <path d='M 194.9,79.1 L 202.0,45.0' />
+                        <path d='M 194.9,79.1 L 226.8,107.5' />
+                        <path d='M 226.8,107.5 L 261.3,96.1' />
+                        <path d='M 154.4,92.4 L 145.7,134.2' />
+                        <!-- Atom labels (HO, NH) for Adrenaline -->
+                        <path class='atom'
+                            d='M 174.9 156.6L 178.8 163.0Q 179.2 163.6, 179.8 164.8Q 180.5 165.9, 180.5 166.0L 180.5 156.6L 182.1 156.6L 182.1 168.7L 180.5 168.7L 176.2 161.7Q 175.7 160.9, 175.2 159.9Q 174.7 159.0, 174.5 158.7L 174.5 168.7L 172.9 168.7L 172.9 156.6L 174.9 156.6' />
+                        <path class='atom'
+                            d='M 27.3 132.5Q 27.3 129.6, 28.7 128.0Q 30.2 126.4, 32.8 126.4Q 35.5 126.4, 36.9 128.0Q 38.4 129.6, 38.4 132.5Q 38.4 135.4, 36.9 137.1Q 35.5 138.8, 32.8 138.8Q 30.2 138.8, 28.7 137.1Q 27.3 135.5, 27.3 132.5' />
+                        <path class='atom'
+                            d='M 198.1 37.3Q 198.1 34.4, 199.5 32.8Q 201.0 31.2, 203.6 31.2Q 206.3 31.2, 207.8 32.8Q 209.2 34.4, 209.2 37.3Q 209.2 40.3, 207.7 42.0Q 206.3 43.6, 203.6 43.6Q 201.0 43.6, 199.5 42.0Q 198.1 40.3, 198.1 37.3' />
+                    </svg></div>
+                <div id="mol5" class="molecule"><svg viewBox='0 0 150 137'>
+                        <path d='M 142.5,68.3 L 108.7,126.8' />
+                        <path d='M 130.8,68.3 L 102.9,116.7' />
+                        <path d='M 108.7,126.8 L 41.2,126.8' />
+                        <path d='M 41.2,126.8 L 7.5,68.3' />
+                        <path d='M 47.1,116.7 L 19.2,68.3' />
+                        <path d='M 7.5,68.3 L 41.3,9.9' />
+                        <path d='M 41.3,9.9 L 108.8,9.9' />
+                        <path d='M 47.1,20.0 L 102.9,20.0' />
+                        <path d='M 108.8,9.9 L 142.5,68.3' />
+                    </svg></div>
+                <div id="mol6" class="molecule"><svg viewBox='0 0 150 137'>
+                        <path d='M 142.5,68.3 L 108.7,126.8' />
+                        <path d='M 108.7,126.8 L 41.2,126.8' />
+                        <path d='M 41.2,126.8 L 7.5,68.3' />
+                        <path d='M 7.5,68.3 L 41.3,9.9' />
+                        <path d='M 41.3,9.9 L 108.8,9.9' />
+                        <path d='M 108.8,9.9 L 142.5,68.3' />
+                    </svg></div>
+                <div id="mol7" class="molecule"><svg viewBox='0 0 264 222'>
+                        <path d='M 13.2,151.3 L 50.8,117.4' />
+                        <path d='M 55.0,118.8 L 45.9,76.2' />
+                        <path d='M 47.6,120.3 L 38.5,77.8' />
+                        <path d='M 50.8,117.4 L 90.8,130.3' />
+                        <path d='M 107.3,125.6 L 136.6,99.1' />
+                        <path d='M 136.6,99.1 L 126.0,49.5' />
+                        <path d='M 143.1,93.2 L 134.4,52.2' />
+                        <path d='M 126.0,49.5 L 163.6,15.6' />
+                        <path d='M 163.6,15.6 L 211.8,31.2' />
+                        <path d='M 165.5,24.2 L 205.3,37.1' />
+                        <path d='M 211.8,31.2 L 222.4,80.7' />
+                        <path d='M 222.4,80.7 L 184.8,114.7' />
+                        <path d='M 214.1,78.0 L 183.0,106.1' />
+                        <path d='M 184.8,114.7 L 195.4,164.2' />
+                        <path d='M 192.2,167.1 L 234.2,180.7' />
+                        <path d='M 194.5,159.9 L 236.5,173.5' />
+                        <path d='M 195.4,164.2 L 166.1,190.7' />
+                        <path d='M 184.8,114.7 L 136.6,99.1' />
+                        <!-- Atom labels (O) for Aspirin -->
+                        <path class='atom'
+                            d='M 92.4 133.0Q 92.4 129.6, 94.1 127.7Q 95.8 125.7, 99.0 125.7Q 102.2 125.7, 103.9 127.7Q 105.6 129.6, 105.6 133.0Q 105.6 136.5, 103.9 138.5Q 102.2 140.5, 99.0 140.5Q 95.9 140.5, 94.1 138.5Q 92.4 136.5, 92.4 133.0' />
+                        <path class='atom'
+                            d='M 237.0 179.8Q 237.0 176.4, 238.7 174.5Q 240.4 172.6, 243.6 172.6Q 246.8 172.6, 248.5 174.5Q 250.2 176.4, 250.2 179.8Q 250.2 183.3, 248.5 185.3Q 246.8 187.3, 243.6 187.3Q 240.5 187.3, 238.7 185.3Q 237.0 183.4, 237.0 179.8' />
+                    </svg></div>
+                <div id="mol8" class="molecule"><svg viewBox='0 0 374 183'>
+                        <path d='M 18.7,86.6 L 64.1,83.8' />
+                        <path d='M 64.1,83.8 L 84.4,43.1' />
+                        <path d='M 64.1,83.8 L 89.3,121.7' />
+                        <path d='M 89.3,121.7 L 134.7,119.0' />
+                        <path d='M 134.7,119.0 L 155.0,78.2' />
+                        <path d='M 142.6,118.5 L 159.3,84.8' />
+                        <path d='M 155.0,78.2 L 200.4,75.4' />
+                        <path d='M 200.4,75.4 L 225.5,113.4' />
+                        <path d='M 196.9,82.5 L 217.7,113.9' />
+                        <path d='M 225.5,113.4 L 271.0,110.6' />
+                        <path d='M 271.0,110.6 L 296.1,148.5' />
+                        <path d='M 271.0,110.6 L 291.3,69.9' />
+                        <path d='M 295.2,69.6 L 274.4,38.2' />
+                        <path d='M 289.5,73.4 L 268.7,42.0' />
+                        <path d='M 291.3,69.9 L 329.3,67.5' />
+                        <path d='M 225.5,113.4 L 205.2,154.1' />
+                        <path d='M 205.2,154.1 L 159.8,156.9' />
+                        <path d='M 200.9,147.5 L 163.3,149.9' />
+                        <path d='M 159.8,156.9 L 134.7,119.0' />
+                        <!-- Atom labels (O) for Ibuprofen -->
+                        <path class='atom'
+                            d='M 260.2 31.9Q 260.2 28.9, 261.7 27.1Q 263.3 25.4, 266.1 25.4Q 269.0 25.4, 270.5 27.1Q 272.1 28.9, 272.1 31.9Q 272.1 35.1, 270.5 36.9Q 269.0 38.6, 266.1 38.6Q 263.3 38.6, 261.7 36.9Q 260.2 35.1, 260.2 31.9' />
+                        <path class='atom'
+                            d='M 330.8 67.1Q 330.8 64.0, 332.3 62.3Q 333.8 60.6, 336.7 60.6Q 339.5 60.6, 341.1 62.3Q 342.6 64.0, 342.6 67.1Q 342.6 70.2, 341.1 72.0Q 339.5 73.8, 336.7 73.8Q 333.9 73.8, 332.3 72.0Q 330.8 70.3, 330.8 67.1' />
+                    </svg></div>
+                <div id="mol9" class="molecule"><svg viewBox='0 0 373 223'>
+                        <path d='M 18.7,154.4 L 52.1,176.3' />
+                        <path d='M 65.6,177.3 L 101.7,159.1' />
+                        <path d='M 101.7,159.1 L 141.9,185.4' />
+                        <path d='M 141.9,185.4 L 184.8,163.7' />
+                        <path d='M 184.8,163.7 L 217.2,184.9' />
+                        <path d='M 232.8,186.1 L 267.9,168.4' />
+                        <path d='M 267.9,168.4 L 308.1,194.7' />
+                        <path d='M 275.3,164.6 L 308.5,186.4' />
+                        <path d='M 308.1,194.7 L 351.0,173.0' />
+                        <path d='M 351.0,173.0 L 353.6,125.1' />
+                        <path d='M 344.0,168.5 L 346.2,128.8' />
+                        <path d='M 353.6,125.1 L 313.5,98.8' />
+                        <path d='M 313.5,98.8 L 270.6,120.4' />
+                        <path d='M 313.0,107.1 L 277.5,125.0' />
+                        <path d='M 184.8,163.7 L 187.5,115.8' />
+                        <path d='M 187.5,115.8 L 230.4,94.1' />
+                        <path d='M 188.0,107.4 L 223.4,89.5' />
+                        <path d='M 230.4,94.1 L 233.1,46.1' />
+                        <path d='M 233.1,46.1 L 192.9,19.8' />
+                        <path d='M 225.6,49.9 L 192.4,28.1' />
+                        <path d='M 192.9,19.8 L 150.0,41.5' />
+                        <path d='M 150.0,41.5 L 147.3,89.4' />
+                        <path d='M 157.0,46.0 L 154.7,85.7' />
+                        <path d='M 147.3,89.4 L 104.4,111.1' />
+                        <path d='M 270.6,120.4 L 267.9,168.4' />
+                        <path d='M 147.3,89.4 L 187.5,115.8' />
+                        <!-- Atom labels (N, O) for Atomoxetine -->
+                        <path class='atom'
+                            d='M 55.8 173.9L 60.3 181.1Q 60.7 181.8, 61.4 183.1Q 62.2 184.4, 62.2 184.5L 62.2 173.9L 64.0 173.9L 64.0 187.5L 62.1 187.5L 57.4 179.6Q 56.8 178.7, 56.2 177.7Q 55.6 176.6, 55.5 176.3L 55.5 187.5L 53.7 187.5L 53.7 173.9L 55.8 173.9' />
+                        <path class='atom'
+                            d='M 218.8 190.1Q 218.8 186.8, 220.4 185.0Q 222.0 183.1, 225.0 183.1Q 228.0 183.1, 229.6 185.0Q 231.2 186.8, 231.2 190.1Q 231.2 193.4, 229.6 195.3Q 228.0 197.1, 225.0 197.1Q 222.0 197.1, 220.4 195.3Q 218.8 193.4, 218.8 190.1' />
+                    </svg></div>
+                <div id="mol10" class="molecule"><svg viewBox='0 0 309 155'>
+                        <path d='M 15.5,88.2 L 60.7,76.1' />
+                        <path d='M 63.6,78.9 L 74.0,40.2' />
+                        <path d='M 56.8,77.1 L 67.2,38.3' />
+                        <path d='M 60.7,76.1 L 87.3,102.6' />
+                        <path d='M 100.4,107.4 L 139.1,97.1' />
+                        <path d='M 139.1,97.1 L 151.2,51.8' />
+                        <path d='M 147.0,95.0 L 157.0,57.5' />
+                        <path d='M 151.2,51.8 L 196.5,39.7' />
+                        <path d='M 196.5,39.7 L 229.6,72.8' />
+                        <path d='M 194.4,47.5 L 221.8,74.9' />
+                        <path d='M 229.6,72.8 L 267.3,62.7' />
+                        <path d='M 229.6,72.8 L 217.5,118.1' />
+                        <path d='M 217.5,118.1 L 172.3,130.2' />
+                        <path d='M 211.8,112.3 L 174.4,122.4' />
+                        <path d='M 172.3,130.2 L 139.1,97.1' />
+                        <!-- Atom labels (N, O) for Paracetamol -->
+                        <path class='atom'
+                            d='M 66.8 30.8Q 66.8 27.6, 68.3 25.9Q 69.9 24.1, 72.8 24.1Q 75.8 24.1, 77.4 25.9Q 78.9 27.6, 78.9 30.8Q 78.9 34.0, 77.3 35.9Q 75.7 37.7, 72.8 37.7Q 69.9 37.7, 68.3 35.9Q 66.8 34.1, 66.8 30.8' />
+                        <path class='atom'
+                            d='M 90.9 102.6L 95.3 109.6Q 95.7 110.3, 96.4 111.5Q 97.1 112.8, 97.1 112.9L 97.1 102.6L 98.9 102.6L 98.9 115.8L 97.1 115.8L 92.4 108.1Q 91.9 107.2, 91.3 106.2Q 90.7 105.2, 90.5 104.9L 90.5 115.8L 88.8 115.8L 88.8 102.6L 90.9 102.6' />
+                        <path class='atom'
+                            d='M 268.8 60.7Q 268.8 57.5, 270.4 55.7Q 272.0 54.0, 274.9 54.0Q 277.9 54.0, 279.4 55.7Q 281.0 57.5, 281.0 60.7Q 281.0 63.9, 279.4 65.8Q 277.8 67.6, 274.9 67.6Q 272.0 67.6, 270.4 65.8Q 268.8 64.0, 268.8 60.7' />
+                    </svg></div>
+            </div>
+
+            <div class="content-container">
+                <div class="logo-container">
+                    <!-- Embedded Base64 Logo -->
+                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAADXUlEQVR4nO3cvWsUQRzG8e+pTYTUQWOnpMg/oCmCClaiooLpBWtRKxuttLBRgrX2ngha2Yj4SiKIhYWF4kuh4hFUEMNJ4Dg52MqI5nK7v52d5/lASJWd5fbL7dxcdlrjk9OYrg11n4DVywGIcwDiHIA4ByDOAYhzAOIcgDgHIM4BiHMA4hyAOAcgzgGIcwDiNpVwjH4Jx7D1a43wt34HUOdbgDgHIM4BiHMA4hyAOAcgzgGIcwDiylgJvAtsA7YDm0s4nv3fMvAO+EgCAewvfo8B+4ATwKESjmur3QGuAfeALiVoVfRs4CxwHdhRxcEFvQGOA0+bMgd4DOwEHlR0fCX3i9ey9Itf9STwG3AQeFnhGLl7BRwBvjf1U8BP4Cjwq+JxctQFDgA/mv4x8C1wNWCc3MwD76sepKpJ4J8mgE/AxojBMtADtgBLuSwEdYCFoLFy8CTi4kevBA4+GdjaAyC3AAa3AEvstSpjJXCthnlLuwwsEqNNer7mGMAw/z08uPg30dWPGsjfBopzAOIcgLjIOcAwdtV9AipSDeBM3SegwrcAcQ5AnAMQ5wDEpRrAXPHc+3p/lFcRswjAgjgAcQ5AnAMQl+pK4Gng2Ah/P1PiuWQt1QB8AYP4FiDOAYhzAOJSnQMsjPjs+0yxZ4E1NIArIy7ntkf8FCHDtwBxDkCcAxDnAMSlOglM8XGtLPkdQJwDEOcAxDkAcalOAtX3B0A9APX9AcL4FiDOAYhzAOJSnQN4fwDxALw/QBDfAsQ5AHEOQJwDEJdqAN4fQDwAC+IAxDkAcQ5AXKorgd4fQDwA7w8QxLcAcQ5AnAMQ5wDEOQBxDkCcAxDnAMQ5AHEOQJwDEOcAxDkAcQ5AXGQAK4FjNd1KjgF8CRyr6T7nGMAHoB84XlP1i9cquwA6wIvA8ZrqObCU6yTwRvB4TdSOHKw1PjkdOd4Y8Np7+f/z3j8FLJPpO0C3ePbfc4HVBq/JyciLX9c6wGD3r4s1jJu6C8AtlYWgc8ApoFfT+CnpAWeB82orgfPAXuAZuhaB3cCluk4gehL413MA9gCHgVlgKzBBnjrFRO8RcBt4WPd8KIUArEb+MkicAxDnAMQ5AHEOQJwDEOcAxDkAcQ5AnAMQ5wDEOQBxDkCcAxDnAMT9BmfXYJ3VOBEVAAAAAElFTkSuQmCC"
+                        alt="Logo">
+                </div>
+                <div class="text-container">
+                    <span class="latex-text">LaTeX</span>
+                    <span class="chemistry-text">Chemistry</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="downloadImage('png')" id="btn-png">Download PNG</button>
+        <button onclick="downloadImage('jpeg')" id="btn-jpeg" class="secondary">Download JPG</button>
+        <button onclick="downloadImage('svg')" id="btn-svg" class="secondary">Download SVG</button>
+    </div>
+
+    <script>
+        // exact scale 1 for 440x280
+        const SCALE = 1;
+
+        function downloadImage(format) {
+            const btn = document.getElementById('btn-' + format);
+            const originalText = btn.textContent;
+            btn.textContent = 'Generating...';
+            btn.classList.add('loading');
+
+            const artboard = document.getElementById("artboard");
+
+            // Function to trigger download
+            const saveUrl = (dataUrl, ext) => {
+                const link = document.createElement('a');
+                link.download = `chemistry-latex-small.${ext}`;
+                link.href = dataUrl;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                btn.textContent = 'Done!';
+                btn.classList.remove('loading');
+                setTimeout(() => btn.textContent = originalText, 2000);
+            };
+
+            // Use html2canvas as PRIMARY for Raster (PNG/JPG) to effectively handle z-index and overlays
+            if (format !== 'svg') {
+                html2canvas(artboard, {
+                    scale: SCALE,
+                    backgroundColor: '#ffffff',
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: false
+                    // Removed ignoreElements to verify stability
+                }).then(canvas => {
+                    const dataUrl = format === 'jpeg' ? canvas.toDataURL('image/jpeg', 0.95) : canvas.toDataURL('image/png');
+                    saveUrl(dataUrl, format);
+                }).catch(err => {
+                    console.error("html2canvas error:", err);
+                    alert("Export failed: " + (err.message || err));
+                    btn.textContent = originalText;
+                    btn.classList.remove('loading');
+                });
+            } else {
+                // Keep dom-to-image for SVG as it produces true vector output
+                domtoimage.toSvg(artboard, { width: 440, height: 280, bgcolor: '#ffffff' })
+                    .then(function (dataUrl) {
+                        saveUrl(dataUrl, format);
+                    })
+                    .catch(function (error) {
+                        console.error('dom-to-image error:', error);
+                        alert('SVG Export Failed: ' + error.message);
+                        btn.textContent = originalText;
+                        btn.classList.remove('loading');
+                    });
+            }
+        }
+    </script>
+</body>
+
+</html>

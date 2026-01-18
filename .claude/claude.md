@@ -1,66 +1,96 @@
 # ChemParser Project Context
 
 ## Project Overview
-ChemParser is a chemical structure visualization system with Chrome extension integration. It consists of three main servers:
+ChemParser is a fully client-side Chrome extension that replaces `chem:chemicalname:` patterns in web pages with rendered molecular structure images. **No local servers required!**
 
-1. **MoleculeViewer Server** (Port 5000) - Node.js server for SMILES/nomenclature to SVG conversion
-2. **Mol2ChemFig Server** (Port 5001) - Flask server wrapping mol2chemfig Docker backend for superior rendering
-3. **PubChem Server** (Port 5002) - Flask server for fetching images and 3D models from PubChem
+## Architecture (v4.0 - Fully Client-Side)
 
-## Current File Structure
+The extension works completely offline using:
+- **IntegratedSearch** - Queries PubChem, RCSB, COD APIs directly (no local server)
+- **SmilesDrawer** - Client-side 2D molecular rendering
+- **3Dmol.js** - Client-side 3D molecular viewing
+- **CDK Depict** - Optional external API for 2D rendering
 
-### Servers
-- `MoleculeViewer/server.js` - Node.js server on port 5000
-- `mol2chemfig_server.py` - Flask server on port 5001
-- `pubchem_server.py` - Flask server on port 5002
+### Key Files (chem-extension/)
+| File | Purpose |
+|------|---------|
+| `manifest.json` | Extension configuration |
+| `content.js` | Main content script - pattern detection & rendering |
+| `background.js` | Service worker |
+| `popup.html/js` | Settings popup |
+| `integrated-search.js` | Client-side search (PubChem, RCSB, COD APIs) |
+| `smiles-drawer.min.js` | 2D structure rendering |
+| `3Dmol-min.js` | 3D viewer library |
+| `3dmol-viewer.html/js` | 3D viewer page |
+| `2d-viewer.html/js` | 2D viewer page |
 
-### Cache Directories
-- `MoleculeViewer/cache/moleculeviewer/` - MoleculeViewer cache
-- `cache/mol2chemfig/` - Mol2ChemFig cache
-- `pubchem-cache/` - PubChem cache
+## Extension Usage
 
-### Extension
-- `chem-extension/` - Chrome extension files
-  - `content.js` - Content script for text replacement
-  - `popup.js` - Extension popup
-  - `popup.html` - Extension popup UI
+Replace chemical names in text with: `chem:ethanol:` or `chem:CCO:` (SMILES)
 
-## Key Technical Details
+The extension will:
+1. Detect `chem:X:` patterns
+2. Query IntegratedSearch (PubChem/RCSB/COD)
+3. Render structure with SmilesDrawer (client-side)
+4. Optionally show 3D viewer with 3Dmol.js
 
-### Cache System
-Both servers use hash-based caching:
-- **MoleculeViewer**: MD5 hash of `type:value:widthxheight`
-- **Mol2ChemFig**: SHA256 hash of `smiles:sorted_options`
-- **PubChem**: MD5 hash of `img_cid_size_type`
+## Rendering Engines
 
-### Docker Backend
-Mol2ChemFig uses Docker container at `http://localhost:8000`:
-- `/m2cf/submit` - Simple SMILES to ChemFig
-- `/m2cf/apply` - SMILES with options
-- `/m2cf/layers` - Layered SVG generation
-- `/m2cf/search` - Name to SMILES lookup
+| Engine | Type | Description |
+|--------|------|-------------|
+| SmilesDrawer | Client-side | Fast, works offline (default) |
+| CDK Depict | External API | Advanced options, requires internet |
 
-### Extension Integration
-Extension replaces `chem:chemicalname:` patterns with images:
-- Tries MoleculeViewer first
-- Falls back to Mol2ChemFig if needed
-- Can use PubChem for direct image links
+## Data Sources (via IntegratedSearch)
 
-## Active Issues to Fix
+| Source | Data Type | API |
+|--------|-----------|-----|
+| PubChem | Compounds (100M+) | pubchem.ncbi.nlm.nih.gov |
+| RCSB PDB | Proteins/Biomolecules (250k+) | rcsb.org |
+| COD | Minerals/Crystals (500k+) | crystallography.net |
 
-1. **Cache Deduplication** - Same SMILES stored with different cache keys
-2. **Options Persistence** - ChemFig options don't persist across searches
-3. **Cache Link Display** - Links not shown after applying options
-4. **MoleculeViewer Generation** - Not generating new SVGs for some compounds
-5. **3D SMILES Support** - Need to integrate OPSIN for 3D stereochemistry
+## Development
 
-## Testing Approach
-- Each server should be testable independently
-- Test files available: `test_m2cf_full.html`, `test_pubchem.html`
-- Extension can be tested by loading unpacked extension
+### Loading the Extension
+1. Open Chrome → `chrome://extensions`
+2. Enable "Developer mode"
+3. Click "Load unpacked"
+4. Select the `chem-extension` folder
 
-## Important Notes
-- All servers already have separate cache folders (DONE)
-- PubChem server already exists (DONE)
-- Focus on fixing bugs and optimizations
-- Maintain backward compatibility with existing cache
+### Testing
+- Open any webpage
+- Type `chem:aspirin:` in a text field
+- The extension will render the structure
+
+### Settings
+- Click the extension icon to open settings
+- Choose rendering engine (SmilesDrawer or CDK Depict)
+- Configure rendering options
+- Toggle 3D viewer
+
+## Project Structure
+
+```
+Chemparser/
+├── .claude/           # Claude AI configuration
+├── .github/           # GitHub workflows
+├── chem-extension/    # Chrome extension (fully self-contained)
+│   ├── manifest.json
+│   ├── content.js
+│   ├── background.js
+│   ├── popup.html/js
+│   ├── integrated-search.js
+│   ├── smiles-drawer.min.js
+│   ├── 3Dmol-min.js
+│   └── ...
+└── README.md
+```
+
+## No Servers Required!
+
+Previous versions required multiple local servers. Version 4.0+ is fully client-side:
+
+- ~~MoleculeViewer (port 5000)~~ → SmilesDrawer (client-side)
+- ~~mol2chemfig (port 5001)~~ → Removed
+- ~~PubChem server (port 5002)~~ → IntegratedSearch (direct API)
+- ~~MolView server (port 8000/8001)~~ → embed.molview.org (external)

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Molecule Viewer</title>
+    <!-- Load both libraries - will use based on URL param -->
+    <script src="../assets/smiles-drawer.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        body.light-theme {
+            background: #f8f4ff;
+        }
+
+        body.dark-theme {
+            background: #2d1b4e;
+        }
+
+        #viewer-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        #molecule-svg {
+            display: block;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        #molecule-canvas {
+            display: block;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #888;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .dark-theme #loading {
+            color: #ccc;
+        }
+
+        .spinner {
+            border: 3px solid rgba(128, 128, 128, 0.3);
+            border-top: 3px solid #888;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        #error {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body class="light-theme">
+    <div id="viewer-container">
+        <svg id="molecule-svg"></svg>
+        <canvas id="molecule-canvas" style="display: none;"></canvas>
+    </div>
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Rendering molecule...</div>
+    </div>
+    <div id="error">
+        <h3>❌ Error</h3>
+        <p id="errorMessage"></p>
+    </div>
+
+    <script src="2d-viewer.js"></script>
+</body>
+
+</html>

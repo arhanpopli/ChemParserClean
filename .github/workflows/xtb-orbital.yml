@@ -22,17 +22,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Setup Micromamba
-        uses: mamba-org/setup-micromamba@v1
-        with:
-          environment-name: xtb-env
-          create-args: >-
-            xtb
-            openbabel
-            -c conda-forge
-
+      - name: Install xTB
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xtb
+      
+      - name: Install Open Babel (for SMILES to XYZ)
+        run: |
+          sudo apt-get install -y openbabel
+      
       - name: Convert SMILES to XYZ
-        shell: bash -l {0}
         run: |
           echo "Converting SMILES: '${{ github.event.inputs.smiles }}'"
           echo '${{ github.event.inputs.smiles }}' | obabel -ismi -oxyz --gen3d -O molecule.xyz
@@ -41,20 +40,16 @@ jobs:
             echo "Error: molecule.xyz was not generated!"
             exit 1
           fi
+          
+          echo "=== Generated XYZ file ==="
+          cat molecule.xyz
 
       - name: Run xTB calculation
-        shell: bash -l {0}
         run: |
           echo "=== Running xTB GFN2 calculation ==="
-          xtb molecule.xyz --gfn 2 --sp --molden --json
+          xtb molecule.xyz --gfn 2 --sp --molden
           echo "=== Calculation Complete ==="
           ls -l
-          
-          # Show orbital energies
-          if [ -f "xtbout.json" ]; then
-            echo "=== Orbital Info from JSON ==="
-            cat xtbout.json | head -100
-          fi
       
       - name: Display Molden output
         run: |
@@ -83,7 +78,6 @@ jobs:
           path: |
             molecule.xyz
             molden.input
-            xtbout.json
             charges
             wbo
           retention-days: 7

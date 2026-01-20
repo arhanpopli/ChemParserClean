@@ -22,27 +22,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Install xTB
-        run: |
-          # Download xTB binary
-          wget -q https://github.com/grimme-lab/xtb/releases/download/v6.6.1/xtb-6.6.1-linux-x86_64.tar.xz
-          tar -xf xtb-6.6.1-linux-x86_64.tar.xz
-          echo "$PWD/xtb-6.6.1/bin" >> $GITHUB_PATH
-          
-          # Verify installation
-          ./xtb-6.6.1/bin/xtb --version
-      
-      - name: Install Open Babel (for SMILES to XYZ)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openbabel
-      
+      - name: Setup Micromamba
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-name: xtb-env
+          create-args: >-
+            xtb
+            openbabel
+            -c conda-forge
+
       - name: Convert SMILES to XYZ
+        shell: bash -l {0}
         run: |
           echo "Converting SMILES: '${{ github.event.inputs.smiles }}'"
-          
-          # Use Open Babel to convert SMILES to 3D XYZ
-          # Using single quotes to prevent shell interpretation of SMILES characters
           echo '${{ github.event.inputs.smiles }}' | obabel -ismi -oxyz --gen3d -O molecule.xyz
           
           if [ ! -f "molecule.xyz" ]; then
@@ -50,23 +42,12 @@ jobs:
             exit 1
           fi
 
-          echo "=== Generated XYZ file ==="
-          cat molecule.xyz
-      
       - name: Run xTB calculation
+        shell: bash -l {0}
         run: |
           echo "=== Running xTB GFN2 calculation ==="
-          
-          if [ ! -f "molecule.xyz" ]; then
-            echo "Error: molecule.xyz missing before xTB run"
-            exit 1
-          fi
-
-          # Run single-point calculation with Molden output
-          # Also include orbital energy info in JSON
           xtb molecule.xyz --gfn 2 --sp --molden --json
-          
-          echo "=== xTB Output Summary ==="
+          echo "=== Calculation Complete ==="
           ls -l
           
           # Show orbital energies

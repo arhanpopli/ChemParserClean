@@ -39,11 +39,17 @@ jobs:
       
       - name: Convert SMILES to XYZ
         run: |
-          echo "Converting SMILES: ${{ github.event.inputs.smiles }}"
+          echo "Converting SMILES: '${{ github.event.inputs.smiles }}'"
           
           # Use Open Babel to convert SMILES to 3D XYZ
-          echo "${{ github.event.inputs.smiles }}" | obabel -ismi -oxyz --gen3d -O molecule.xyz
+          # Using single quotes to prevent shell interpretation of SMILES characters
+          echo '${{ github.event.inputs.smiles }}' | obabel -ismi -oxyz --gen3d -O molecule.xyz
           
+          if [ ! -f "molecule.xyz" ]; then
+            echo "Error: molecule.xyz was not generated!"
+            exit 1
+          fi
+
           echo "=== Generated XYZ file ==="
           cat molecule.xyz
       
@@ -51,11 +57,17 @@ jobs:
         run: |
           echo "=== Running xTB GFN2 calculation ==="
           
+          if [ ! -f "molecule.xyz" ]; then
+            echo "Error: molecule.xyz missing before xTB run"
+            exit 1
+          fi
+
           # Run single-point calculation with Molden output
-          xtb molecule.xyz --gfn 2 --sp --molden
+          # Also include orbital energy info in JSON
+          xtb molecule.xyz --gfn 2 --sp --molden --json
           
           echo "=== xTB Output Summary ==="
-          echo "Calculation complete!"
+          ls -l
           
           # Show orbital energies
           if [ -f "xtbout.json" ]; then

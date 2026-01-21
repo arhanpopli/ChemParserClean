@@ -13,6 +13,26 @@ on:
         required: false
         default: 'homo'
         type: string
+      gfn:
+        description: 'GFN method (0, 1, 2)'
+        required: false
+        default: '2'
+        type: string
+      charge:
+        description: 'Molecular charge'
+        required: false
+        default: '0'
+        type: string
+      multiplicity:
+        description: 'Spin multiplicity (2S+1)'
+        required: false
+        default: '1'
+        type: string
+      solvent:
+        description: 'ALPB solvent (none, water, methanol, ... )'
+        required: false
+        default: 'none'
+        type: string
 
 jobs:
   calculate:
@@ -46,10 +66,61 @@ jobs:
 
       - name: Run xTB calculation
         run: |
-          echo "=== Running xTB GFN2 calculation ==="
-          xtb molecule.xyz --gfn 2 --sp --molden
+          echo "=== Running xTB GFN2 calculation with ALL properties ==="
+          echo "GFN method: ${{ github.event.inputs.gfn }}"
+          echo "Charge: ${{ github.event.inputs.charge }}"
+          echo "Multiplicity: ${{ github.event.inputs.multiplicity }}"
+          echo "Solvent: ${{ github.event.inputs.solvent }}"
+
+          GFN_METHOD="${{ github.event.inputs.gfn }}"
+          CHARGE="${{ github.event.inputs.charge }}"
+          MULTIPLICITY="${{ github.event.inputs.multiplicity }}"
+          SOLVENT="${{ github.event.inputs.solvent }}"
+
+          if [ -z "$GFN_METHOD" ]; then GFN_METHOD="2"; fi
+          if [ -z "$CHARGE" ]; then CHARGE="0"; fi
+          if [ -z "$MULTIPLICITY" ]; then MULTIPLICITY="1"; fi
+          if [ -z "$SOLVENT" ]; then SOLVENT="none"; fi
+
+          UHF=$((MULTIPLICITY - 1))
+
+          XTB_OPTS="--gfn $GFN_METHOD --sp --molden --wbo --charges --dipole --fod --etemp 300 --json --chrg $CHARGE"
+
+          if [ "$MULTIPLICITY" -gt 1 ]; then
+            XTB_OPTS="$XTB_OPTS --uhf $UHF"
+          fi
+
+          if [ "$SOLVENT" != "none" ]; then
+            XTB_OPTS="$XTB_OPTS --alpb $SOLVENT"
+          fi
+          
+          # Run with all output options
+          # --molden: Molecular orbitals in molden format
+          # --wbo: Wiberg Bond Orders (bond strength analysis)
+          # --charges: Mulliken atomic partial charges
+          # --dipole: Dipole moment
+          # --fod: Fractional Occupation Density (FOD) analysis
+          # --etemp: Electronic temperature
+          # --json: Comprehensive JSON output
+          xtb molecule.xyz $XTB_OPTS
+          
           echo "=== Calculation Complete ==="
-          ls -l
+          echo ""
+          echo "=== Generated Files ==="
+          ls -lh
+          
+          echo ""
+          echo "=== Checking for additional cube files ==="
+          # xTB may generate density cubes with certain flags
+          if [ -f "density.cub" ]; then
+            echo "✓ density.cub found (electron density)"
+          fi
+          if [ -f "spindens.cub" ]; then
+            echo "✓ spindens.cub found (spin density)"
+          fi
+          if [ -f "fod.cub" ]; then
+            echo "✓ fod.cub found (fractional occupation density)"
+          fi
       
       - name: Display Molden output
         run: |
@@ -60,18 +131,48 @@ jobs:
           echo "=== Molden File Size ==="
           ls -lh molden.input
       
-      - name: Parse orbital information
+      - name: Parse and display all properties
         run: |
-          # Find HOMO (highest occupied)
-          echo "=== Parsing Orbital Energies ==="
+          echo "=== ORBITAL ENERGIES ==="
           grep -A1 "Ene=" molden.input | head -50
           
-          # Count orbitals
           echo ""
           echo "Total molecular orbitals:"
           grep -c "Ene=" molden.input || echo "0"
+          
+          echo ""
+          echo "=== ATOMIC CHARGES ==="
+          if [ -f "charges" ]; then
+            cat charges
+          else
+            echo "No charges file generated"
+          fi
+          
+          echo ""
+          echo "=== WIBERG BOND ORDERS ==="
+          if [ -f "wbo" ]; then
+            head -50 wbo
+          else
+            echo "No wbo file generated"
+          fi
+          
+          echo ""
+          echo "=== DIPOLE MOMENT ==="
+          # Dipole is usually in xtbout.json or stdout
+          if [ -f "xtbout.json" ]; then
+            echo "JSON output available (contains dipole, energy, gap, etc.)"
+            cat xtbout.json | head -100
+          fi
+          
+          echo ""
+          echo "=== FOD ANALYSIS ==="
+          if [ -f "fod" ]; then
+            cat fod
+          else
+            echo "No FOD file generated"
+          fi
       
-      - name: Upload results
+      - name: Upload ALL results
         uses: actions/upload-artifact@v4
         with:
           name: xtb-results-${{ github.run_id }}
@@ -80,6 +181,12 @@ jobs:
             molden.input
             charges
             wbo
+            xtbout.json
+            fod
+            xtb.out
+            density.cub
+            spindens.cub
+            fod.cub
           retention-days: 7
       
       - name: Summary
